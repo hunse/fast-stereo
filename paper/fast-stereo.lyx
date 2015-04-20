@@ -359,8 +359,9 @@ status open
 \begin_layout Plain Layout
 \align center
 \begin_inset Graphics
-	filename fast stereo system sketch.png
-	scale 30
+	filename system-sketch.pdf
+	scale 75
+	BoundingBox 130bp 150bp 590bp 390bp
 
 \end_inset
 
