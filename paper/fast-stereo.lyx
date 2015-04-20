@@ -1,0 +1,1360 @@
+#LyX 2.0 created this file. For more info see http://www.lyx.org/
+\lyxformat 413
+\begin_document
+\begin_header
+\textclass article
+\use_default_options true
+\maintain_unincluded_children false
+\language english
+\language_package default
+\inputencoding auto
+\fontencoding global
+\font_roman default
+\font_sans default
+\font_typewriter default
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100
+\font_tt_scale 100
+
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize default
+\spacing single
+\use_hyperref false
+\papersize default
+\use_geometry false
+\use_amsmath 2
+\use_esint 1
+\use_mhchem 1
+\use_mathdots 1
+\cite_engine basic
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\use_refstyle 1
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Title
+Task-Driven Resource Allocation for Real-Time Stereo with Belief Propagation
+\end_layout
+
+\begin_layout Author
+Eric Hunsberger, Jeff Orchard & Bryan Tripp
+\end_layout
+
+\begin_layout Abstract
+Stereo matching is a versatile approach to depth estimation.
+ However, accurate algorithms for dense stereo do not run at frame rates
+ that are practical for robotics.
+ We present a new approach that focuses computational resources for depth
+ estimation on important parts of the scene.
+ A coarse analysis is performed over the whole image, and a more accurate
+ analysis is performed over a small selected region that we call the 
+\begin_inset Quotes eld
+\end_inset
+
+fovea
+\begin_inset Quotes erd
+\end_inset
+
+.
+ The fovea is moved in each frame to minimize a cost function that reflects
+ uncertainty in the depth image.
+ Importantly, parameters of the cost function, such as relative weights
+ of central vs.
+ peripheral parts of the scene, and of underestimates vs.
+ overestimates, can be adjusted to suit the task.
+ For example, a suitable cost function for grasp control might be squared
+ error in the neighbourhood of the target object, while a suitable cost
+ function for navigation might weigh overestimates of depth more heavily
+ than underestimates, as they are more likely to result in collisions.
+ The fovea is moved in each frame to minimize this cost, and its movement
+ is therefore affected by the task-dependent parameters of the cost function.
+ This approach allows high frame rates with low cost in navigation and grasping
+ datasets.
+ We discuss analogies with top-down, task-dependent control of human eye
+ movements in humans.
+ 
+\end_layout
+
+\begin_layout Section
+Introduction
+\end_layout
+
+\begin_layout Standard
+Knowledge of distances to surfaces in the environment is essential for robot
+ navigation, manipulation, etc.
+ Stereoscopic disparity (i.e.
+ difference in the location of a given feature in images from two offset
+ cameras) is a rich source of this information.
+ Disparity is inversely related to the feature's distance (depth) from the
+ cameras.
+ Compared to other approaches to depth estimation, stereo is currently more
+ cost effective than LIDAR, and can provide data at high higher frame rates.
+ Stereo matching is also viable in a wide range of indoor and outdoor lighting
+ conditions, in contrast with systems that rely on patterned infrared illuminati
+on (e.g.
+ the Microsoft Kinect).
+\end_layout
+
+\begin_layout Standard
+The first step in stereo depth estimation is to match image features in
+ one camera with those in the other camera.
+ Sparse stereo methods match only a minority of features, specifically those
+ that are distinctive and therefore likely to be matched correctly.
+ They do not estimate depth in regions with more ambiguous features.
+ In contrast, dense methods provide estimates everywhere, even in featureless
+ regions.
+ Dense methods are particularly useful in robotics, because surface locations
+ may be important whether or not they are filled with distinctive visual
+ features.
+ Markov random fields are often used to model spatial depth correlations,
+ in order to disambiguate the disparity of featureless regions.
+ The maximum a posteriori depth image can be approximated from the Markov
+ random field model in various ways, including loopy belief propagation
+ (ref), graph cuts (ref), and Markov Chain Monte Carlo (ref) methods.
+ However, despite many recent advances in efficiency, these methods remain
+ computationally intensive.
+ This limits these methods' practicality for robots, which require high
+ frame rates with modest computational resources.
+\end_layout
+
+\begin_layout Standard
+The human visual system also uses disparity as a depth cue.
+ The brain only has enough neurons to processes a small fraction of the
+ visual field in detail at any given time.
+ Most photosensors in the retina (ref) and most neurons in the visual cortex
+ (ref) are dedicated to a small region at the centre of the visual field
+ (the fovea).
+ The eyes move frequently to sense and analyze detailed information from
+ different parts of the scene, in series.
+ These rapid eye movements (saccades) are occasionally directed to salient
+ visual features, such as the onset of motion.
+ However, they are typically directed in a task-dependent manner, e.g.
+ to the next word, while reading (ref), or to the edge of an obstacle (ref),
+ or to something the person intends to pick up (ref).
+ 
+\end_layout
+
+\begin_layout Standard
+Taking inspiration from the primate visual system, our goal was to obtain
+ practical real-time stereo depth estimates by allocating computational
+ resources to the most task-relevant sub-images in each frame.
+ We defined task-specific cost functions that weigh squared estimation errors
+ according to their location, magnitude, and sign (i.e.
+ whether the error is an overestimate or underestimate).
+ Given such a cost function, our system estimates the cost at each pixel,
+ and moves a 
+\begin_inset Quotes eld
+\end_inset
+
+fovea
+\begin_inset Quotes erd
+\end_inset
+
+ (a small window in which accurate, computationally intensive analysis is
+ performed) to the image region with highest cost.
+ We show that this approach allows accurate estimation of obstacle and grasp
+ target distances at practical frame rates.
+ Importantly, our approach does not require rapid actuation of the cameras.
+ 
+\end_layout
+
+\begin_layout Section
+Methods
+\end_layout
+
+\begin_layout Subsection
+Loopy Belief Propagation
+\end_layout
+
+\begin_layout Standard
+[TODO: describe MRF]
+\end_layout
+
+\begin_layout Standard
+Belief propagation is an algorithm for inference on graphical models, inlcuding
+ Markov random fields.
+ It produces exact solutions on trees.
+ Loops prevent exact inference in Markov random fields, but the algorithm
+ frequently produces good approximations.
+ [TODO: more description]
+\end_layout
+
+\begin_layout Standard
+The algorithm minimizes a sum of two cost terms, called the data cost and
+ the discontinuity cost.
+ In stereo estimation, the data cost is evaluated as a function of pixel
+ locations 
+\begin_inset Formula $x,y$
+\end_inset
+
+ in the left image and disparity 
+\begin_inset Formula $d$
+\end_inset
+
+ of offset pixels in the right image.
+ The cost increases with increasing difference in appearance between a neighbour
+hood around pixel 
+\begin_inset Formula $x,y$
+\end_inset
+
+ in the left image and a neighbourhood around pixel 
+\begin_inset Formula $x-d,y$
+\end_inset
+
+ in the right image.
+ We use a neighbourhood of one pixel, because larger neighbourhoods tend
+ not to produce much more accurate results after belief propagation (ref).
+ Specifically, if 
+\begin_inset Formula $I^{l}$
+\end_inset
+
+ and 
+\begin_inset Formula $I^{r}$
+\end_inset
+
+ are 2D luminance images from the left and right cameras, then we define
+ the data cost as a 3D array with values 
+\begin_inset Formula 
+\[
+C_{x,y,d,k}=min\left\{ \left|I_{x,y,k}^{l}-I_{x-d,y,k}^{r}\right|,C_{max}\right\} ,
+\]
+
+\end_inset
+
+where 
+\begin_inset Formula $x$
+\end_inset
+
+ and 
+\begin_inset Formula $y$
+\end_inset
+
+ are the horizontal and vertical image coordinates, respectively, 
+\begin_inset Formula $d$
+\end_inset
+
+ is the disparity (in pixels), 
+\begin_inset Formula $C_{max}$
+\end_inset
+
+ is a saturation value, and 
+\begin_inset Formula $k$
+\end_inset
+
+ is the frame index.
+ 
+\end_layout
+
+\begin_layout Standard
+[TODO: briefly describe MRF and multiscale belief propagation; summarize
+ Felzenszwalb's methods and say we used his code]
+\end_layout
+
+\begin_layout Standard
+Disparity is estimated after belief propagation as
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+D_{x,y,k}=\operatorname{arg\, min}_{d}\, C_{x,y,d,k}.
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+System Overview
+\end_layout
+
+\begin_layout Standard
+Our system performs multiscale belief propagation with different numbers
+ of scales in different parts of the image.
+ Normally, most of the computational cost of belief propagation is incurred
+ at the finest scales.
+ However, our system only processes these scales in the fovea, vastly reducing
+ the run time.
+ [TODO: describe whatever means we end of using to reduce discontinuities
+ around fovea border (discarded border; messages from border)]
+\end_layout
+
+\begin_layout Standard
+Figure 1 illustrates the system architecture.
+ The inputs to the system in each frame are 1) a rectified stereo pair of
+ luminance images, 2) the position of the fovea, and 3) parameters of the
+ cost function (described in the next section).
+ The latter would normally be static throughout a task, but this is not
+ a requirement.
+ The outputs after processing each frame are 1) a disparity map, and 2)
+ the position of the fovea for the next frame.
+\end_layout
+
+\begin_layout Standard
+The disparity estimate 
+\begin_inset Formula $D_{k}$
+\end_inset
+
+ is stored for several frames to allow integration of information over time.
+ Frames 
+\begin_inset Formula $D_{k-n},...,D_{k}$
+\end_inset
+
+ are used to produce estimates of both disparity and its uncertainty for
+ frame 
+\begin_inset Formula $k$
+\end_inset
+
+.
+ We define task-specific 
+\begin_inset Quotes eld
+\end_inset
+
+uncertainty cost
+\begin_inset Quotes erd
+\end_inset
+
+ functions that weigh the cost of disparity under- and over-estimates in
+ various parts of the scene.
+ After each frame is processed, the system reports the disparity map that
+ minimizes this cost, and moves the fovea to the region with the highest
+ cost.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename fast stereo system sketch.png
+	scale 30
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+System architecture.
+ The 2D boxes correspond to single-channel luminance and disparity images.
+ The thicker boxes correspond to image variables with more channels, including
+ the data cost over multiple disparities (~100 channels) and disparity history
+ over multiple frames (~5 channels).
+ 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Remapping Past Frames
+\end_layout
+
+\begin_layout Standard
+For each new frame, we remap disparity estimates from the previous 
+\begin_inset Formula $n\approx5$
+\end_inset
+
+ frame into the new frame's coordinates.
+ This requires knowledge of the cameras' motion.
+ A disparity estimate from a previous frame is transformed into a depth
+ estimate, then a 3D location estimate in the left camera's previous coordinate
+ system, then the corresponding estimate in the left camera's new coordinate
+ system, and finally into a disparity.
+ Due to changes in perspective, there is not a one-to-one map between pixels
+ in the previous and new disparity images.
+ Some pixels in the remapped disparity image are therefore blank.
+ [TODO: In an example video from the KITTI dataset, XX% of the pixels were
+ mapped, on average, from the previous 5 frames.] Other pixels correspond
+ to multiple previous disparities.
+ For these pixels, the largest disparity is chosen (corresponding to the
+ nearest surface).
+ 
+\end_layout
+
+\begin_layout Subsection
+Disparity Probability Density Including Past Frames
+\end_layout
+
+\begin_layout Standard
+At step 
+\begin_inset Formula $k$
+\end_inset
+
+, both the depth image and uncertainty about the depth image are estimated
+ using data from image pairs 
+\begin_inset Formula $k-n$
+\end_inset
+
+ to 
+\begin_inset Formula $k$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Standard
+The probability density 
+\begin_inset Formula $p_{x,y,k}$
+\end_inset
+
+ over disparity at each pixel is modelled as a mixture of Gaussians, 
+\begin_inset Formula 
+\[
+p_{x,y,k}(d)\approx\sum_{i=0}^{n}w_{x,y,i}G(\mu_{x,y,i},\sigma_{x,y,i},d),
+\]
+
+\end_inset
+
+where 
+\begin_inset Formula $w_{x,y,i}$
+\end_inset
+
+ is a mixing weight, and 
+\begin_inset Formula $\mu_{x,y,i}$
+\end_inset
+
+ and 
+\begin_inset Formula $\sigma_{x,y,i}$
+\end_inset
+
+ are the Gaussian mean and standard deviation, respectively.
+ We set 
+\begin_inset Formula 
+\[
+w_{x,y,i}=\frac{\sigma_{x,y,i}^{-1}}{\sum_{j=0}^{n}\sigma_{x,y,j}^{-1}}.
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+For pixels that are missing from previous frames due to perspective changes,
+ we set 
+\begin_inset Formula $\sigma_{x,y,i}^{-1}=0$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Standard
+The means of the Gaussian components are 
+\begin_inset Formula $\mu_{x,y,i}=D_{x,y,k-i}$
+\end_inset
+
+, i.e.
+ the remapped disparity estimates.
+ For each new frame, 
+\begin_inset Formula $\sigma_{x,y,0}$
+\end_inset
+
+ is set to a small value (
+\begin_inset Formula $\sigma_{0}^{f}$
+\end_inset
+
+) for pixels in the fovea, and larger value (
+\begin_inset Formula $\sigma_{0}^{p}$
+\end_inset
+
+) for pixels in the periphery.
+ This reflects the lower expected accuracy of peripheral pixels.
+ These initial widths are parameters of the system (see Table 1).
+ 
+\end_layout
+
+\begin_layout Standard
+The widths increase with each step as 
+\begin_inset Formula $\sigma_{x,y,i+1}=\sigma_{x,y,i}+\sigma_{step}(\mu_{x,y,i})$
+\end_inset
+
+, where 
+\begin_inset Formula $\sigma_{step}$
+\end_inset
+
+ models increasing uncertainty as the observation ages, due to possible
+ motion of surfaces in the environment.
+ We assume that such extrinsic motion is statistically uniform as a function
+ of 
+\emph on
+depth
+\emph default
+, rather than disparity.
+ We define 
+\begin_inset Formula $\sigma_{step}^{z}$
+\end_inset
+
+ as the expected change in depth 
+\begin_inset Formula $z$
+\end_inset
+
+ due to extrinsic motion.
+ For small angles of disparity, depth and disparity are inversely related
+ as 
+\begin_inset Formula $d\approx\alpha/z$
+\end_inset
+
+, where 
+\begin_inset Formula $\alpha$
+\end_inset
+
+ is a constant due to the distance between cameras and the number of pixels
+ per unit horizontal angle.
+ The increase in Gaussian width in 
+\emph on
+disparity
+\emph default
+ space is therefore 
+\begin_inset Formula 
+\[
+\sigma_{step}(\mu_{x,y,i})=\frac{\partial d}{\partial z}\sigma_{step}^{z}\approx\frac{\alpha}{z^{2}}\sigma_{step}^{z}\approx\frac{d^{2}}{\alpha}\sigma_{step}^{z}\approx\frac{(\mu_{x,y,i})^{2}}{\alpha}\sigma_{step}^{z},
+\]
+
+\end_inset
+
+where 
+\begin_inset Formula $\mu_{x,y,i}$
+\end_inset
+
+ is the expected disparity.
+ 
+\end_layout
+
+\begin_layout Standard
+[TODO: explain that we use gaussians because BP log probability is not very
+ accurate (also maybe try using it).]
+\end_layout
+
+\begin_layout Subsection
+Disparity Decisions and Fovea Placement
+\end_layout
+
+\begin_layout Standard
+We use a variety of uncertainty cost functions for different tasks.
+ The simplest is the squared-error uncertainty cost, 
+\begin_inset Formula 
+\[
+U_{k}=\sum_{x,y}\int_{d}p_{x,y,k}(d)\left(d_{x,y}^{est}-d\right)^{2},
+\]
+
+\end_inset
+
+where 
+\begin_inset Formula $d_{x,y}^{est}$
+\end_inset
+
+ is the estimated disparity at pixel 
+\begin_inset Formula $x,y$
+\end_inset
+
+.
+ We also use a weighted squared-error uncertainty cost, 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+U_{k}=\sum_{x,y}w_{x,y}\int_{d}p_{x,y,k}(d)\left(d_{x,y}^{est}-d\right)^{2},
+\]
+
+\end_inset
+
+where 
+\begin_inset Formula $w_{x,y}$
+\end_inset
+
+ weights some image locations more heavily than others in a task-dependent
+ way.
+ Finally, in some cases we use an asymmetric cost, 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+U_{k}=\sum_{x,y}w_{x,y}\int_{d}p_{x,y,k}(d)\left(w_{over}\left[d_{x,y}^{est}-d\right]_{+}^{2}+w_{under}\left[d-d_{x,y}^{est}\right]_{+}^{2}\right),
+\]
+
+\end_inset
+
+where 
+\begin_inset Formula $[]_{+}$
+\end_inset
+
+ indicates half-wave rectification, 
+\begin_inset Formula $w_{over}$
+\end_inset
+
+ is the weight of overestimates of the disparity, and 
+\begin_inset Formula $w_{under}$
+\end_inset
+
+ is the weight of underestimates.
+ 
+\end_layout
+
+\begin_layout Standard
+The system outputs the disparity map that that minimizes one of these costs
+ (depending on the task) at each pixel.
+ In the symmetric case, the per-pixel cost can be decomposed as 
+\begin_inset Formula 
+\[
+U_{x,y,k}=\sum_{i=0}^{n}w_{x,y,i}\left[\sigma_{x,y,i}+(d_{x,y}^{est}-\mu_{x,y,i})^{2}\right]
+\]
+
+\end_inset
+
+and the minimum is simply the weighted average of the Gaussian means, 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+U_{x,y,k}=\frac{\sum_{i=0}^{n}w_{x,y,i}\mu_{x,y,i}}{\sum_{i=0}^{n}w_{x,y,i}}.
+\]
+
+\end_inset
+
+We are not aware of a tractable expression for the minimum in the asymmetric
+ case, and numerical evaluation of this minimum at each pixel is impractical.
+ However, the cost can be closely approximated as, 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+U_{x,y,k}=\sum_{i=0}^{n}w_{x,y,i}\left(w_{under}m\left[\sigma_{x,y,i}+(d_{x,y}^{est}-\mu_{x,y,i})^{2}\right]+w_{over}(1-m)\left[\sigma_{x,y,i}+(d_{x,y}^{est}-\mu_{x,y,i})^{2}\right]\right),
+\]
+
+\end_inset
+
+where 
+\begin_inset Formula 
+\[
+m=\frac{1}{1+\exp(-\pi(d_{x,y}^{est}-\mu_{x,y,i})/\sigma_{x,y,i})}.
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Figure XX illustrates this approximation.
+ This leads to the approximate minumum, [TODO], which is inexpensive to
+ calculate.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename asymmetric cost approx.eps
+	scale 50
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+An example of our approximation of asymmetric cost.
+ In this case, squared underestimates of disparity (overestimates of depth)
+ are weighed five times as heavily as squared errors of the opposite sign.
+ This asymmetry is reasonable in navigation, because the cost of collision
+ is higher than the cost of keeping an over-conservative distance.
+ The actual cost is plotted with circles, and the approximation of Eq.
+ XX us plotted as a line.
+ The differences between actual and approximate cost in this plot are less
+ than 0.01.
+ 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The uncertainty cost 
+\begin_inset Formula $U_{x,y.k}$
+\end_inset
+
+ is also used to select the next location of the fovea.
+ The systems forms an integral image of 
+\begin_inset Formula $U$
+\end_inset
+
+, with integration limits corresponding to the size of the fovea.
+ Then the bottom right corner of the fovea is set to the pixel with the
+ maximum integrated cost.
+ Because disparities are highly correlated across adjacent frames, and 
+\begin_inset Formula $\sigma_{0}^{f}<\sigma_{0}^{p}$
+\end_inset
+
+, this is expected to reduce the uncertainty cost.
+ 
+\end_layout
+
+\begin_layout Subsection
+Test Cases
+\end_layout
+
+\begin_layout Standard
+[TODO: KITTI navigation; describe dataset, cost function, resolution, frame
+ rate]
+\end_layout
+
+\begin_layout Standard
+[TODO: grasping]
+\end_layout
+
+\begin_layout Subsection
+Parameter Optimization
+\end_layout
+
+\begin_layout Standard
+The system parameters and their values for different tests are listed in
+ Table 1.
+ Optimal parameters were found using the package Hyperopt (ref Bergstra).
+ [TODO: say a little bit about what Hyperopt does]
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float table
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+Variable system parameters and the corresponding values used for different
+ tests.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Tabular
+<lyxtabular version="3" rows="14" columns="3">
+<features tabularvalignment="middle">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Navigation Tests
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Grasping Tests
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Number of disparities
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Area of fovea (
+\begin_inset Formula $w^{2}$
+\end_inset
+
+)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Frame history length
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+BP iterations per scale
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Data cost saturation value (
+\begin_inset Formula $C_{max}$
+\end_inset
+
+)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Discontintuity cost saturation value
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Uncertainty growth per frame
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Initial width of foveal uncertainty (
+\begin_inset Formula $\sigma_{0}^{f}$
+\end_inset
+
+)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Initial width of peripheral uncertainty (
+\begin_inset Formula $\sigma_{o}^{p}$
+\end_inset
+
+)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Peripheral # scales
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Foveal # scales
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Peripheral iterations
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Foveal iterations
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Results
+\end_layout
+
+\begin_layout Standard
+- [TODO: flops per frame]
+\end_layout
+
+\begin_layout Standard
+- [TODO: examples and averages of least-squared error on KITTI data]
+\end_layout
+
+\begin_layout Standard
+- [TODO: examples of asymmetric error on KITTI data]
+\end_layout
+
+\begin_layout Standard
+- [TODO: examples of asymmetric weighted error on KITTI data]
+\end_layout
+
+\begin_layout Standard
+- [TODO: example for grasping with another dataset]
+\end_layout
+
+\begin_layout Standard
+- [TODO: frame rate]
+\end_layout
+
+\begin_layout Standard
+- [TODO: error vs.
+ somewhat less coarse at same frame rate]
+\end_layout
+
+\begin_layout Section
+Discussion
+\end_layout
+
+\begin_layout Standard
+[TODO: summarize main results]
+\end_layout
+
+\begin_layout Standard
+[TODO: discuss additional computation and memory needed vs.
+ BP computation]
+\end_layout
+
+\begin_layout Standard
+Our system focuses resources on different parts of the scene by moving an
+ analysis window.
+ An alternative approach is to move the cameras (refs).
+ This approach might be particularly useful with yoked foveal and peripheral
+ cameras that have different fields of view (the foveal one having a narrower
+ field of view and finer detail).
+ However, this approach would involve further cost and complexity, inlcuding
+ four actuators to move each camera assembly in two degrees of freedom.
+ Actuation at the speeds required to move the fovea frequently is not straightfo
+rward.
+ In human saccades, rotational acceleration reaches 10,000 
+\begin_inset Formula $^{\circ}/s^{2}$
+\end_inset
+
+ (ref).
+ A recent system that achieved appropriate speeds (ref Villgrattner) used
+ actuators that cost thousands of dollars each.
+ Furthermore, this system used only two cameras with short focal lengths,
+ and therefore has nothing analogous to a human fovea.
+ Foveal/peripheral pairs of actuated cameras, and longer lenses, would be
+ correspondingly more difficult to actuate.
+\end_layout
+
+\begin_layout Subsection
+Future Work
+\end_layout
+
+\begin_layout Standard
+We are intersted in adapting this system for a panoramic catadoptric stereo
+ camera that we have recently developed (in preparation), and testing it
+ in robot navigation applications.
+ 
+\end_layout
+
+\begin_layout Standard
+Our current system has relatively high fidelity in a single small region
+ and low fidelity in the rest of the scene.
+ One possibility for future work would be to use more than two levels of
+ fidelity.
+ For example, a foveal region of width 
+\begin_inset Formula $w$
+\end_inset
+
+ that is processed at full resolution could be surrounded by a region of
+ width 
+\begin_inset Formula $2w$
+\end_inset
+
+ that is processed at half resolution, and so on, so that concentric windows
+ would each require about the same computation time.
+ We expect that this would reduce discontinuities at window edges.
+ However, to support more than two scales at the same frame rate, other
+ parameters (e.g.
+ fovea size, numbers of iterations per scale) would have to be reduced.
+ More work is needed to determine whether this would improve performance
+ over the current system.
+ A more complex weighted integral image over uncertainty cost would be needed
+ for such a system in order to choose fovea locations.
+ 
+\end_layout
+
+\begin_layout Section
+References
+\end_layout
+
+\end_body
+\end_document
