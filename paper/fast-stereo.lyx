@@ -161,25 +161,33 @@ The first step in stereo depth estimation is to match image features in
 
 \begin_layout Standard
 The human visual system also uses disparity as a depth cue.
- The brain only has enough neurons to processes a small fraction of the
- visual field in detail at any given time.
+ The brain only has enough neurons to process a small fraction of the visual
+ field in detail at any given time.
  A disproportionately large amount of cortex is dedicated to the centre
- of the visual field (the fovea) 
+ of the visual field (the fovea), with progressively fewer cortical resources
+ available for more peripheral regions of the visual field, a concept known
+ as cortical magnification 
 \begin_inset CommandInset citation
 LatexCommand cite
 key "Daniel1961"
 
 \end_inset
 
-, with progressively less cortical resources to more peripheral regions
- of the visual field, a concept known as cortical magnification.
+.
  The eyes move frequently to sense and analyze detailed information from
  different parts of the scene, in series.
  These rapid eye movements (saccades) are occasionally directed to salient
  visual features, such as the onset of motion.
  However, they are typically directed in a task-dependent manner, e.g.
- to the next word, while reading (ref), or to the edge of an obstacle (ref),
- or to something the person intends to pick up (ref).
+ to the next set of letters, while reading 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Rayner2010"
+
+\end_inset
+
+, or to the edge of an obstacle (ref), or to something the person intends
+ to pick up (ref).
  
 \end_layout
 
