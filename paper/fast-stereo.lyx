@@ -3,6 +3,11 @@
 \begin_document
 \begin_header
 \textclass article
+\begin_preamble
+\usepackage{url}
+%\usepackage{natbib}
+\usepackage[authoryear]{natbib}
+\end_preamble
 \use_default_options true
 \maintain_unincluded_children false
 \language english
@@ -158,9 +163,16 @@ The first step in stereo depth estimation is to match image features in
 The human visual system also uses disparity as a depth cue.
  The brain only has enough neurons to processes a small fraction of the
  visual field in detail at any given time.
- Most photosensors in the retina (ref) and most neurons in the visual cortex
- (ref) are dedicated to a small region at the centre of the visual field
- (the fovea).
+ A disproportionately large amount of cortex is dedicated to the centre
+ of the visual field (the fovea) 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Daniel1961"
+
+\end_inset
+
+, with progressively less cortical resources to more peripheral regions
+ of the visual field, a concept known as cortical magnification.
  The eyes move frequently to sense and analyze detailed information from
  different parts of the scene, in series.
  These rapid eye movements (saccades) are occasionally directed to salient
@@ -271,7 +283,7 @@ where
 \end_inset
 
  is the disparity (in pixels), 
-\begin_inset Formula $C_{max}$
+\begin_inset Formula $C_{\mathrm{max}}$
 \end_inset
 
  is a saturation value, and 
@@ -521,11 +533,11 @@ The means of the Gaussian components are
 
 \begin_layout Standard
 The widths increase with each step as 
-\begin_inset Formula $\sigma_{x,y,i+1}=\sigma_{x,y,i}+\sigma_{step}(\mu_{x,y,i})$
+\begin_inset Formula $\sigma_{x,y,i+1}=\sigma_{x,y,i}+\sigma_{\mathrm{step}}(\mu_{x,y,i})$
 \end_inset
 
 , where 
-\begin_inset Formula $\sigma_{step}$
+\begin_inset Formula $\sigma_{\mathrm{step}}$
 \end_inset
 
  models increasing uncertainty as the observation ages, due to possible
@@ -537,7 +549,7 @@ depth
 \emph default
 , rather than disparity.
  We define 
-\begin_inset Formula $\sigma_{step}^{z}$
+\begin_inset Formula $\sigma_{\mathrm{step}}^{z}$
 \end_inset
 
  as the expected change in depth 
@@ -563,7 +575,7 @@ disparity
  space is therefore 
 \begin_inset Formula 
 \[
-\sigma_{step}(\mu_{x,y,i})=\frac{\partial d}{\partial z}\sigma_{step}^{z}\approx\frac{\alpha}{z^{2}}\sigma_{step}^{z}\approx\frac{d^{2}}{\alpha}\sigma_{step}^{z}\approx\frac{(\mu_{x,y,i})^{2}}{\alpha}\sigma_{step}^{z},
+\sigma_{\mathrm{step}}(\mu_{x,y,i})=\frac{\partial d}{\partial z}\sigma_{\mathrm{step}}^{z}\approx\frac{\alpha}{z^{2}}\sigma_{\mathrm{step}}^{z}\approx\frac{d^{2}}{\alpha}\sigma_{\mathrm{step}}^{z}\approx\frac{(\mu_{x,y,i})^{2}}{\alpha}\sigma_{\mathrm{step}}^{z},
 \]
 
 \end_inset
@@ -590,13 +602,13 @@ We use a variety of uncertainty cost functions for different tasks.
  The simplest is the squared-error uncertainty cost, 
 \begin_inset Formula 
 \[
-U_{k}=\sum_{x,y}\int_{d}p_{x,y,k}(d)\left(d_{x,y}^{est}-d\right)^{2},
+U_{k}=\sum_{x,y}\int_{d}p_{x,y,k}(d)\left(d_{x,y}^{\mathrm{est}}-d\right)^{2},
 \]
 
 \end_inset
 
 where 
-\begin_inset Formula $d_{x,y}^{est}$
+\begin_inset Formula $d_{x,y}^{\mathrm{est}}$
 \end_inset
 
  is the estimated disparity at pixel 
@@ -610,7 +622,7 @@ where
 \begin_layout Standard
 \begin_inset Formula 
 \[
-U_{k}=\sum_{x,y}w_{x,y}\int_{d}p_{x,y,k}(d)\left(d_{x,y}^{est}-d\right)^{2},
+U_{k}=\sum_{x,y}w_{x,y}\int_{d}p_{x,y,k}(d)\left(d_{x,y}^{\mathrm{est}}-d\right)^{2},
 \]
 
 \end_inset
@@ -627,7 +639,7 @@ where
 \begin_layout Standard
 \begin_inset Formula 
 \[
-U_{k}=\sum_{x,y}w_{x,y}\int_{d}p_{x,y,k}(d)\left(w_{over}\left[d_{x,y}^{est}-d\right]_{+}^{2}+w_{under}\left[d-d_{x,y}^{est}\right]_{+}^{2}\right),
+U_{k}=\sum_{x,y}w_{x,y}\int_{d}p_{x,y,k}(d)\left(w_{\mathrm{over}}\left[d_{x,y}^{\mathrm{est}}-d\right]_{+}^{2}+w_{\mathrm{under}}\left[d-d_{x,y}^{\mathrm{est}}\right]_{+}^{2}\right),
 \]
 
 \end_inset
@@ -637,11 +649,11 @@ where
 \end_inset
 
  indicates half-wave rectification, 
-\begin_inset Formula $w_{over}$
+\begin_inset Formula $w_{\mathrm{over}}$
 \end_inset
 
  is the weight of overestimates of the disparity, and 
-\begin_inset Formula $w_{under}$
+\begin_inset Formula $w_{\mathrm{under}}$
 \end_inset
 
  is the weight of underestimates.
@@ -654,7 +666,7 @@ The system outputs the disparity map that that minimizes one of these costs
  In the symmetric case, the per-pixel cost can be decomposed as 
 \begin_inset Formula 
 \[
-U_{x,y,k}=\sum_{i=0}^{n}w_{x,y,i}\left[\sigma_{x,y,i}+(d_{x,y}^{est}-\mu_{x,y,i})^{2}\right]
+U_{x,y,k}=\sum_{i=0}^{n}w_{x,y,i}\left[\sigma_{x,y,i}+(d_{x,y}^{\mathrm{est}}-\mu_{x,y,i})^{2}\right]
 \]
 
 \end_inset
@@ -678,7 +690,7 @@ We are not aware of a tractable expression for the minimum in the asymmetric
 \begin_layout Standard
 \begin_inset Formula 
 \[
-U_{x,y,k}=\sum_{i=0}^{n}w_{x,y,i}\left(w_{under}m\left[\sigma_{x,y,i}+(d_{x,y}^{est}-\mu_{x,y,i})^{2}\right]+w_{over}(1-m)\left[\sigma_{x,y,i}+(d_{x,y}^{est}-\mu_{x,y,i})^{2}\right]\right),
+U_{x,y,k}=\sum_{i=0}^{n}w_{x,y,i}\left(w_{\mathrm{under}}m\left[\sigma_{x,y,i}+(d_{x,y}^{\mathrm{est}}-\mu_{x,y,i})^{2}\right]+w_{\mathrm{over}}(1-m)\left[\sigma_{x,y,i}+(d_{x,y}^{\mathrm{est}}-\mu_{x,y,i})^{2}\right]\right),
 \]
 
 \end_inset
@@ -686,7 +698,7 @@ U_{x,y,k}=\sum_{i=0}^{n}w_{x,y,i}\left(w_{under}m\left[\sigma_{x,y,i}+(d_{x,y}^{
 where 
 \begin_inset Formula 
 \[
-m=\frac{1}{1+\exp(-\pi(d_{x,y}^{est}-\mu_{x,y,i})/\sigma_{x,y,i})}.
+m=\frac{1}{1+\exp(-\pi(d_{x,y}^{\mathrm{est}}-\mu_{x,y,i})/\sigma_{x,y,i})}.
 \]
 
 \end_inset
@@ -1311,11 +1323,18 @@ Our system focuses resources on different parts of the scene by moving an
  four actuators to move each camera assembly in two degrees of freedom.
  Actuation at the speeds required to move the fovea frequently is not straightfo
 rward.
- In human saccades, rotational acceleration reaches 10,000 
-\begin_inset Formula $^{\circ}/s^{2}$
+ In human saccades, rotational acceleration can exceed 
+\begin_inset Formula $20,000{}^{\circ}/s^{2}$
 \end_inset
 
- (ref).
+ 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Abrams1989"
+
+\end_inset
+
+.
  A recent system that achieved appropriate speeds (ref Villgrattner) used
  actuators that cost thousands of dollars each.
  Furthermore, this system used only two cameras with short focal lengths,
@@ -1359,11 +1378,14 @@ Our current system has relatively high fidelity in a single small region
  over the current system.
  A more complex weighted integral image over uncertainty cost would be needed
  for such a system in order to choose fovea locations.
- 
-\end_layout
+\begin_inset CommandInset bibtex
+LatexCommand bibtex
+bibfiles "fast-stereo"
+options "plain"
 
-\begin_layout Section
-References
+\end_inset
+
+
 \end_layout
 
 \end_body
