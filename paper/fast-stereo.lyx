@@ -186,8 +186,15 @@ key "Rayner2010"
 
 \end_inset
 
-, or to the edge of an obstacle (ref), or to something the person intends
- to pick up (ref).
+, or to the edge of an obstacle, or to something the person intends to pick
+ up 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Johansson2001"
+
+\end_inset
+
+.
  
 \end_layout
 
@@ -819,8 +826,17 @@ Parameter Optimization
 \begin_layout Standard
 The system parameters and their values for different tests are listed in
  Table 1.
- Optimal parameters were found using the package Hyperopt (ref Bergstra).
- [TODO: say a little bit about what Hyperopt does]
+ Optimal parameters were found using the package Hyperopt 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Bergstra2013"
+
+\end_inset
+
+.
+ Hyperopt attempts to remove the irreproducible ``art'' of hand-tuning hyperpara
+meters, instead using an automated method for searching hyperparameter space
+ to find optimal (or near-optimal) values.
 \end_layout
 
 \begin_layout Standard
@@ -846,10 +862,10 @@ Variable system parameters and the corresponding values used for different
 \align center
 \begin_inset Tabular
 <lyxtabular version="3" rows="15" columns="3">
-<features tabularvalignment="middle">
-<column alignment="center" valignment="top" width="0">
-<column alignment="center" valignment="top" width="0">
-<column alignment="center" valignment="top" width="0">
+<features rotate="0" tabularvalignment="middle">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
 <row>
 <cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
 \begin_inset Text
