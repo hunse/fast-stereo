@@ -190,6 +190,16 @@ fovea
 Methods
 \end_layout
 
+\begin_layout Standard
+Our general strategy is to perform fast disparity estimation over most of
+ the image, and more accurate estimation in a small window, and to move
+ this window each frame to minimize a task-specific cost function.
+ This general strategy could be used with a variety of stereo algorithms,
+ but we focus here on a specific implementation of the strategy that uses
+ loopy belief propagation.
+ 
+\end_layout
+
 \begin_layout Subsection
 Loopy Belief Propagation
 \end_layout
@@ -203,7 +213,7 @@ Belief propagation is an algorithm for inference on graphical models, inlcuding
  Markov random fields.
  It produces exact solutions on trees.
  Loops prevent exact inference in Markov random fields, but the algorithm
- frequently produces good approximations.
+ typically produces good approximations.
  [TODO: more description]
 \end_layout
 
@@ -806,7 +816,7 @@ Variable system parameters and the corresponding values used for different
 \begin_layout Plain Layout
 \align center
 \begin_inset Tabular
-<lyxtabular version="3" rows="14" columns="3">
+<lyxtabular version="3" rows="15" columns="3">
 <features tabularvalignment="middle">
 <column alignment="center" valignment="top" width="0">
 <column alignment="center" valignment="top" width="0">
@@ -999,6 +1009,35 @@ Data cost saturation value (
 
 \begin_layout Plain Layout
 Discontintuity cost saturation value
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+[TODO: BP smoothing]
 \end_layout
 
 \end_inset
@@ -1289,6 +1328,12 @@ Discussion
 \begin_layout Standard
 [TODO: discuss additional computation and memory needed vs.
  BP computation]
+\end_layout
+
+\begin_layout Standard
+[TODO: emphasize that this would probably work with other stereo methods
+ too, maybe even local ones at low/high resolution on low-end hardware (although
+ would the rest of the system dominate runtime?)]
 \end_layout
 
 \begin_layout Standard
