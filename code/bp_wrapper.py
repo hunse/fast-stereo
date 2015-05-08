@@ -11,11 +11,12 @@ from kitti.data import Calib, homogeneous_transform, filter_disps
 from kitti.raw import load_stereo_video, load_video_odometry, get_position_transform
 from kitti.velodyne import load_disparity_points
 
-import bp.bp as bp
+import bp
 
 from hunse_tools.timing import tic, toc
 
 values_default = 128
+full_shape = (375, 1242)
 
 
 def laplacian(img, ksize=9):
@@ -61,9 +62,13 @@ def coarse_bp(frame, values=values_default, down_factor=3, ksize=1, **params):
     return disp
 
 
-def fine_bp(frame, values=values_default):
-    params = dict(data_weight=0.07, data_max=100, disc_max=15)
-    disp = bp.stereo(frame[0], frame[1], values=values, levels=5, **params)
+def fine_bp(frame, values=values_default, levels=5, ksize=9, **params):
+    # params = dict(data_weight=0.07, data_max=100, disc_max=15)
+    img1, img2 = frame
+    img1 = laplacian(img1, ksize=ksize)
+    img2 = laplacian(img2, ksize=ksize)
+
+    disp = bp.stereo(img1, img2, values=values, levels=levels, **params)
     return disp
 
 
@@ -84,3 +89,36 @@ def fovea_bp(frame, fovea_ij, fovea_shape, values=values_default, ksize=9, **par
     disp = bp.stereo_region(img1r, img2r, **params)
 
     return disp
+
+
+def error_on_points(xyd, disp, values=values_default, kind='rms'):
+    # clip left points with no possible disparity matches
+    xyd = xyd[xyd[:, 0] >= values]
+
+    x, y, d = xyd.T
+
+    ratio = np.asarray(disp.shape) / np.asarray(full_shape, dtype=float)
+    xr = (x * ratio[1]).astype(int)
+    yr = (y * ratio[0]).astype(int)
+    disps = disp[yr, xr]
+
+    if kind == 'rms':
+        return np.sqrt(((disps - d)**2).mean())
+    elif kind == 'abs':
+        return abs(disps - d).mean()
+    else:
+        raise ValueError()
+
+
+def points_image(xyd, shape):
+    x, y, d = xyd.T
+
+    ratio = np.asarray(shape) / np.asarray(full_shape, dtype=float)
+    xr = (x * ratio[1]).astype(int)
+    yr = (y * ratio[0]).astype(int)
+
+    img = np.zeros(shape)
+    for xx, yy, dd in zip(xr, yr, d):
+        img[yy, xx] = dd
+
+    return img
