@@ -546,18 +546,29 @@ The means of the Gaussian components are
 \begin_inset Formula $\sigma_{0}^{f}$
 \end_inset
 
-) for pixels in the fovea, and larger value (
+) for pixels in the fovea, and a larger value (
 \begin_inset Formula $\sigma_{0}^{p}$
 \end_inset
 
 ) for pixels in the periphery.
  This reflects the lower expected accuracy of peripheral pixels.
- These initial widths are parameters of the system (see Table 1).
+ These initial widths are parameters of the system (see Table
+\begin_inset space \thinspace{}
+\end_inset
+
+
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "tab:parameters"
+
+\end_inset
+
+).
  
 \end_layout
 
 \begin_layout Standard
-The widths increase with each step as 
+The Gaussian widths increase with each step as 
 \begin_inset Formula $\sigma_{x,y,i+1}=\sigma_{x,y,i}+\sigma_{\mathrm{step}}(\mu_{x,y,i})$
 \end_inset
 
@@ -623,31 +634,97 @@ Disparity Decisions and Fovea Placement
 \end_layout
 
 \begin_layout Standard
+[JO: I think we should derive the uncertainty for a single 
+\begin_inset Formula $(x,y,k)$
+\end_inset
+
+ first, then use those to compute the uncertainty for the whole image 
+\begin_inset Formula $k$
+\end_inset
+
+.]
+\end_layout
+
+\begin_layout Standard
+\noindent
 We use a variety of uncertainty cost functions for different tasks.
  The simplest is the squared-error uncertainty cost, 
 \begin_inset Formula 
 \[
-U_{k}=\sum_{x,y}\int_{d}p_{x,y,k}(d)\left(d_{x,y}^{\mathrm{est}}-d\right)^{2},
+U_{k}=\sum_{x,y}\int p_{x,y,k}(\delta)\left(d_{x,y}^{\mathrm{est}}-\delta\right)^{2}d\delta,
 \]
 
 \end_inset
 
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+U_{x,y,k}=\int p_{x,y,k}(\delta)\left(d_{x,y}^{\mathrm{est}}-\delta\right)^{2}d\delta,
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\noindent
 where 
 \begin_inset Formula $d_{x,y}^{\mathrm{est}}$
 \end_inset
 
  is the estimated disparity at pixel 
-\begin_inset Formula $x,y$
+\begin_inset Formula $(x,y)$
 \end_inset
 
 .
+ In some cases, we might want to use an asymmetric cost, 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+U_{x,y,k}=\int p_{x,y,k}(\delta)\left(w_{\mathrm{over}}\left[d_{x,y}^{\mathrm{est}}-\delta\right]_{+}^{2}+w_{\mathrm{under}}\left[\delta-d_{x,y}^{\mathrm{est}}\right]_{+}^{2}\right)d\delta,
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\noindent
+where 
+\begin_inset Formula $[]_{+}$
+\end_inset
+
+ indicates half-wave rectification, 
+\begin_inset Formula $w_{\mathrm{over}}$
+\end_inset
+
+ is the weight of overestimates of the disparity, and 
+\begin_inset Formula $w_{\mathrm{under}}$
+\end_inset
+
+ is the weight of underestimates.
  We also use a weighted squared-error uncertainty cost, 
 \end_layout
 
 \begin_layout Standard
 \begin_inset Formula 
 \[
-U_{k}=\sum_{x,y}w_{x,y}\int_{d}p_{x,y,k}(d)\left(d_{x,y}^{\mathrm{est}}-d\right)^{2},
+U_{k}=\sum_{x,y}w_{x,y}\int p_{x,y,k}(\delta)\left(d_{x,y}^{\mathrm{est}}-\delta\right)^{2}d\delta,
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+U_{x,y,k}=\int p_{x,y,k}(\delta)\left(d_{x,y}^{\mathrm{est}}-\delta\right)^{2}d\delta,
 \]
 
 \end_inset
@@ -657,14 +734,14 @@ where
 \end_inset
 
  weights some image locations more heavily than others in a task-dependent
- way.
+ way (for example, in the direction of travel).
  Finally, in some cases we use an asymmetric cost, 
 \end_layout
 
 \begin_layout Standard
 \begin_inset Formula 
 \[
-U_{k}=\sum_{x,y}w_{x,y}\int_{d}p_{x,y,k}(d)\left(w_{\mathrm{over}}\left[d_{x,y}^{\mathrm{est}}-d\right]_{+}^{2}+w_{\mathrm{under}}\left[d-d_{x,y}^{\mathrm{est}}\right]_{+}^{2}\right),
+U_{k}=\sum_{x,y}w_{x,y}\int p_{x,y,k}(\delta)\left(w_{\mathrm{over}}\left[d_{x,y}^{\mathrm{est}}-\delta\right]_{+}^{2}+w_{\mathrm{under}}\left[\delta-d_{x,y}^{\mathrm{est}}\right]_{+}^{2}\right)d\delta,
 \]
 
 \end_inset
@@ -714,12 +791,17 @@ We are not aware of a tractable expression for the minimum in the asymmetric
 
 \begin_layout Standard
 \begin_inset Formula 
-\[
-U_{x,y,k}=\sum_{i=0}^{n}w_{x,y,i}\left(w_{\mathrm{under}}m\left[\sigma_{x,y,i}+(d_{x,y}^{\mathrm{est}}-\mu_{x,y,i})^{2}\right]+w_{\mathrm{over}}(1-m)\left[\sigma_{x,y,i}+(d_{x,y}^{\mathrm{est}}-\mu_{x,y,i})^{2}\right]\right),
-\]
+\begin{eqnarray}
+U_{x,y,k} & = & \sum_{i=0}^{n}w_{x,y,i}\Big(w_{\mathrm{under}}m\left[\sigma_{x,y,i}+(d_{x,y}^{\mathrm{est}}-\mu_{x,y,i})^{2}\right]+\nonumber \\
+ &  & \qquad\qquad\quad w_{\mathrm{over}}(1-m)\left[\sigma_{x,y,i}+(d_{x,y}^{\mathrm{est}}-\mu_{x,y,i})^{2}\right]\Big),\label{eq:cost_function_approx}
+\end{eqnarray}
 
 \end_inset
 
+
+\end_layout
+
+\begin_layout Standard
 where 
 \begin_inset Formula 
 \[
@@ -732,7 +814,14 @@ m=\frac{1}{1+\exp(-\pi(d_{x,y}^{\mathrm{est}}-\mu_{x,y,i})/\sigma_{x,y,i})}.
 \end_layout
 
 \begin_layout Standard
-Figure XX illustrates this approximation.
+Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:cost_function_approx"
+
+\end_inset
+
+ illustrates this approximation.
  This leads to the approximate minumum, [TODO], which is inexpensive to
  calculate.
  
@@ -765,7 +854,17 @@ An example of our approximation of asymmetric cost.
  This asymmetry is reasonable in navigation, because the cost of collision
  is higher than the cost of keeping an over-conservative distance.
  The actual cost is plotted with circles, and the approximation of Eq.
- XX us plotted as a line.
+\begin_inset space \thinspace{}
+\end_inset
+
+
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:cost_function_approx"
+
+\end_inset
+
+ is plotted as a line.
  The differences between actual and approximate cost in this plot are less
  than 0.01.
  
@@ -777,6 +876,12 @@ An example of our approximation of asymmetric cost.
 \end_layout
 
 \begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:cost_function_approx"
+
+\end_inset
+
 
 \end_layout
 
@@ -825,7 +930,18 @@ Parameter Optimization
 
 \begin_layout Standard
 The system parameters and their values for different tests are listed in
- Table 1.
+ Table
+\begin_inset space \thinspace{}
+\end_inset
+
+
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "tab:parameters"
+
+\end_inset
+
+.
  Optimal parameters were found using the package Hyperopt 
 \begin_inset CommandInset citation
 LatexCommand cite
@@ -1318,6 +1434,16 @@ Foveal iterations
 </cell>
 </row>
 </lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "tab:parameters"
 
 \end_inset
 
