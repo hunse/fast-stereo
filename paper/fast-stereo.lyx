@@ -522,6 +522,7 @@ w_{x,y,i}=\frac{\sigma_{x,y,i}^{-1}}{\sum_{j=0}^{n}\sigma_{x,y,j}^{-1}}.
 \end_layout
 
 \begin_layout Standard
+\noindent
 For pixels that are missing from previous frames due to perspective changes,
  we set 
 \begin_inset Formula $\sigma_{x,y,i}^{-1}=0$
@@ -648,15 +649,20 @@ Disparity Decisions and Fovea Placement
 \begin_layout Standard
 \noindent
 We use a variety of uncertainty cost functions for different tasks.
- The simplest is the squared-error uncertainty cost, 
-\begin_inset Formula 
-\[
-U_{k}=\sum_{x,y}\int p_{x,y,k}(\delta)\left(d_{x,y}^{\mathrm{est}}-\delta\right)^{2}d\delta,
-\]
-
+ We denote the uncertainty cost for each pixel 
+\begin_inset Formula $(x,y)$
 \end_inset
 
+ in each image 
+\begin_inset Formula $k$
+\end_inset
 
+ as 
+\begin_inset Formula $U_{x,y,k}$
+\end_inset
+
+.
+ The simplest is the squared-error uncertainty cost,
 \end_layout
 
 \begin_layout Standard
@@ -697,8 +703,9 @@ U_{x,y,k}=\int p_{x,y,k}(\delta)\left(w_{\mathrm{over}}\left[d_{x,y}^{\mathrm{es
 
 \begin_layout Standard
 \noindent
+\align left
 where 
-\begin_inset Formula $[]_{+}$
+\begin_inset Formula $[\,]_{+}$
 \end_inset
 
  indicates half-wave rectification, 
@@ -710,61 +717,35 @@ where
 \end_inset
 
  is the weight of underestimates.
- We also use a weighted squared-error uncertainty cost, 
+ In addition to these spatial uncertainty cost functions, we can evaluate
+ the uncertainty of an entire image using a weighted sum over the uncertainties
+ in the image,
 \end_layout
 
 \begin_layout Standard
 \begin_inset Formula 
 \[
-U_{k}=\sum_{x,y}w_{x,y}\int p_{x,y,k}(\delta)\left(d_{x,y}^{\mathrm{est}}-\delta\right)^{2}d\delta,
+U_{k}=\sum_{x,y}w_{x,y}U_{x,y,k},
 \]
 
 \end_inset
 
 
-\begin_inset Formula 
-\[
-U_{x,y,k}=\int p_{x,y,k}(\delta)\left(d_{x,y}^{\mathrm{est}}-\delta\right)^{2}d\delta,
-\]
+\end_layout
 
-\end_inset
-
+\begin_layout Standard
+\noindent
 where 
 \begin_inset Formula $w_{x,y}$
 \end_inset
 
  weights some image locations more heavily than others in a task-dependent
  way (for example, in the direction of travel).
- Finally, in some cases we use an asymmetric cost, 
 \end_layout
 
 \begin_layout Standard
-\begin_inset Formula 
-\[
-U_{k}=\sum_{x,y}w_{x,y}\int p_{x,y,k}(\delta)\left(w_{\mathrm{over}}\left[d_{x,y}^{\mathrm{est}}-\delta\right]_{+}^{2}+w_{\mathrm{under}}\left[\delta-d_{x,y}^{\mathrm{est}}\right]_{+}^{2}\right)d\delta,
-\]
-
-\end_inset
-
-where 
-\begin_inset Formula $[]_{+}$
-\end_inset
-
- indicates half-wave rectification, 
-\begin_inset Formula $w_{\mathrm{over}}$
-\end_inset
-
- is the weight of overestimates of the disparity, and 
-\begin_inset Formula $w_{\mathrm{under}}$
-\end_inset
-
- is the weight of underestimates.
- 
-\end_layout
-
-\begin_layout Standard
-The system outputs the disparity map that that minimizes one of these costs
- (depending on the task) at each pixel.
+The system outputs the disparity map that minimizes one of these costs (dependin
+g on the task) at each pixel.
  In the symmetric case, the per-pixel cost can be decomposed as 
 \begin_inset Formula 
 \[
