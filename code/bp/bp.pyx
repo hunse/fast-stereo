@@ -44,7 +44,7 @@ cdef extern from "stereo.h":
         int values, int iters, int levels, int min_level, float smooth,
         float data_weight, float data_max, float seed_weight, float disc_max)
     cdef Mat stereo_ss_region(Mat, Mat, int, float, float, float, float)
-    cdef Mat stereo_ms_region(Mat, Mat, int, int, float, float, float, float)
+    cdef Mat stereo_ms_region(Mat, Mat, Mat, int, int, float, float, float, float, float)
 
 
 def stereo(
@@ -143,6 +143,7 @@ def stereo_probseed(
 def stereo_region(
         np.ndarray[uchar, ndim=2, mode="c"] a,
         np.ndarray[uchar, ndim=2, mode="c"] b,
+        np.ndarray[uchar, ndim=2, mode="c"] s,        
         int iters=5, int levels=5, float smooth=0.7,
         float data_weight=0.07, float data_max=15, float disc_max=1.7):
 
@@ -156,10 +157,18 @@ def stereo_region(
     (<np.uint8_t[:a.shape[0], :a.shape[1]]> x.data)[:, :] = a
     (<np.uint8_t[:b.shape[0], :b.shape[1]]> y.data)[:, :] = b
 
+    cdef Mat seed
+    seed.create(s.shape[0], s.shape[1], CV_8U)
+    (<np.uint8_t[:s.shape[0], :s.shape[1]]> seed.data)[:, :] = s
+
+
     cdef Mat z
     # z = stereo_ss_region(x, y, iters, smooth, data_weight, data_max, disc_max)
-    z = stereo_ms_region(x, y, iters, levels, smooth,
-                         data_weight, data_max, disc_max)
+    seed_weight = 50
+    z = stereo_ms_region(x, y, seed, iters, levels, smooth,
+                         data_weight, data_max, seed_weight, disc_max)
+#     z = stereo_ms_region(x, y, iters, levels, smooth,
+#                          data_weight, data_max, disc_max)
 
     # copy data off
     cdef np.ndarray[uchar, ndim=2, mode="c"] c = np.zeros_like(a)

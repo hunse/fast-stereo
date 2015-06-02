@@ -2,22 +2,22 @@
 Filtering of BP over time.
 """
 import collections
-
+ 
 import numpy as np
 import cv2
-
+ 
 import matplotlib.pyplot as plt
-
+ 
 import gridfill
-
+ 
 from kitti.data import Calib, homogeneous_transform, filter_disps
 from kitti.raw import load_stereo_video, load_video_odometry, get_position_transform
 from kitti.velodyne import load_disparity_points
 
 from bp_wrapper import coarse_bp, fine_bp, fovea_bp
 
-from hunse_tools.timing import tic, toc
-
+from hunse_tools.timing import tic, toc 
+from nltk.compat import raw_input
 
 full_shape = (375, 1242)
 
@@ -274,7 +274,7 @@ if __name__ == '__main__':
     fovea_params = {'data_weight': 0.0095157236661190022, 'disc_max': 1693.5638268258676, 'data_max': 419.34182241802188, 'ksize': 9}
 
     low0 = coarse_bp(initial)
-    high0 = fovea_bp(initial, fovea_ij, fovea_shape)
+    high0 = fovea_bp(initial, fovea_ij, fovea_shape, low0)
     high1 = np.zeros(full_shape, dtype=int)
     # high1 = fine_bp(initial)
 
@@ -288,44 +288,57 @@ if __name__ == '__main__':
 
     fig = plt.figure(1)
     fig.clf()
-    raw_input("Place figure...")
+    #raw_input("Place figure...")
     # ^ segfaults if figure is not large
 
-    r, c = 3, 6
-    ax_frame = plt.subplot2grid((r, c), (0, 0), colspan=3)
-    # ax_coarse = plt.subplot2grid((r, c), (1, 0), colspan=2)
-    ax_coarse = plt.subplot2grid((r, c), (1, 0), colspan=2)
-    ax_fovea = plt.subplot2grid((r, c), (1, 2), colspan=1)
-    ax_disp = plt.subplot2grid((r, c), (2, 0), colspan=3)
-    ax_cost = plt.subplot2grid((r, c), (0, 3), colspan=3)
-    ax_truth = plt.subplot2grid((r, c), (1, 3), colspan=3)
-    ax_disp2 = plt.subplot2grid((r, c), (2, 3), colspan=3)
+    ax_disp = plt.gca()
+#    r, c = 3, 6
+#    ax_frame = plt.subplot2grid((r, c), (0, 0), colspan=3)
+#    # ax_coarse = plt.subplot2grid((r, c), (1, 0), colspan=2)
+#    ax_coarse = plt.subplot2grid((r, c), (1, 0), colspan=2)
+#    ax_fovea = plt.subplot2grid((r, c), (1, 2), colspan=1)
+#    ax_disp = plt.subplot2grid((r, c), (2, 0), colspan=3)
+#    ax_cost = plt.subplot2grid((r, c), (0, 3), colspan=3)
+#    ax_truth = plt.subplot2grid((r, c), (1, 3), colspan=3)
+#    ax_disp2 = plt.subplot2grid((r, c), (2, 3), colspan=3)
     # ax_int = plt.subplot(r, 1, 5)
 
-    plot_frame = ax_frame.imshow(initial[0], cmap='gray')
-    plot_coarse = ax_coarse.imshow(low0, vmin=0, vmax=n_disp)
-    plot_fovea = ax_fovea.imshow(high0, vmin=0, vmax=n_disp)
+#    plot_frame = ax_frame.imshow(initial[0], cmap='gray')
+#    plot_coarse = ax_coarse.imshow(low0, vmin=0, vmax=n_disp)
+#    plot_fovea = ax_fovea.imshow(high0, vmin=0, vmax=n_disp)
     plot_disp = ax_disp.imshow(high1, vmin=0, vmax=n_disp)
-    plot_disp2 = ax_disp2.imshow(high1, vmin=0, vmax=n_disp)
-    plot_truth = ax_truth.imshow(low0, vmin=0, vmax=n_disp)
-    ax_cost.imshow(filt.cost)  # for tight layout
-
-    ax_frame.set_title('Left camera frame (red: current fovea, green: next fovea)')
-    ax_coarse.set_title('Coarse')
-    ax_fovea.set_title('Fovea')
-    ax_disp.set_title('Estimated disparity (fovea)')
-    ax_disp2.set_title('Estimated disparity (no fovea)')
-    ax_cost.set_title('Estimated cost')
-    ax_truth.set_title('Truth')
-    fig.tight_layout()
+#    plot_disp2 = ax_disp2.imshow(high1, vmin=0, vmax=n_disp)
+#    plot_truth = ax_truth.imshow(low0, vmin=0, vmax=n_disp)
+#     ax_cost.imshow(filt.cost)  # for tight layout
+# 
+#     ax_frame.set_title('Left camera frame (red: current fovea, green: next fovea)')
+#     ax_coarse.set_title('Coarse')
+#     ax_fovea.set_title('Fovea')
+#     ax_disp.set_title('Estimated disparity (fovea)')
+#     ax_disp2.set_title('Estimated disparity (no fovea)')
+#     ax_cost.set_title('Estimated cost')
+#     ax_truth.set_title('Truth')
+#     fig.tight_layout()
 
 
     for iframe, [frame, pos] in enumerate(zip(video, positions)):
         tic('Coarse BP')
         coarse_disp = coarse_bp(frame, **coarse_params)
         toc()
-        tic('Fine BP')
-        fovea_disp = fovea_bp(frame, fovea_ij, fovea_shape, **fovea_params)
+        
+        ratio = np.round(float(frame.shape[1]) / float(coarse_disp.shape[0]))
+        ij0 = np.round(np.asarray(fovea_ij) / ratio)
+        coarse_shape = np.round(np.asarray(fovea_shape) / ratio)
+        ij1 = ij0 + coarse_shape
+        coarse_subwindow = coarse_disp[ij0[0]:ij1[0], ij0[1]:ij1[1]]
+        
+        # TODO: scaling only the edges may be faster 
+        seed = cv2.resize(coarse_subwindow, fovea_shape[::-1])
+        band_size = 20
+        seed[band_size:-band_size, band_size:-band_size] = 0
+        
+        tic('Fine BP')        
+        fovea_disp = fovea_bp(frame, fovea_ij, fovea_shape, seed, **fovea_params)
         toc()
 
         filt.compute(pos, coarse_disp, fovea_disp, fovea_ij)
@@ -361,21 +374,22 @@ if __name__ == '__main__':
         draw_rect(img, fovea_ij, fovea_shape, (255, 0, 0))
         draw_rect(img, new_fovea_ij, fovea_shape, (0, 255, 0))
 
-        plot_frame.set_data(img)
-        plot_coarse.set_data(coarse_disp)
-        plot_fovea.set_data(fovea_disp)
+#         plot_frame.set_data(img)
+#         plot_coarse.set_data(coarse_disp)
+#         plot_fovea.set_data(fovea_disp)
+#         plot_disp.set_data(filt.disp)
+#         plot_disp2.set_data(filt_nofovea.disp)
+#         ax_cost.imshow(filt.cost)
+#         # ax_int.imshow(fcost)
+# 
+#         truth = points_image(xyd, coarse_shape)
+#         plot_truth.set_data(truth)
         plot_disp.set_data(filt.disp)
-        plot_disp2.set_data(filt_nofovea.disp)
-        ax_cost.imshow(filt.cost)
-        # ax_int.imshow(fcost)
-
-        truth = points_image(xyd, coarse_shape)
-        plot_truth.set_data(truth)
 
         fig.canvas.draw()
 
         # if iframe >= 8:
-        if filt_error > filt_nofovea_error:
-            raw_input("Frame %d: Continue?" % iframe)
+#         if filt_error > filt_nofovea_error:
+#             raw_input("Frame %d: Continue?" % iframe)
 
         fovea_ij = new_fovea_ij

@@ -13,7 +13,7 @@ from kitti.velodyne import load_disparity_points
 
 import bp
 
-from hunse_tools.timing import tic, toc
+# from hunse_tools.timing import tic, toc
 
 values_default = 128
 full_shape = (375, 1242)
@@ -72,7 +72,7 @@ def fine_bp(frame, values=values_default, levels=5, ksize=9, **params):
     return disp
 
 
-def fovea_bp(frame, fovea_ij, fovea_shape, values=values_default, ksize=9, **params):
+def fovea_bp(frame, fovea_ij, fovea_shape, seed, values=values_default, ksize=9, **params):
     img1, img2 = frame
 
     shape = np.asarray(fovea_shape)
@@ -86,7 +86,7 @@ def fovea_bp(frame, fovea_ij, fovea_shape, values=values_default, ksize=9, **par
     img1r = laplacian(img1r, ksize=ksize)
     img2r = laplacian(img2r, ksize=ksize)
 
-    disp = bp.stereo_region(img1r, img2r, **params)
+    disp = bp.stereo_region(img1r, img2r, seed, **params)
 
     return disp
 

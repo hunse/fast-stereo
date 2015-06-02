@@ -28,8 +28,11 @@ cv::Mat stereo_ss_region(
     cv::Mat img1, cv::Mat img2, int iters, float smooth,
     float data_weight, float data_max, float disc_max);
 
+// cv::Mat stereo_ms_region(
+//     cv::Mat img1, cv::Mat img2, int iters, int levels, float smooth,
+//     float data_weight, float data_max, float disc_max);
 cv::Mat stereo_ms_region(
-    cv::Mat img1, cv::Mat img2, int iters, int levels, float smooth,
-    float data_weight, float data_max, float disc_max);
+    cv::Mat img1, cv::Mat img2, cv::Mat seed, int iters, int levels, float smooth,
+    float data_weight, float data_max, float seed_weight, float disc_max);
 
 #endif
