@@ -136,6 +136,8 @@ print('Gloabal min of approx is '+str(min(casym_formula))+' at '+str(delta[argmi
 
 # Fit the approximation with a cubic polynomial
 
+# THIS PART ONLY HAS TO BE DONE ONCE!
+
 import scipy.linalg as slin
 
 # Choose a fixed set of samples
