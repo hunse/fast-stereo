@@ -56,6 +56,7 @@ def coarse_bp(frame, values=values_default, down_factor=3, ksize=1, **params):
     img1d = laplacian(img1d, ksize=ksize)
     img2d = laplacian(img2d, ksize=ksize)
 
+    # TODO: make levels so that the lowest level is a certain size? (same for fine)
     disp = bp.stereo(img1d, img2d, values=values_coarse, levels=5, **params)
     disp *= 2**down_factor
 

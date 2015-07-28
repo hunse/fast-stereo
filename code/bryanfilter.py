@@ -22,7 +22,7 @@ from nltk.compat import raw_input
 full_shape = (375, 1242)
 
 
-def error_on_points(xyd, disp, kind='rms'):
+def error_on_points(xyd, disp, n_disp, kind='rms'):
     # clip left points with no possible disparity matches
     xyd = xyd[xyd[:, 0] >= n_disp]
 
@@ -72,7 +72,7 @@ def max_points2disp(xyd, disp):
     scipy.weave.inline(code, ['d', 'p'])
 
 
-def get_shifted_points(disp, pos0, pos1, X, Y, final_shape=None, full_shape=full_shape):
+def get_shifted_points(disp, pos0, pos1, X, Y, disp2imu, imu2disp, final_shape=None, full_shape=full_shape):
     # make points
     m = disp >= 0
     xyd = np.vstack([X[m], Y[m], disp[m]]).T
@@ -116,7 +116,7 @@ class BryanFilter(object):
         self.cX, self.cY = grid(full_shape, self.coarse_shape)
         self.fX, self.fY = grid(full_shape, self.fine_shape)
 
-    def compute(self, pos, coarse_disp, fovea_disp, fovea_ij):
+    def compute(self, pos, coarse_disp, fovea_disp, fovea_ij, disp2imu, imu2disp):
 
         # --- store incoming data
         self.data.appendleft((
@@ -140,7 +140,7 @@ class BryanFilter(object):
                 c_disps_raw.append(np.array(c_disp))
             else:
                 c_xyd = get_shifted_points(
-                    coarse, pos, cur_pos, X=self.cX, Y=self.cY)
+                    coarse, pos, cur_pos, self.cX, self.cY, disp2imu, imu2disp)
                 c_xyd[:, :2] = np.round(c_xyd[:, :2])
                 c_disp = -np.ones(self.coarse_shape)
                 max_points2disp(c_xyd, c_disp)
@@ -175,7 +175,7 @@ class BryanFilter(object):
                     cf_foveaness[fi:fi+fm, fj:fj+fn] = 1
                 else:
                     fX, fY = self.fX[fi:fi+fm, fj:fj+fn], self.fY[fi:fi+fm, fj:fj+fn]
-                    f_xyd = get_shifted_points(fovea, pos, cur_pos, X=fX, Y=fY, final_shape=self.fine_shape)
+                    f_xyd = get_shifted_points(fovea, pos, cur_pos, fX, fY, disp2imu, imu2disp, final_shape=self.fine_shape)
                     f_xyd[:, :2] = np.round(f_xyd[:, :2])
                     f_disp = -np.ones(self.fine_shape)
                     max_points2disp(f_xyd, f_disp)
@@ -341,9 +341,9 @@ if __name__ == '__main__':
         fovea_disp = fovea_bp(frame, fovea_ij, fovea_shape, seed, **fovea_params)
         toc()
 
-        filt.compute(pos, coarse_disp, fovea_disp, fovea_ij)
+        filt.compute(pos, coarse_disp, fovea_disp, fovea_ij, disp2imu, imu2disp)
         # filt_nofovea.compute(pos, coarse_disp, fovea_disp, fovea_ij)
-        filt_nofovea.compute(pos, coarse_disp, np.array([]), fovea_ij)
+        filt_nofovea.compute(pos, coarse_disp, np.array([]), fovea_ij, disp2imu, imu2disp)
 
         # compute next fovea position
         fm, fn = filt.fovea_shape
