@@ -47,7 +47,7 @@ def downsample(img, down_factor):
     return img
 
 
-def coarse_bp(frame, values=values_default, down_factor=3, ksize=1, **params):
+def coarse_bp(frame, values=values_default, down_factor=3, ksize=1, iters=5, **params):
     img1, img2 = frame
 
     values_coarse = values / 2**down_factor
@@ -57,23 +57,24 @@ def coarse_bp(frame, values=values_default, down_factor=3, ksize=1, **params):
     img2d = laplacian(img2d, ksize=ksize)
 
     # TODO: make levels so that the lowest level is a certain size? (same for fine)
-    disp = bp.stereo(img1d, img2d, values=values_coarse, levels=5, **params)
+    disp = bp.stereo(img1d, img2d, values=values_coarse, levels=5, iters=iters, **params)
     disp *= 2**down_factor
 
     return disp
 
 
-def fine_bp(frame, values=values_default, levels=5, ksize=9, **params):
+def fine_bp(frame, values=values_default, levels=5, ksize=9, down_factor=0, **params):
     # params = dict(data_weight=0.07, data_max=100, disc_max=15)
     img1, img2 = frame
+
     img1 = laplacian(img1, ksize=ksize)
     img2 = laplacian(img2, ksize=ksize)
 
-    disp = bp.stereo(img1, img2, values=values, levels=levels, **params)
+    disp = bp.stereo(img1d, img2d, values=values, levels=levels, **params)
     return disp
 
 
-def fovea_bp(frame, fovea_ij, fovea_shape, seed, values=values_default, ksize=9, **params):
+def fovea_bp(frame, fovea_ij, fovea_shape, seed, values=values_default, ksize=9, down_factor=0, iters=5, **params):
     img1, img2 = frame
 
     shape = np.asarray(fovea_shape)
@@ -84,10 +85,16 @@ def fovea_bp(frame, fovea_ij, fovea_shape, seed, values=values_default, ksize=9,
 
     img1r = np.array(img1[ij0[0]:ij1[0], ij0[1]:ij1[1]], order='c')
     img2r = np.array(img2[ij0[0]:ij1[0], ij0[1] - values:ij1[1]], order='c')
+
+    if down_factor > 0:
+        values = values / 2**down_factor
+        img1r = downsample(img1r, down_factor)
+        img2r = downsample(img2r, down_factor)
+    
     img1r = laplacian(img1r, ksize=ksize)
     img2r = laplacian(img2r, ksize=ksize)
 
-    disp = bp.stereo_region(img1r, img2r, seed, **params)
+    disp = bp.stereo_region(img1r, img2r, seed, iters=iters, **params)
 
     return disp
 

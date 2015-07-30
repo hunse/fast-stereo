@@ -432,6 +432,18 @@ cv::Mat stereo_ss_region(
 }
 
 cv::Mat stereo_ms_region(
+    cv::Mat img1, cv::Mat img2, int iters, int levels, float smooth,
+    float data_weight, float data_max, float disc_max)
+{
+    volume<float> *data =
+        comp_data_region(img1, img2, data_weight, data_max, smooth);        
+    bp_ms(data, iters, levels, 0, disc_max);
+    cv::Mat out = max_value(*data);
+    delete data;
+    return out;
+}
+
+cv::Mat stereo_ms_region(
     cv::Mat img1, cv::Mat img2, cv::Mat seed, int iters, int levels, float smooth,
     float data_weight, float data_max, float seed_weight, float disc_max)
 // cv::Mat stereo_ms_region(

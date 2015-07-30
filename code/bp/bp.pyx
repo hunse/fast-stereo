@@ -44,6 +44,7 @@ cdef extern from "stereo.h":
         int values, int iters, int levels, int min_level, float smooth,
         float data_weight, float data_max, float seed_weight, float disc_max)
     cdef Mat stereo_ss_region(Mat, Mat, int, float, float, float, float)
+    cdef Mat stereo_ms_region(Mat, Mat, int, int, float, float, float, float)
     cdef Mat stereo_ms_region(Mat, Mat, Mat, int, int, float, float, float, float, float)
 
 
@@ -165,10 +166,10 @@ def stereo_region(
     cdef Mat z
     # z = stereo_ss_region(x, y, iters, smooth, data_weight, data_max, disc_max)
     seed_weight = 50
-    z = stereo_ms_region(x, y, seed, iters, levels, smooth,
-                         data_weight, data_max, seed_weight, disc_max)
-#     z = stereo_ms_region(x, y, iters, levels, smooth,
-#                          data_weight, data_max, disc_max)
+#     z = stereo_ms_region(x, y, seed, iters, levels, smooth,
+#                          data_weight, data_max, seed_weight, disc_max)
+    z = stereo_ms_region(x, y, iters, levels, smooth,
+                         data_weight, data_max, disc_max)
 
     # copy data off
     cdef np.ndarray[uchar, ndim=2, mode="c"] c = np.zeros_like(a)

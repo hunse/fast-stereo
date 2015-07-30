@@ -94,10 +94,12 @@ def get_shifted_points(disp, pos0, pos1, X, Y, disp2imu, imu2disp, final_shape=N
 
 class BryanFilter(object):
 
-    def __init__(self, coarse_shape, fovea_shape, n=5):
-        self.coarse_shape = coarse_shape
-        self.fine_shape = full_shape
-        self.fovea_shape = fovea_shape
+    def __init__(self, coarse_shape, fine_shape, fovea_shape, n=5):
+        self.coarse_shape = np.asarray(coarse_shape)
+        self.fine_shape = np.asarray(fine_shape)
+        self.fine_full_ratio = self.fine_shape / np.asarray(full_shape, dtype=float)
+        self.fovea_shape = np.round(np.asarray(fovea_shape) * self.fine_full_ratio)
+        #self.fovea_shape = np.asarray(fovea_shape)  # in fine_shape scale
         self.fovea_margin = (1, 1)
 
         self.disp = np.zeros(self.fine_shape)  # best estimate of disparity
@@ -106,7 +108,8 @@ class BryanFilter(object):
         self.data = collections.deque(maxlen=n)
 
         self.coarse_stds = 5 + 5 * np.arange(n)
-        self.fovea_stds = 0.5 + 5 * np.arange(n)
+        #self.fovea_stds = 0.5 + 5 * np.arange(n)
+        self.fovea_stds = 0.1 + 0.1 * np.arange(n)
 
         def grid(shape_a, shape_b):
             x = np.linspace(0, shape_a[1] - 1, shape_b[1])
@@ -117,6 +120,13 @@ class BryanFilter(object):
         self.fX, self.fY = grid(full_shape, self.fine_shape)
 
     def compute(self, pos, coarse_disp, fovea_disp, fovea_ij, disp2imu, imu2disp):
+        assert all(coarse_disp.shape == self.coarse_shape)
+        assert all(fovea_disp.shape == self.fovea_shape)
+        
+        # --- translate fovea_ij from full_shape into fine_shape
+        fovea_ij = np.round(np.asarray(fovea_ij) * self.fine_full_ratio)
+        assert all(fovea_ij >= 0)
+        assert all(fovea_ij + self.fovea_shape < self.fine_shape)
 
         # --- store incoming data
         self.data.appendleft((
@@ -127,6 +137,7 @@ class BryanFilter(object):
         ))
 
         # --- project old disparities into new frame
+#         tic("project")
         cur_pos = pos
         c_disps_raw = []
         c_disps = []
@@ -154,11 +165,12 @@ class BryanFilter(object):
             c_disps.append(c_disp)
 
             # scale up coarse
-            cf_disp = cv2.resize(c_disp, self.fine_shape[::-1])
+            cf_disp = cv2.resize(c_disp, tuple(self.fine_shape[::-1]))
             cf_foveaness = np.zeros_like(cf_disp)
 
             # --- fovea points
             if fovea.shape[0] > 0 and fovea.shape[1] > 0:
+                #import pdb; pdb.set_trace()
                 fm, fn = fovea.shape
                 fi, fj = fovea_ij
 
@@ -169,6 +181,7 @@ class BryanFilter(object):
                 fi = fi + fmm
                 fj = fj + fmn
                 fovea = fovea[fmm:-fmm, fmn:-fmn]
+                #import pdb; pdb.set_trace()
 
                 if k == 0:  # current frame
                     cf_disp[fi:fi+fm, fj:fj+fn] = fovea
@@ -186,6 +199,8 @@ class BryanFilter(object):
             cf_disps.append(cf_disp)
             cf_foveanesses.append(cf_foveaness)
 
+#         toc()
+        
         if 0:
             plt.figure(101)
             plt.clf()
@@ -202,6 +217,7 @@ class BryanFilter(object):
                 plt.imshow(cf_foveaness, vmin=0, vmax=1)
 
         # --- compute best disparity estimate
+#         tic("estimate")
         self.disp[:] = 0
 
         n = len(cf_disps)
@@ -245,6 +261,8 @@ class BryanFilter(object):
         mask = np.ones(self.cost.shape, dtype=bool)
         mask[fm:-fm, fn:-fn] = 0
         self.cost[mask] = 0
+        
+#         toc()
 
         return self.disp
 
