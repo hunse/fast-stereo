@@ -95,12 +95,21 @@ def get_shifted_points(disp, pos0, pos1, X, Y, disp2imu, imu2disp, final_shape=N
 class BryanFilter(object):
 
     def __init__(self, coarse_shape, fine_shape, fovea_shape, n=5):
+        """
+        Arguments
+        ---------
+        coarse_shape - (height, width) of downsampled frames for coarse BP
+        fine_shape - shape of full frames after possible downsampling to level of foveal BP
+        foveal_shape - shape of fovea at full resolution (prior to any downsampling)
+        n - number of frames to retain   
+        """
+        
         self.coarse_shape = np.asarray(coarse_shape)
         self.fine_shape = np.asarray(fine_shape)
         self.fine_full_ratio = self.fine_shape / np.asarray(full_shape, dtype=float)
         self.fovea_shape = np.round(np.asarray(fovea_shape) * self.fine_full_ratio)
         #self.fovea_shape = np.asarray(fovea_shape)  # in fine_shape scale
-        self.fovea_margin = (1, 1)
+        self.fovea_margin = (1, 1) # keep small -- some foveas are small and this is partly redundant with seed
 
         self.disp = np.zeros(self.fine_shape)  # best estimate of disparity
         self.cost = np.zeros(self.fine_shape)  # cost of estimate at each pixel
@@ -109,7 +118,7 @@ class BryanFilter(object):
 
         self.coarse_stds = 5 + 5 * np.arange(n)
         #self.fovea_stds = 0.5 + 5 * np.arange(n)
-        self.fovea_stds = 0.1 + 0.1 * np.arange(n)
+        self.fovea_stds = 0.1 + 5 * np.arange(n)
 
         def grid(shape_a, shape_b):
             x = np.linspace(0, shape_a[1] - 1, shape_b[1])

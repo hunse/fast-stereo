@@ -217,10 +217,10 @@ def find_fovea_params(time_budget, video, positions, drive, coarse_down_factor, 
 #     fovea_shapes = ((20, 30), (40, 60), (80, 120), (160, 240), (320, 480))
 #     fovea_shape_options = ((40, 60), (80, 120), (160, 240))
     #TODO: divide by zero when width <= 30? 
-    fovea_shape_options = ((24, 36), (40, 60), (60, 90))
-#     down_factor_options = (1, 2, 3, 4)
-    down_factor_options = []
-    down_factor_options.append(0)
+    fovea_shape_options = ((24, 36), (40, 60), (60, 90), (90, 135), (135, 202))
+    down_factor_options = (0, 1, 2)
+#     down_factor_options = []
+#     down_factor_options.append(1)
     
     fovea_shapes = []
     down_factors = []
