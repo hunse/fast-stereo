@@ -6,11 +6,13 @@ import os
 import time
 import numpy as np
 import scipy.ndimage
+import matplotlib.pyplot as plt
+import time
 
 from kitti.raw import get_inds, get_video_dir, get_video_images, load_video_odometry
 from kitti.data import get_drive_dir
 
-from bp_wrapper import coarse_bp
+from bp_wrapper import coarse_bp, foveal_bp
 
 class KittiSource: 
     
@@ -83,6 +85,24 @@ def calc_ground_truth(frame, n_disp):
     return gt
 
 if __name__ == '__main__': 
-    source = KittiSource(51, 250)
-    
+    source = KittiSource(51, 1)
+    fig = plt.figure(1)
+    fig.clf()
+    ax_disp = plt.gca()
+    plot_disp = ax_disp.imshow(source.ground_truth[0], vmin=0, vmax=128)
+    plt.show()
+
+    video = load_stereo_video(51, 1)
+    frame = video[0]
+    params = {'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425, 'data_max': 32.024780646200725, 'ksize': 1}
+    start_time = time.time()
+    disp = foveal_bp(frame, 850, 175, iters=10, **params)
+    print(time.time() - start_time)
+    fig = plt.figure(2)
+    fig.clf()
+    ax_disp = plt.gca()
+    plot_disp = ax_disp.imshow(disp, vmin=0, vmax=128)
+    plt.show(block=True)
+
+
     

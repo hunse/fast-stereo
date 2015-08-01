@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import gridfill
  
 from kitti.data import Calib, homogeneous_transform, filter_disps
-from kitti.raw import load_stereo_video, load_video_odometry, get_position_transform
+from kitti.raw import load_stereo_video, load_video_odometry, get_position_transform, get_frame_inds
 from kitti.velodyne import load_disparity_points
 
 from bp_wrapper import coarse_bp, fine_bp, fovea_bp
@@ -21,6 +21,37 @@ from nltk.compat import raw_input
 
 full_shape = (375, 1242)
 
+def mean_disparity(drive, n_disp):
+    """
+    Arguments
+    ---------
+    drive - Kitti drive number
+    
+    Returns
+    -------
+    Mean disparity image 
+    """
+    
+    fi = get_frame_inds(drive)
+    fi = fi[:min(50,len(fi))]
+    
+    result = []
+    for i in fi: 
+        print(i)
+        xyd = load_disparity_points(drive, i)
+        # clip left points with no possible disparity matches
+        xyd = xyd[xyd[:, 0] >= n_disp]
+        
+        x, y, d = xyd.T
+        
+        print(d.shape)
+        
+        if len(result) == 0: 
+            result = x
+        else: 
+            result += x
+            
+    result = result / len(fi)
 
 def error_on_points(xyd, disp, n_disp, kind='rms'):
     # clip left points with no possible disparity matches
@@ -37,6 +68,8 @@ def error_on_points(xyd, disp, n_disp, kind='rms'):
         return np.sqrt(((disps - d)**2).mean())
     elif kind == 'abs':
         return abs(disps - d).mean()
+    elif kind == 'close':
+        return np.sqrt((d * (disps - d)**2).mean())
     else:
         raise ValueError()
 
@@ -93,6 +126,8 @@ def get_shifted_points(disp, pos0, pos1, X, Y, disp2imu, imu2disp, final_shape=N
 
 
 class BryanFilter(object):
+
+    #TODO: make sure we can set filter resolution independently for speed
 
     def __init__(self, coarse_shape, fine_shape, fovea_shape, n=5):
         """
@@ -249,8 +284,10 @@ class BryanFilter(object):
         self.disp[:] = (w * disps).sum(0)
 
         error = self.disp - disps
-        # self.cost[:] = (error**2).sum(0) + (stds**2).sum(0)
-        self.cost[:] = (w * (error**2 + stds**2)).sum(0)
+#         self.cost[:] = (error**2).sum(0) + (stds**2).sum(0)
+        self.cost[:] = self.disp * ((error**2).sum(0) + (stds**2).sum(0))
+#         self.cost[:] = (w * (error**2 + stds**2)).sum(0)        
+
 
         # else:
         #     # compute analytically cost function convolved with each gaussian

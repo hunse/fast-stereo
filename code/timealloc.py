@@ -1,5 +1,6 @@
 """
-Filtering of BP over time.
+Testing performance with various divisions of runtime between coarse and 
+foveal BP.  
 """
 import collections
  
@@ -16,7 +17,7 @@ from kitti.raw import load_stereo_video, load_video_odometry, get_position_trans
 from kitti.velodyne import load_disparity_points
 
 from bp_wrapper import coarse_bp, fine_bp, fovea_bp
-from bryanfilter import BryanFilter, error_on_points
+from bryanfilter import BryanFilter, error_on_points, mean_disparity
 
 from hunse_tools.timing import tic, toc 
 from nltk.compat import raw_input
@@ -85,7 +86,7 @@ def time_fovea(down_factor, video, iters, fovea_shape):
         fovea_bp(video[i], fovea_ij, fovea_shape, seed, down_factor=down_factor, iters=iters, **fovea_params)
     return (time.time() - before) / n_frames    
 
-def estimate_coarse_error(down_factor, iters, video, n_disp, drive, n_frames=10, **params):
+def estimate_coarse_error(down_factor, iters, video, n_disp, drive, n_frames=20, **params):
     # TODO: use fine BP as ground truth?
     coarse_error = []
     for i in range(n_frames): 
@@ -95,11 +96,11 @@ def estimate_coarse_error(down_factor, iters, video, n_disp, drive, n_frames=10,
         coarse_disp = coarse_bp(frame, down_factor=down_factor, iters=iters, **params)
         toc()
         xyd = load_disparity_points(drive, i)
-        coarse_error.append(error_on_points(xyd, coarse_disp, n_disp))
+        coarse_error.append(error_on_points(xyd, coarse_disp, n_disp, kind='close'))
 
     return np.mean(coarse_error)
 
-def estimate_fovea_error(coarse_down_factor, coarse_iters, fovea_down_factor, fovea_iters, fovea_shape, video, positions, drive, n_frames=10):
+def estimate_fovea_error(coarse_down_factor, coarse_iters, fovea_down_factor, fovea_iters, fovea_shape, video, positions, drive, n_frames=20):
     
     fovea_ij = 200, 600 #note: ground truth only available in lower part of frame 
     #fovea_ij = 40, 100
@@ -171,7 +172,7 @@ def estimate_fovea_error(coarse_down_factor, coarse_iters, fovea_down_factor, fo
         
 
         xyd = load_disparity_points(drive, i)
-        err = error_on_points(xyd, filt.disp, n_disp)
+        err = error_on_points(xyd, filt.disp, n_disp, kind='close')
         filt_error.append(err)
         
         # show results
@@ -264,15 +265,20 @@ if __name__ == '__main__':
     video = load_stereo_video(drive)
     positions = load_video_odometry(drive)
     initial = video[0]
+    
+    fig = plt.figure(1)
+    fig.clf()
+    ax_disp = plt.gca()
+    plot_disp = ax_disp.imshow(mean_disparity(drive, n_disp), vmin=0, vmax=n_disp)
 
     fovea_ij = 100, 600
     
     time_budget = .2
-    coarse_time_budget = .5 * time_budget
+    coarse_time_budget = .9 * time_budget
     
-#     coarse_down_factor, coarse_iters = find_coarse_params(coarse_time_budget, video, n_disp, drive, **coarse_params)
-    coarse_down_factor = 3
-    coarse_iters = 2 #TODO
+    coarse_down_factor, coarse_iters = find_coarse_params(coarse_time_budget, video, n_disp, drive, **coarse_params)
+#     coarse_down_factor = 3
+#     coarse_iters = 2 #TODO
     print('best down_factor ' + str(coarse_down_factor) + ' best iters ' + str(coarse_iters))
 
 #     coarse_down_factor = 3
@@ -349,8 +355,8 @@ if __name__ == '__main__':
 
         # compute error
         xyd = load_disparity_points(drive, iframe)
-        coarse_error = error_on_points(xyd, coarse_disp, n_disp)
-        filt_error = error_on_points(xyd, filt.disp, n_disp)
+        coarse_error = error_on_points(xyd, coarse_disp, n_disp, kind='close')
+        filt_error = error_on_points(xyd, filt.disp, n_disp, kind='close')
 #         filt_nofovea_error = error_on_points(xyd, filt_nofovea.disp)
         print("Errors %d: coarse = %0.3f, filt fovea = %0.3f\n" %
               (iframe, coarse_error, filt_error))

@@ -62,6 +62,17 @@ def coarse_bp(frame, values=values_default, down_factor=3, ksize=1, iters=5, **p
 
     return disp
 
+# TODO: less conflicty name
+def foveal_bp(frame, fovea_x, fovea_y, values=values_default, ksize=1, iters=5, **params):
+    img1, img2 = frame
+
+    img1 = laplacian(img1, ksize=ksize)
+    img2 = laplacian(img2, ksize=ksize)
+
+    disp = bp.stereo_fovea(img1, img2, fovea_x, fovea_y, values=values, levels=5, **params)
+    return disp
+    
+
 
 def fine_bp(frame, values=values_default, levels=5, ksize=9, down_factor=0, **params):
     # params = dict(data_weight=0.07, data_max=100, disc_max=15)

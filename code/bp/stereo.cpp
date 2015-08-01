@@ -20,8 +20,11 @@
 #include <cstdio>
 #include <cmath>
 #include <iostream>
+#include <fstream>
 #include <algorithm>
 #include <assert.h>
+#include <math.h>
+#include <time.h>
 
 #include "stereo.h"
 
@@ -223,10 +226,9 @@ void bp_cb(volume<float> &u, volume<float> &d,
     int width = data.width();
     int height = data.height();
     int values = data.depth();
-
+    
     for (int t = 0; t < iters; t++) {
         // std::cout << "iter " << t << "\n";
-
         for (int y = 1; y < height-1; y++) {
             for (int x = ((y+t) % 2) + 1; x < width-1; x+=2) {
                 msg(u(x, y+1), l(x+1, y), r(x-1, y),
@@ -340,6 +342,187 @@ cv::Mat stereo_ms(
     delete data;
     return out;
 }
+
+
+// belief propagation using checkerboard update scheme
+// BT: adding fovea boundaries minx, maxx, miny, maxy, which are clipped to image size herein
+void bp_cb_fovea(volume<float> &u, volume<float> &d,
+           volume<float> &l, volume<float> &r,
+           volume<float> &data,
+           int iters, float threshold, 
+           int minx, int maxx, int miny, int maxy) {
+    int width = data.width();
+    int height = data.height();
+    int values = data.depth();
+    
+    int starty = std::max(miny, 1);
+    int endy = std::min(maxy, height-1);
+    int startx = std::max(minx, 1);
+    int endx = std::min(maxx, width-1);
+
+    for (int t = 0; t < iters; t++) {
+        // std::cout << "iter " << t << "\n";
+        for (int y = starty; y < endy; y++) {
+            for (int x = startx + ((y+t) % 2); x < endx; x+=2) {
+                msg(u(x, y+1), l(x+1, y), r(x-1, y),
+                    data(x, y), u(x, y), values, threshold);
+                msg(d(x, y-1),l(x+1, y),r(x-1, y),
+                    data(x, y), d(x, y), values, threshold);
+                msg(u(x, y+1),d(x, y-1),r(x-1, y),
+                    data(x, y), r(x, y), values, threshold);
+                msg(u(x, y+1),d(x, y-1),l(x+1, y),
+                    data(x, y), l(x, y), values, threshold);
+            }
+        }
+    }
+}
+
+void bp_ms_fovea(
+    volume<float> *data0, int iters, int levels, int min_level, float disc_max, int fovea_x, int fovea_y)
+{
+
+    
+    volume<float> *u[levels];
+    volume<float> *d[levels];
+    volume<float> *l[levels];
+    volume<float> *r[levels];
+    volume<float> *data[levels];
+
+    data[0] = data0;
+    const int values = data0->depth();
+
+    clock_t t = clock();
+    
+    // data pyramid
+    for (int i = 1; i < levels; i++) {
+        int old_width = data[i-1]->width();
+        int old_height = data[i-1]->height();
+        int new_width = (int)ceil(old_width/2.0);
+        int new_height = (int)ceil(old_height/2.0);
+
+        assert(new_width >= 1);
+        assert(new_height >= 1);
+
+        data[i] = new volume<float>(new_width, new_height, values);
+        for (int y = 0; y < old_height; y++) {
+            for (int x = 0; x < old_width; x++) {
+                for (int value = 0; value < values; value++) {
+                    (*data[i])(x/2, y/2, value) += (*data[i-1])(x, y, value);
+                }
+            }
+        }
+    }
+    
+    t = clock() - t;
+    printf("pyramid took %fs\n", ((float)t)/CLOCKS_PER_SEC);
+
+    int full_width = data[0]->width();
+    int full_height = data[0]->height();
+    std::cout << "full width " << full_width << "\n" << std::flush;
+        
+            
+    // run bp from coarse to fine
+    for (int i = levels-1; i >= 0; i--) {
+        
+        int width = data[i]->width();
+        int height = data[i]->height();
+
+        std::cout << "width " << width << "\n" << std::flush;  
+
+        //fovea sizes i>= 4: full image; i=3: half each dimension; i=2: quarter; etc. 
+        int divisor = (int) pow(2, std::max(0, 4-i));
+        int w = width / divisor; //width of subimage processed at this level
+        int h = height / divisor;
+        
+        // keep subimage inside image at each level ...
+        int minx = fovea_x*width/full_width - w/2;
+        minx = std::max(0, minx);
+        minx = std::min(width-w, minx);
+        int maxx = minx + w;
+        
+        int miny = fovea_y*height/full_height - h/2;
+        miny = std::max(0, miny);
+        miny = std::min(height-h, miny);
+        int maxy = miny + h;
+
+        // allocate & init memory for messages
+        //TODO: worthwhile to allocate for partial images at higher resolutions? 
+        if (i == levels-1) {
+            // in the coarsest level messages are initialized to zero
+            u[i] = new volume<float>(width, height, values);
+            d[i] = new volume<float>(width, height, values);
+            l[i] = new volume<float>(width, height, values);
+            r[i] = new volume<float>(width, height, values);
+            t = clock() - t;
+            printf("alloc took %fs\n", ((float)t)/CLOCKS_PER_SEC);
+        } else {
+            // initialize messages from values of previous level
+            u[i] = new volume<float>(width, height, values, false);
+            d[i] = new volume<float>(width, height, values, false);
+            l[i] = new volume<float>(width, height, values, false);
+            r[i] = new volume<float>(width, height, values, false);
+
+            t = clock() - t;
+            printf("alloc took %fs\n", ((float)t)/CLOCKS_PER_SEC);
+
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++) {
+                    for (int value = 0; value < values; value++) {
+                        (*u[i])(x, y, value) = (*u[i+1])(x/2, y/2, value);
+                        (*d[i])(x, y, value) = (*d[i+1])(x/2, y/2, value);
+                        (*l[i])(x, y, value) = (*l[i+1])(x/2, y/2, value);
+                        (*r[i])(x, y, value) = (*r[i+1])(x/2, y/2, value);
+                    }
+                }
+            }
+            
+            t = clock() - t;
+            printf("init took %fs\n", ((float)t)/CLOCKS_PER_SEC);
+            
+            // delete old messages and data
+            delete u[i+1];
+            delete d[i+1];
+            delete l[i+1];
+            delete r[i+1];
+            delete data[i+1];
+            
+            t = clock() - t;
+            printf("delete took %fs\n", ((float)t)/CLOCKS_PER_SEC);
+            
+        }
+                
+        if (i >= min_level) {
+            // BP
+            bp_cb_fovea(*u[i], *d[i], *l[i], *r[i], *data[i], iters, disc_max, minx, maxx, miny, maxy);
+        }
+        
+        t = clock() - t;
+        printf("BP took %fs\n", ((float)t)/CLOCKS_PER_SEC);
+        
+    }
+
+    collect_messages(*u[0], *d[0], *l[0], *r[0], *data[0]);
+
+    delete u[0];
+    delete d[0];
+    delete l[0];
+    delete r[0];
+}
+
+cv::Mat stereo_ms_fovea(
+    cv::Mat img1, cv::Mat img2, 
+    int values, int iters, int levels, int min_level, float smooth,
+    float data_weight, float data_max, float disc_max, 
+    int fovea_x, int fovea_y)
+{
+    volume<float> *data = comp_data(
+        img1, img2, values, data_weight, data_max, smooth);
+    bp_ms_fovea(data, iters, levels, min_level, disc_max, fovea_x, fovea_y);
+    cv::Mat out = max_value(*data);
+    delete data;
+    return out;
+}
+
 
 volume<float> *stereo_ms_volume(
     cv::Mat img1, cv::Mat img2, cv::Mat seed,

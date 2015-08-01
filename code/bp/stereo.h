@@ -14,6 +14,12 @@ cv::Mat stereo_ms(
     int values, int iters, int levels, int min_level, float smooth,
     float data_weight, float data_max, float seed_weight, float disc_max);
 
+cv::Mat stereo_ms_fovea(
+    cv::Mat img1, cv::Mat img2, 
+    int values, int iters, int levels, int min_level, float smooth,
+    float data_weight, float data_max, float disc_max, 
+    int fovea_x, int fovea_y);
+    
 volume<float> *stereo_ms_volume(
     cv::Mat img1, cv::Mat img2, cv::Mat seed,
     int values, int iters, int levels, int min_level, float smooth,
