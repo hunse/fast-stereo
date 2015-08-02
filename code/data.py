@@ -85,23 +85,28 @@ def calc_ground_truth(frame, n_disp):
     return gt
 
 if __name__ == '__main__': 
-    source = KittiSource(51, 1)
-    fig = plt.figure(1)
-    fig.clf()
-    ax_disp = plt.gca()
-    plot_disp = ax_disp.imshow(source.ground_truth[0], vmin=0, vmax=128)
-    plt.show()
+#     source = KittiSource(51, 1)
+#     fig = plt.figure(1)
+#     fig.clf()
+#     ax_disp = plt.gca()
+#     plot_disp = ax_disp.imshow(source.ground_truth[0], vmin=0, vmax=128)
+
 
     video = load_stereo_video(51, 1)
     frame = video[0]
+    
     params = {'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425, 'data_max': 32.024780646200725, 'ksize': 1}
     start_time = time.time()
-    disp = foveal_bp(frame, 850, 175, iters=10, **params)
+    print('starting')
+    down_factor = 1;
+    disp = foveal_bp(frame, 800, 150, down_factor=down_factor, iters=5, **params)
+#     print(disp.shape)
+    print('finishing')
     print(time.time() - start_time)
     fig = plt.figure(2)
     fig.clf()
     ax_disp = plt.gca()
-    plot_disp = ax_disp.imshow(disp, vmin=0, vmax=128)
+    plot_disp = ax_disp.imshow(disp, vmin=0, vmax=128/2**down_factor)
     plt.show(block=True)
 
 

@@ -21,38 +21,6 @@ from nltk.compat import raw_input
 
 full_shape = (375, 1242)
 
-def mean_disparity(drive, n_disp):
-    """
-    Arguments
-    ---------
-    drive - Kitti drive number
-    
-    Returns
-    -------
-    Mean disparity image 
-    """
-    
-    fi = get_frame_inds(drive)
-    fi = fi[:min(50,len(fi))]
-    
-    result = []
-    for i in fi: 
-        print(i)
-        xyd = load_disparity_points(drive, i)
-        # clip left points with no possible disparity matches
-        xyd = xyd[xyd[:, 0] >= n_disp]
-        
-        x, y, d = xyd.T
-        
-        print(d.shape)
-        
-        if len(result) == 0: 
-            result = x
-        else: 
-            result += x
-            
-    result = result / len(fi)
-
 def error_on_points(xyd, disp, n_disp, kind='rms'):
     # clip left points with no possible disparity matches
     xyd = xyd[xyd[:, 0] >= n_disp]

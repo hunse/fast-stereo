@@ -5,6 +5,7 @@ import cython
 from cython cimport view
 
 import numpy as np
+from StdSuites.Table_Suite import rows
 cimport numpy as np
 
 from libcpp cimport bool
@@ -16,6 +17,8 @@ cdef extern from "opencv2/opencv.hpp" namespace "cv":
         Mat(int, int, int) except +
         void create(int, int, int)
         void* data
+        int rows
+        int cols
 
 cdef extern from "opencv2/opencv.hpp":
     cdef int CV_8U
@@ -137,8 +140,10 @@ def stereo_fovea(
                    data_weight, data_max, disc_max, fovea_x, fovea_y)
 
     # copy data off
-    ci = np.zeros_like(a)
-    ci[:, :] = <np.uint8_t[:m, :n]> zi.data
+#     ci = np.zeros_like(a)
+#     ci[:, :] = <np.uint8_t[:m, :n]> zi.data
+    ci = np.zeros((zi.rows, zi.cols), dtype='uint8')
+    ci[:, :] = <np.uint8_t[:zi.rows, :zi.cols]> zi.data
 
     return ci
 
