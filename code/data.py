@@ -54,7 +54,7 @@ class KittiSource:
             result.append(gt_frame)
         
         return result
-    
+        
         
 def load_stereo_video(drive, n_frames):
     left_path = get_video_dir(drive, right=False)
