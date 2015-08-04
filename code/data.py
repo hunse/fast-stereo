@@ -96,22 +96,23 @@ if __name__ == '__main__':
 #     plt.show(block=True)
 
 
-#     video = load_stereo_video(51, 1)
-#     frame = video[0]
-#     
-#     params = {'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425, 'data_max': 32.024780646200725, 'ksize': 1}
-#     start_time = time.time()
-#     print('starting')
-#     down_factor = 1;
-#     disp = foveal_bp(frame, 800, 150, down_factor=down_factor, iters=5, **params)
-# #     print(disp.shape)
-#     print('finishing')
-#     print(time.time() - start_time)
-#     fig = plt.figure(2)
-#     fig.clf()
-#     ax_disp = plt.gca()
-#     plot_disp = ax_disp.imshow(disp, vmin=0, vmax=128/2**down_factor)
-#     plt.show(block=True)
+    video = load_stereo_video(51, 1)
+    frame = video[0]
+     
+    params = {'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425, 'data_max': 32.024780646200725, 'ksize': 1}
+    start_time = time.time()
+    print('starting')
+    down_factor = 0;
+    seed = np.zeros((0,0), dtype='uint8')
+    disp = foveal_bp(frame, 800, 150, seed, down_factor=down_factor, iters=5, **params)
+#     print(disp.shape)
+    print('finishing')
+    print(time.time() - start_time)
+    fig = plt.figure(2)
+    fig.clf()
+    ax_disp = plt.gca()
+    plot_disp = ax_disp.imshow(disp, vmin=0, vmax=128/2**down_factor)
+    plt.show(block=True)
 
 
     

@@ -39,9 +39,9 @@ cdef extern from "stereo.h":
         int values, int iters, int levels, int min_level, float smooth,
         float data_weight, float data_max, float seed_weight, float disc_max)
     cdef Mat stereo_ms_fovea(
-        Mat a, Mat b, 
+        Mat a, Mat b, Mat seed, 
         int values, int iters, int levels, int min_level, float smooth,
-        float data_weight, float data_max, float disc_max, 
+        float data_weight, float data_max, float seed_weight, float disc_max, 
         int fovea_x, int fovea_y)
     cdef volume[float]* stereo_ms_volume(
         Mat a, Mat b, Mat seed,
@@ -116,8 +116,9 @@ def stereo_fovea(
         np.ndarray[uchar, ndim=2, mode="c"] a,
         np.ndarray[uchar, ndim=2, mode="c"] b,
         fovea_x, fovea_y,        
+        np.ndarray[uchar, ndim=2, mode="c"] seed = np.array([[]], dtype='uint8'),
         int values=64, int iters=5, int levels=5, int min_level=0, float smooth=0.7,
-        float data_weight=0.07, float data_max=15,
+        float data_weight=0.07, float data_max=15, float seed_weight=1, 
         float disc_max=1.7):
 
     assert a.shape[0] == b.shape[0] and a.shape[1] == b.shape[1]
@@ -130,14 +131,21 @@ def stereo_fovea(
     y.create(m, n, CV_8U)
     (<np.uint8_t[:m, :n]> x.data)[:, :] = a
     (<np.uint8_t[:m, :n]> y.data)[:, :] = b
+    
+    cdef Mat u
+    if seed.size > 0:
+        u.create(m, n, CV_8U)
+        (<np.uint8_t[:m, :n]> u.data)[:, :] = seed
+    else:
+        u.create(0, 0, CV_8U)    
 
     # declare C variables (doesn't work inside IF block)
     cdef Mat zi
     cdef np.ndarray[uchar, ndim=2, mode="c"] ci
 
     # run belief propagation
-    zi = stereo_ms_fovea(x, y, values, iters, levels, min_level, smooth,
-                   data_weight, data_max, disc_max, fovea_x, fovea_y)
+    zi = stereo_ms_fovea(x, y, u, values, iters, levels, min_level, smooth,
+                   data_weight, seed_weight, data_max, disc_max, fovea_x, fovea_y)
 
     # copy data off
 #     ci = np.zeros_like(a)

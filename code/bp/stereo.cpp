@@ -562,13 +562,16 @@ cv::Mat bp_ms_fovea(
 }
 
 cv::Mat stereo_ms_fovea(
-    cv::Mat img1, cv::Mat img2, 
+    cv::Mat img1, cv::Mat img2, cv::Mat seed,
     int values, int iters, int levels, int min_level, float smooth,
-    float data_weight, float data_max, float disc_max, 
+    float data_weight, float data_max, float seed_weight, float disc_max, 
     int fovea_x, int fovea_y)
 {
     volume<float> *data = comp_data(
         img1, img2, values, data_weight, data_max, smooth);
+
+    add_seed_cost(*data, seed, seed_weight);
+        
     cv::Mat out = bp_ms_fovea(data, iters, levels, min_level, disc_max, fovea_x, fovea_y);
 //     cv::Mat out = max_value(*data);
     delete data;
