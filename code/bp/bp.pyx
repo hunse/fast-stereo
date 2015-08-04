@@ -145,7 +145,10 @@ def stereo_fovea(
 
     # run belief propagation
     zi = stereo_ms_fovea(x, y, u, values, iters, levels, min_level, smooth,
-                   data_weight, seed_weight, data_max, disc_max, fovea_x, fovea_y)
+               data_weight, data_max, seed_weight, disc_max, fovea_x, fovea_y)
+#     
+#     zi = stereo_ms_fovea(x, y, u, values, iters, levels, min_level, smooth,
+#                    data_weight, seed_weight, data_max, disc_max, fovea_x, fovea_y)
 
     # copy data off
 #     ci = np.zeros_like(a)

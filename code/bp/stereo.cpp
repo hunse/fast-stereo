@@ -122,6 +122,12 @@ volume<float> *comp_data(
             }
         }
     }
+    
+//     std::cout << threshold << std::endl;
+//     for (int value = 0; value < data->depth(); value++) {
+//         std::cout << datar(800, 0, value) << " "; 
+//     }
+//     std::cout << std::endl;
 
     return data;
 }
@@ -498,7 +504,7 @@ cv::Mat bp_ms_fovea(
             }
             
             t = clock() - t;
-            printf("init took %fs\n", ((float)t)/CLOCKS_PER_SEC);
+//             printf("init took %fs\n", ((float)t)/CLOCKS_PER_SEC);
             
             // delete old messages and data
             delete u[i+1];
@@ -508,17 +514,17 @@ cv::Mat bp_ms_fovea(
 //             delete data[i+1]; //TODO: put this back
             
             t = clock() - t;
-            printf("delete took %fs\n", ((float)t)/CLOCKS_PER_SEC);
+//             printf("delete took %fs\n", ((float)t)/CLOCKS_PER_SEC);
             
         }
         
-        printf("done init\n");
+//         printf("done init\n");
 
         subdata[i] = new volume<float>(w, h, values, false); //copy of data in central region     
+        int xoffset = minx[i] / pow(2, i);
+        int yoffset = miny[i] / pow(2, i);
         for (int y = 0; y < h; y++) {
             for (int x = 0; x < w; x++) {                
-                int xoffset = minx[i] / pow(2, i);
-                int yoffset = miny[i] / pow(2, i);
                 for (int value = 0; value < values; value++) {
                     (*subdata[i])(x, y, value) = (*data[i])(x+xoffset, y+yoffset, value);
                 }
@@ -530,7 +536,7 @@ cv::Mat bp_ms_fovea(
             bp_cb_fovea(*u[i], *d[i], *l[i], *r[i], *subdata[i], iters, disc_max, 0, w, 0, h);
         }
 
-        printf("done BP\n");
+//         printf("done BP\n");
 
         t = clock() - t;
 //         printf("BP took %fs\n", ((float)t)/CLOCKS_PER_SEC);
@@ -546,7 +552,7 @@ cv::Mat bp_ms_fovea(
             for (int x = minx[i]; x < maxx[i]; x++) {
                 outy[x] = subouty[(x-minx[i])/(int)pow(2,i)];
             }
-        }
+        }            
         
         //TODO: delete subdata
     }
