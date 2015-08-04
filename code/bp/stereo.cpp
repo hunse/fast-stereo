@@ -203,7 +203,7 @@ cv::Mat max_value(volume<float>& data)
     int values = data.depth();
     cv::Mat out(height, width, CV_8U, cv::Scalar(0));
 
-    //TODO: why are edges omitted?
+    //edges omitted because they aren't very good 
     for (int y = 1; y < height-1; y++) {
         uchar* outi = out.ptr<uchar>(y);
 
@@ -546,10 +546,11 @@ cv::Mat bp_ms_fovea(
         cv::Mat subout = max_value(*subdata[i]);
         
         //copy into relevant part of full result ... 
-        for (int y = miny[i]; y < maxy[i]; y++) {
+        int step = (int)pow(2,i);
+        for (int y = miny[i]+step; y < maxy[i]-step; y++) {
             uchar* outy = out.ptr<uchar>(y);
             uchar* subouty = subout.ptr<uchar>((y-miny[i])/(int)pow(2,i));
-            for (int x = minx[i]; x < maxx[i]; x++) {
+            for (int x = minx[i]+step; x < maxx[i]-step; x++) {
                 outy[x] = subouty[(x-minx[i])/(int)pow(2,i)];
             }
         }            
