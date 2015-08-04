@@ -98,13 +98,17 @@ if __name__ == '__main__':
 
     video = load_stereo_video(51, 1)
     frame = video[0]
-     
-    params = {'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425, 'data_max': 32.024780646200725, 'ksize': 1}
+    
+    #TODO: check params; compare coarse to coarse level of fovea; try data rather than subdata if not right 
+#     coarse_bp(video[i], down_factor=down_factor, iters=iters)
+    
+#     params = {'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425, 'data_max': 32.024780646200725, 'ksize': 1}
+    params = {'data_weight': 1.5, 'disc_max': 100, 'data_max': 130, 'ksize': 9}
     start_time = time.time()
     print('starting')
-    down_factor = 0;
+    down_factor = 0
     seed = np.zeros((0,0), dtype='uint8')
-    disp = foveal_bp(frame, 800, 150, seed, down_factor=down_factor, iters=5, **params)
+    disp = foveal_bp(frame, 1200, 50, seed, down_factor=down_factor, iters=8, **params)
 #     print(disp.shape)
     print('finishing')
     print(time.time() - start_time)
