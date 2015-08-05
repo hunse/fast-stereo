@@ -411,7 +411,7 @@ cv::Mat bp_ms_fovea(
     //dimensions of processed region at each level
     int w = full_width / pow(2, levels-1);
     int h = full_height / pow(2, levels-1);
-    printf("levels: %i; width %i height %i\n", levels, w, h);
+//     printf("levels: %i; width %i height %i\n", levels, w, h);
     
     cv::Mat out(full_height, full_width, CV_8U, cv::Scalar(0));
     
@@ -443,7 +443,7 @@ cv::Mat bp_ms_fovea(
     // run bp from coarse to fine
     for (int i = levels-1; i >= 0; i--) {
     
-        printf("level %i\n", i);
+//         printf("level %i\n", i);
         
         minx[i] = fovea_x - (w/2)*pow(2,i); //this is in full image coords
         minx[i] = std::max(0, minx[i]);
@@ -455,7 +455,7 @@ cv::Mat bp_ms_fovea(
         miny[i] = std::min(full_height-h*(int)pow(2,i), miny[i]);
         maxy[i] = miny[i] + h*pow(2,i);
         
-        printf("x:(%i,%i) y:(%i,%i) \n", minx[i], maxx[i], miny[i], maxy[i]);        
+//         printf("x:(%i,%i) y:(%i,%i) \n", minx[i], maxx[i], miny[i], maxy[i]);        
 
         // allocate & init memory for messages
         if (i == levels-1) {
@@ -465,7 +465,7 @@ cv::Mat bp_ms_fovea(
             l[i] = new volume<float>(w, h, values);
             r[i] = new volume<float>(w, h, values);
             t = clock() - t;
-            printf("alloc took %fs\n", ((float)t)/CLOCKS_PER_SEC);
+//             printf("alloc took %fs\n", ((float)t)/CLOCKS_PER_SEC);
         } else {
             // initialize messages from values of previous level
             u[i] = new volume<float>(w, h, values, false);
@@ -474,7 +474,7 @@ cv::Mat bp_ms_fovea(
             r[i] = new volume<float>(w, h, values, false);
 
             t = clock() - t;
-            printf("alloc took %fs\n", ((float)t)/CLOCKS_PER_SEC);
+//             printf("alloc took %fs\n", ((float)t)/CLOCKS_PER_SEC);
 
             for (int y = 0; y < h; y++) {
                 for (int x = 0; x < w; x++) {
@@ -488,12 +488,12 @@ cv::Mat bp_ms_fovea(
                     int yoffset = (miny[i]-miny[i+1]) / pow(2, i);
                     int yup = (y+yoffset)/2;
                     
-                    if (xup < 0 || xup > w) {
-                        printf("xup problem: %i %i %i %i %i %i", xup, w, xoffset, minx[i], minx[i+1], pow(2, i));
-                    }
-                    if (yup < 0 || yup > h) {
-                        printf("yup problem: %i %i", yup, h);
-                    }
+//                     if (xup < 0 || xup > w) {
+//                         printf("xup problem: %i %i %i %i %i %i", xup, w, xoffset, minx[i], minx[i+1], pow(2, i));
+//                     }
+//                     if (yup < 0 || yup > h) {
+//                         printf("yup problem: %i %i", yup, h);
+//                     }
                     for (int value = 0; value < values; value++) {
                         (*u[i])(x, y, value) = (*u[i+1])(xup, yup, value);
                         (*d[i])(x, y, value) = (*d[i+1])(xup, yup, value);
@@ -563,7 +563,7 @@ cv::Mat bp_ms_fovea(
     delete l[0];
     delete r[0];
     
-    std::cout << levels << std::endl;
+//     std::cout << levels << std::endl;
         
     return out;
 }

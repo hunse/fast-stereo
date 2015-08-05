@@ -11,11 +11,13 @@ from bryanfilter import get_shifted_points, max_points2disp
 # TODO: projection not working properly when subsampled 
 
 class DisparityMemory():
-    def __init__(self, shape, n=1, fovea_shape=None, fill_method='smudge'):
+    def __init__(self, shape, down_factor, n=1, fovea_shape=None, fill_method='smudge'):
         """
         Arguments
         ---------
         shape - Expected shape of disparity images
+        down_factor - Downsampling factor used to produce expected disparity images 
+            from full disparity images 
         n - Number of past frames to retain
         fovea_shape - Shape of foveal region to remember (None=whole image)
         fill_method - default 'smudge' works fine and is fast, other options 
@@ -23,9 +25,13 @@ class DisparityMemory():
         """
         
         self.shape = shape
+        self.full_shape = np.array(shape) * 2**down_factor
         self.fovea_shape = fovea_shape
         self.n = n
-        self.cX, self.cY = np.meshgrid(range(shape[1]), range(shape[0]))
+        
+        self.cX, self.cY = np.meshgrid(range(self.full_shape[1]), range(self.full_shape[0]))
+        self.cX = downsample(self.cX, down_factor)
+        self.cY = downsample(self.cY, down_factor)
         
         calib = Calib(); 
         self.disp2imu = calib.get_disp2imu() 
@@ -83,30 +89,32 @@ class DisparityMemory():
     def _transform(self, new_pos):
         result = []
 
-#         full_shape = (375, 1242)
-
         for i in range(len(self.past_position)):
             #note: get_shifted_points only processes disp>0
             xyd = get_shifted_points(self.past_disparity[i], self.past_position[i], 
                                     new_pos, self.cX, self.cY, 
                                     self.disp2imu, self.imu2disp, 
-                                    final_shape=self.shape, full_shape=self.shape)
+                                    final_shape=self.shape, full_shape=self.full_shape)
             
             xyd[:, :2] = np.round(xyd[:, :2])
             transformed = np.empty(self.shape)
             transformed[:] = -1
             max_points2disp(xyd, transformed)
 
-            start_time = time.time()
+#             start_time = time.time()
             if self.fill_method == 'smudge':
                 smudge(transformed)
             elif self.fill_method == 'interp':
                 transformed = interp(transformed)
-            print('fill time: ' + str(time.time()-start_time))
+#             print('fill time: ' + str(time.time()-start_time))
 
             result.append(transformed)
         
         return result
+    
+def downsample(disp, down_factor=2):
+    step = 2**down_factor
+    return disp[step/2::step,step/2::step]    
 
 def smudge(disp):
     disp[:,1:] = np.maximum(disp[:,1:], disp[:,0:-1])
@@ -122,33 +130,29 @@ def interp(disp):
     return it(list(np.ndindex(disp.shape))).reshape(disp.shape)    
     
 if __name__ == '__main__': 
-    down_factor = 0
+    down_factor = 2
     step = 2**down_factor;
 
-    source = KittiSource(51, 100)
-    gt = source.ground_truth[0][step-1::step,step-1::step]
+    source = KittiSource(51, 20)
+    gt = downsample(source.ground_truth[0], down_factor=down_factor)
     
     fig = plt.figure(1)
     fig.clf()
     h = plt.imshow(gt, vmin=0, vmax=64) 
     plt.show(block=False)
-
     
     shape = gt.shape
-    mem = DisparityMemory(shape, fovea_shape=(100,300))
-#     mem = DisparityMemory(shape, fill_method='interp')
+    mem = DisparityMemory(shape, down_factor, fovea_shape=(30,90), fill_method='smudge')
 
-    for i in range(100):
-        print(i)
+    for i in range(20):
         
-        gt = source.ground_truth[i][step-1::step,step-1::step]
+        gt = downsample(source.ground_truth[i], down_factor=down_factor)
         pos = source.positions[i]
 
         mem.remember(pos, gt)
                 
-#         transformed = mem.transform(pos)
         for j in range(len(mem.transforms)):
-            print('transform # ' + str(j)) 
+#             print('transform # ' + str(j)) 
             h.set_data(mem.transforms[j])            
             fig.canvas.draw()
             time.sleep(0.5)

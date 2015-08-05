@@ -29,30 +29,24 @@ class UnusuallyClose:
     Specifically it is for navigation tasks and it assigns higher importance 
     to pixels in which the disparity is larger than average. It also weighs 
     different image regions differently (more weight bottom centre). 
-    
-    Finally, it subtracts projections of past disparity frames so that importance 
-    is really only assigned to high disparities that are unexpected in the context
-    of past frames. 
     """
      
-    def __init__(self, source, down_factor):
-        ad = get_average_disparity(source.ground_truth)
-        step = 2**down_factor;
-        self.average_disparity = ad[step-1::step,step-1::step]
+    def __init__(self, average_disparity):
+        self.average_disparity = average_disparity
         
         s = self.average_disparity.shape
-        self.cX, self.cY = np.meshgrid(range(s[1]), range(s[0]))
+
+#         self.cX, self.cY = np.meshgrid(range(s[1]), range(s[0]))        
+#         calib = Calib(); 
+#         self.disp2imu = calib.get_disp2imu() 
+#         self.imu2disp = calib.get_imu2disp()
         
-        calib = Calib(); 
-        self.disp2imu = calib.get_disp2imu() 
-        self.imu2disp = calib.get_imu2disp()
-        
-        self.past_position = None
-        self.past_disparity = None
+#         self.past_position = None
+#         self.past_disparity = None
         
         self.pos_weights = get_position_weights(s)
 
-    def get_importance(self, disp, pos):
+    def get_importance(self, disp):
         """
         Arguments 
         ---------
@@ -62,7 +56,13 @@ class UnusuallyClose:
         """        
         assert disp.shape == self.average_disparity.shape
         
-        surprise = disp        
+        surprise = disp
+        
+        """
+        Here we used to subtract projections of past disparity frames so that importance 
+        was really only assigned to high disparities that are unexpected in the context
+        of past frames. 
+        """ 
 #         if self.past_position is None:
 #             surprise = disp
 #         else:
@@ -75,19 +75,19 @@ class UnusuallyClose:
 #         above_average[0:disp.shape[0]/3,:] = 0 # ignore top of image
         above_average = above_average * self.pos_weights
         
-        self.past_position = pos
-        self.past_disparity = disp
+#         self.past_position = pos
+#         self.past_disparity = disp
         
         return above_average
     
-    def project(self, old_pos, new_pos, old_disp):
-        xyd = get_shifted_points(old_disp, old_pos, new_pos, self.cX, self.cY, 
-                                  self.disp2imu, self.imu2disp, 
-                                  final_shape=old_disp.shape, full_shape=old_disp.shape)
-        xyd[:, :2] = np.round(xyd[:, :2])
-        new_disp = np.zeros(old_disp.shape)
-        max_points2disp(xyd, new_disp)
-        return new_disp        
+#     def project(self, old_pos, new_pos, old_disp):
+#         xyd = get_shifted_points(old_disp, old_pos, new_pos, self.cX, self.cY, 
+#                                   self.disp2imu, self.imu2disp, 
+#                                   final_shape=old_disp.shape, full_shape=old_disp.shape)
+#         xyd[:, :2] = np.round(xyd[:, :2])
+#         new_disp = np.zeros(old_disp.shape)
+#         max_points2disp(xyd, new_disp)
+#         return new_disp        
     
 
 def get_average_disparity(ground_truth):
@@ -105,7 +105,11 @@ if __name__ == '__main__':
  
     down_factor = 1
      
-    uc = UnusuallyClose(source, down_factor)
+    ad = get_average_disparity(source.ground_truth)
+    step = 2**down_factor
+    ad = ad[step-1::step,step-1::step]
+
+    uc = UnusuallyClose(ad)
     fig = plt.figure(1)
     fig.clf()
     h = plt.imshow(source.ground_truth[0], vmin=0, vmax=64) 
@@ -118,7 +122,7 @@ if __name__ == '__main__':
          
         gt = source.ground_truth[i][step-1::step,step-1::step]
  
-        importance = uc.get_importance(gt, source.positions[i])
+        importance = uc.get_importance(gt)
         h.set_data(importance)
         fig.canvas.draw()
         time.sleep(0.5)
