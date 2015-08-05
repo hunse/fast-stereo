@@ -75,7 +75,7 @@ def foveal_bp(frame, fovea_x, fovea_y, seed, values=values_default, down_factor=
     fovea_x = fovea_x / 2**down_factor
     fovea_y = fovea_y / 2**down_factor
 
-    disp = bp.stereo_fovea(img1, img2, fovea_x, fovea_y, seed=seed, values=values, levels=5, smooth=.7, iters=iters, **params)
+    disp = bp.stereo_fovea(img1, img2, fovea_x, fovea_y, seed=seed, values=values, levels=5, smooth=.7, seed_weight=.01, iters=iters, **params)
     return disp
     
 
