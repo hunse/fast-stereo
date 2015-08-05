@@ -6,6 +6,7 @@ from data import load_stereo_video
 from bp_wrapper import foveal_bp
 from data import KittiSource
 from transform import DisparityMemory
+from importance import UnusuallyClose, get_average_disparity
 
 
 def trim(disp, vmax, edge):
@@ -127,9 +128,34 @@ def seed_outside_fovea():
     plt.tight_layout()
     plt.show(block=True)
 
+def importance():
+    source = KittiSource(51, 100)
+    average_disparity = get_average_disparity(source.ground_truth)
+    uc = UnusuallyClose(average_disparity)
+    
+    frame_num = 5
+    importance = uc.get_importance(source.ground_truth[frame_num])
+    
+    plt.figure()
+    plt.subplot(311)
+    plt.imshow(average_disparity, vmin=0, vmax=128)
+    remove_axes()
+    
+    plt.subplot(312)
+    plt.imshow(source.ground_truth[frame_num], vmin=0, vmax=128)
+    remove_axes()
+    
+    plt.subplot(313)
+    plt.imshow(importance, vmin=0, vmax=64)
+    remove_axes()
+            
+    plt.tight_layout()
+    plt.show(block=True)
+
 
 if __name__ == '__main__':
 #     fovea_examples()
-    smudge_vs_interp()
+#     smudge_vs_interp()
 #     seed_outside_fovea()
+    importance()
     
