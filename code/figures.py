@@ -31,23 +31,23 @@ def smudge_vs_interp():
     remove_axes()
     
     plt.subplot(222)
-    mem = DisparityMemory(gt3.shape, fill_method='none')
+    mem = DisparityMemory(gt3.shape, 0, fill_method='none')
     mem.remember(pos3, gt3)
-    mem.remember(pos4, gt4) #creates transform of gt3 data to pos4    
+    mem.move(pos4) #creates transform of gt3 data to pos4    
     plt.imshow(mem.transforms[0], vmin=0, vmax=128)
     remove_axes()
 
     plt.subplot(223)
-    mem = DisparityMemory(gt3.shape, fill_method='smudge')
+    mem = DisparityMemory(gt3.shape, 0, fill_method='smudge')
     mem.remember(pos3, gt3)
-    mem.remember(pos4, gt4) #creates transform of gt3 data to pos4    
+    mem.move(pos4)     
     plt.imshow(mem.transforms[0], vmin=0, vmax=128)
     remove_axes()
         
     plt.subplot(224)
-    mem = DisparityMemory(gt3.shape, fill_method='interp')
+    mem = DisparityMemory(gt3.shape, 0, fill_method='interp')
     mem.remember(pos3, gt3)
-    mem.remember(pos4, gt4) #creates transform of gt3 data to pos4    
+    mem.move(pos4)     
     plt.imshow(mem.transforms[0], vmin=0, vmax=128)
     remove_axes()
 
@@ -129,7 +129,7 @@ def seed_outside_fovea():
 
 
 if __name__ == '__main__':
-    fovea_examples()
-#     smudge_vs_interp()
+#     fovea_examples()
+    smudge_vs_interp()
 #     seed_outside_fovea()
     

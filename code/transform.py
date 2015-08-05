@@ -45,28 +45,41 @@ class DisparityMemory():
         assert fill_method in ('smudge', 'interp', 'none')
         self.fill_method = fill_method        
         
+#     def remember(self, pos, disp, fovea_centre=None):
+#         """
+#         pos - Position of camera rig
+#         disp - Disparity image from this position
+#         fovea_centre - Centre coords of fovea (None=image centre)
+#         """
+#         
+#         self.remember_pos(pos)
+#         self.remember_disp(disp, fovea_centre=fovea_centre)
+
+    def move(self, pos):
+        """
+        Transforms remembered disparities into new position's reference frame 
+        """
+        self.transforms = self._transform(pos)                     
+
+    
     def remember(self, pos, disp, fovea_centre=None):
         """
+        Stores a position and corresponding disparity. 
+         
         pos - Position of camera rig
         disp - Disparity image from this position
-        fovea_centre - Centr coords of fovea (None=image centre)
+        fovea_centre - Centre coords of fovea (None=image centre)
         """
-        
-        self.remember_pos(pos)
-        self.remember_disp(disp, fovea_centre=fovea_centre)
 
-    def remember_pos(self, pos):
-        self.transforms = self._transform(pos) 
+        assert disp.shape == self.shape
         
         if len(self.past_position) == self.n:
             self.past_position.pop(0)
             self.past_disparity.pop(0)
-                
+
         self.past_position.append(pos)
-        
-    
-    def remember_disp(self, disp, fovea_centre=None):
-        assert disp.shape == self.shape
+                
+        disp = np.copy(disp)
         
         if self.fovea_shape is None: 
             self.past_disparity.append(disp)
@@ -104,6 +117,7 @@ class DisparityMemory():
 #             start_time = time.time()
             if self.fill_method == 'smudge':
                 smudge(transformed)
+                transformed[transformed<0] = 0
             elif self.fill_method == 'interp':
                 transformed = interp(transformed)
 #             print('fill time: ' + str(time.time()-start_time))
@@ -149,6 +163,7 @@ if __name__ == '__main__':
         gt = downsample(source.ground_truth[i], down_factor=down_factor)
         pos = source.positions[i]
 
+        mem.move(pos)
         mem.remember(pos, gt)
                 
         for j in range(len(mem.transforms)):
