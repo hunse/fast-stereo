@@ -586,6 +586,204 @@ cv::Mat stereo_ms_fovea(
 }
 
 
+// multiscale belief propagation with an extra level in the fovea
+// fovea_x and fovea_y are in fine coordinates
+void bp_ms_fovea2(
+    volume<float> *data0, volume<float> *dataf, int iters, int levels, int min_level, float disc_max, int fovea_x, int fovea_y)
+{
+    volume<float> *u[levels];
+    volume<float> *d[levels];
+    volume<float> *l[levels];
+    volume<float> *r[levels];
+    volume<float> *data[levels];
+
+    data[0] = data0;
+    int values = data0->depth();
+
+    // data pyramid
+    for (int i = 1; i < levels; i++) {
+        int old_width = data[i-1]->width();
+        int old_height = data[i-1]->height();
+        int new_width = (int)ceil(old_width/2.0);
+        int new_height = (int)ceil(old_height/2.0);
+
+        assert(new_width >= 1);
+        assert(new_height >= 1);
+
+        data[i] = new volume<float>(new_width, new_height, values);
+        for (int y = 0; y < old_height; y++) {
+            for (int x = 0; x < old_width; x++) {
+                for (int value = 0; value < values; value++) {
+                    (*data[i])(x/2, y/2, value) += (*data[i-1])(x, y, value);
+                }
+            }
+        }
+    }
+
+    // run bp from coarse to fine
+    for (int i = levels-1; i >= 0; i--) {
+        
+        int width = data[i]->width();
+        int height = data[i]->height();
+
+        // allocate & init memory for messages
+        if (i == levels-1) {
+            // in the coarsest level messages are initialized to zero
+            u[i] = new volume<float>(width, height, values);
+            d[i] = new volume<float>(width, height, values);
+            l[i] = new volume<float>(width, height, values);
+            r[i] = new volume<float>(width, height, values);
+        } else {
+            // initialize messages from values of previous level
+            u[i] = new volume<float>(width, height, values, false);
+            d[i] = new volume<float>(width, height, values, false);
+            l[i] = new volume<float>(width, height, values, false);
+            r[i] = new volume<float>(width, height, values, false);
+
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++) {
+                    for (int value = 0; value < values; value++) {
+                        //TODO: is values/2 sensible or do we have to deal with full value range in coarse image?
+                        (*u[i])(x, y, value) = (*u[i+1])(x/2, y/2, value);  
+                        (*d[i])(x, y, value) = (*d[i+1])(x/2, y/2, value);
+                        (*l[i])(x, y, value) = (*l[i+1])(x/2, y/2, value);
+                        (*r[i])(x, y, value) = (*r[i+1])(x/2, y/2, value);
+                    }
+                }
+            }
+            // delete old messages and data
+            delete u[i+1];
+            delete d[i+1];
+            delete l[i+1];
+            delete r[i+1];
+            delete data[i+1];
+        }
+
+        if (i >= min_level) {
+            // BP
+            bp_cb(*u[i], *d[i], *l[i], *r[i], *data[i], iters, disc_max);
+        }
+        
+    }
+
+    collect_messages(*u[0], *d[0], *l[0], *r[0], *data[0]);
+
+    // one final iteration in fovea at finer resolution (using dataf) ...
+     
+    values = dataf->depth();
+    int width = dataf->width();
+    int height = dataf->height();
+
+    // initialize messages from values of previous level
+    volume<float> *uf = new volume<float>(width, height, values, false);
+    volume<float> *df = new volume<float>(width, height, values, false);
+    volume<float> *lf = new volume<float>(width, height, values, false);
+    volume<float> *rf = new volume<float>(width, height, values, false);
+
+    // this loop takes 50ms
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            for (int value = 0; value < values; value++) {
+                (*uf)(x, y, value) = (*u[0])((fovea_x+x)/2, (fovea_y+y)/2, value/2);
+                (*df)(x, y, value) = (*d[0])((fovea_x+x)/2, (fovea_y+y)/2, value/2);
+                (*lf)(x, y, value) = (*l[0])((fovea_x+x)/2, (fovea_y+y)/2, value/2);
+                (*rf)(x, y, value) = (*r[0])((fovea_x+x)/2, (fovea_y+y)/2, value/2);
+            }
+        }
+    }
+    
+    delete u[0];
+    delete d[0];
+    delete l[0];
+    delete r[0];
+    
+    //this call takes ~160ms
+    bp_cb(*uf, *df, *lf, *rf, *dataf, iters, disc_max);
+    
+    collect_messages(*uf, *df, *lf, *rf, *dataf);
+    
+    delete uf;
+    delete df;
+    delete lf;
+    delete rf; 
+}
+
+cv::Mat stereo_ms_fovea2(
+    cv::Mat img1, cv::Mat img2, cv::Mat img1d, cv::Mat img2d, cv::Mat seed,
+    int values, int iters, int levels, int min_level, float smooth,
+    float data_weight, float data_max, float seed_weight, float disc_max, 
+    int fovea_x, int fovea_y, int fovea_width, int fovea_height)
+{
+    //create coarse data volume
+//     cv::Mat img1d((img1.rows+1)/2, (img1.cols+1)/2, CV_8U, cv::Scalar(0)); 
+//     cv::Mat img2d((img2.rows+1)/2, (img2.cols+1)/2, CV_8U, cv::Scalar(0)); 
+    cv::pyrDown(img1, img1d);
+    cv::pyrDown(img2, img2d);
+    volume<float> *datad = comp_data(
+        img1d, img2d, values/2, data_weight, data_max, smooth);
+
+    if (!seed.empty()) {
+        cv::Mat seedd((seed.rows+1)/2, (seed.cols+1)/2, CV_8U, cv::Scalar(0)); 
+        cv::pyrDown(seed, seedd);    
+        add_seed_cost(*datad, seedd, seed_weight*2);   
+    }
+    
+    //create fovea data volume
+    cv::Mat img1f(fovea_height, fovea_width, CV_8U, cv::Scalar(0));
+    cv::Mat img2f(fovea_height, fovea_width, CV_8U, cv::Scalar(0));
+    cv::Mat seedf(fovea_height, fovea_width, CV_8U, cv::Scalar(0));    
+    for (int y = 0; y < fovea_height; y++) {
+        uchar* img1fi = img1f.ptr<uchar>(y);
+        uchar* img2fi = img2f.ptr<uchar>(y);
+        uchar* img1i = img1.ptr<uchar>(fovea_y+y);
+        uchar* img2i = img2.ptr<uchar>(fovea_y+y);
+
+        for (int x = 0; x < fovea_width; x++) {
+            img1fi[x] = img1i[fovea_x+x]; 
+            img2fi[x] = img2i[fovea_x+x];
+        }
+        
+        if (!seed.empty()) {
+            uchar* seedfi = seedf.ptr<uchar>(y);
+            uchar* seedi = seed.ptr<uchar>(fovea_y+y);
+            for (int x = 0; x < fovea_width; x++) {
+                seedfi[x] = seedi[fovea_x+x];
+            }
+        }
+        
+    }
+    
+    volume<float> *dataf = comp_data(
+        img1f, img2f, values, data_weight, data_max, smooth);
+    if (!seed.empty()) add_seed_cost(*dataf, seedf, seed_weight);    
+        
+//     volume<float> *dataf = new volume<float>(1, 1, 1);
+    bp_ms_fovea2(datad, dataf, iters, levels, min_level, disc_max, fovea_x, fovea_y);
+//     bp_ms(datad, iters, levels, min_level, disc_max); 
+
+    cv::Mat outd = max_value(*datad);
+    outd = outd * 2;
+    cv::Mat outf = max_value(*dataf);
+    delete datad;
+    delete dataf;
+    
+    cv::Mat out(outd.rows*2, outd.cols*2, CV_8U, cv::Scalar(0));     
+    cv::pyrUp(outd, out);
+
+    for (int y = 1; y < fovea_height-1; y++) {
+        uchar* outi = out.ptr<uchar>(y+fovea_y);
+        uchar* outfi = outf.ptr<uchar>(y);
+        
+        for (int x = 1; x < fovea_width-1; x++) {
+            outi[x+fovea_x] = outfi[x];
+        } 
+    }
+    
+    return out;
+}
+
+
+
 volume<float> *stereo_ms_volume(
     cv::Mat img1, cv::Mat img2, cv::Mat seed,
     int values, int iters, int levels, int min_level, float smooth,
