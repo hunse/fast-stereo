@@ -45,16 +45,6 @@ class DisparityMemory():
         assert fill_method in ('smudge', 'interp', 'none')
         self.fill_method = fill_method
 
-#     def remember(self, pos, disp, fovea_centre=None):
-#         """
-#         pos - Position of camera rig
-#         disp - Disparity image from this position
-#         fovea_centre - Centre coords of fovea (None=image centre)
-#         """
-#
-#         self.remember_pos(pos)
-#         self.remember_disp(disp, fovea_centre=fovea_centre)
-
     def move(self, pos):
         """
         Transforms remembered disparities into new position's reference frame
@@ -62,7 +52,7 @@ class DisparityMemory():
         self.transforms = self._transform(pos)
 
 
-    def remember(self, pos, disp, fovea_centre=None):
+    def remember(self, pos, disp, fovea_corner=None):
         """
         Stores a position and corresponding disparity.
 
@@ -84,12 +74,11 @@ class DisparityMemory():
         if self.fovea_shape is None:
             self.past_disparity.append(disp)
         else:
-            if fovea_centre is None:
-                fovea_centre = (self.shape[0]/2, self.shape[1]/2)
+            if fovea_corner is None:
+                fovea_corner = (
+                    np.array(self.shape) - np.array(self.fovea_shape)) / 2
 
-            xmin = fovea_centre[1] - self.fovea_shape[1]/2
-            ymin = fovea_centre[0] - self.fovea_shape[0]/2
-
+            ymin, xmin = fovea_corner
             masked = disp
             masked[:,0:xmin] = 0
             masked[:,xmin+self.fovea_shape[1]:] = 0
@@ -126,9 +115,19 @@ class DisparityMemory():
 
         return result
 
-def downsample(disp, down_factor=2):
-    step = 2**down_factor
-    return disp[step/2::step,step/2::step]
+def downsample(img, down_factor=2):
+    if 1:
+        # Bryan's downsample
+        step = 2**down_factor
+        return img[step/2::step,step/2::step]
+    else:
+        # Eric's downsample
+        import cv2
+        if img.dtype == np.int64:
+            img = img.astype(np.float32)
+        for i in xrange(down_factor):
+            img = cv2.pyrDown(img)
+        return img
 
 def smudge(disp):
     disp[:,1:] = np.maximum(disp[:,1:], disp[:,0:-1])
