@@ -72,39 +72,39 @@ def foveal_bp(frame, fovea_x, fovea_y, seed, values=values_default, down_factor=
     img2 = downsample(img2, down_factor)
     img1 = laplacian(img1, ksize=ksize)
     img2 = laplacian(img2, ksize=ksize)
-    
+
     fovea_x = fovea_x / 2**down_factor
     fovea_y = fovea_y / 2**down_factor
 
     disp = bp.stereo_fovea(img1, img2, fovea_x, fovea_y, seed=seed, values=values, levels=5, smooth=.7, seed_weight=.01, iters=iters, **params)
     return disp
-    
+
 def foveal_bp2(frame, fovea_x, fovea_y, fovea_width, fovea_height, seed, values=values_default, down_factor=0, ksize=1, iters=5, **params):
     img1, img2 = frame
-    
+
     values_coarse = values / 2**down_factor
-    
+
     # high resolution (used in fovea; maybe some downsampling)
     img1 = downsample(img1, down_factor)
     img2 = downsample(img2, down_factor)
     img1h = laplacian(img1, ksize=ksize)
     img2h = laplacian(img2, ksize=ksize)
 
-    # downsampled one more time (used in periphery) 
+    # downsampled one more time (used in periphery)
     img1d = downsample(img1, 1)
     img2d = downsample(img2, 1)
     img1d = laplacian(img1d, ksize=ksize)
     img2d = laplacian(img2d, ksize=ksize)
-    
+
     fovea_x = fovea_x / 2**down_factor
     fovea_y = fovea_y / 2**down_factor
 
-    disp = bp.stereo_fovea2(img1h, img2h, img1d, img2d, fovea_x, fovea_y, fovea_width, fovea_height, 
+    disp = bp.stereo_fovea2(img1h, img2h, img1d, img2d, fovea_x, fovea_y, fovea_width, fovea_height,
                            seed=seed, values=values, levels=5, smooth=.7, seed_weight=.01, iters=iters, **params)
-    
+
     disp = disp[:frame[0].shape[0],:frame[0].shape[1]] #upscaling and downscaling may add a row or column
     return disp
-    
+
 
 
 def fine_bp(frame, values=values_default, levels=5, ksize=9, down_factor=0, **params):
@@ -134,7 +134,7 @@ def fovea_bp(frame, fovea_ij, fovea_shape, seed, values=values_default, ksize=9,
         values = values / 2**down_factor
         img1r = downsample(img1r, down_factor)
         img2r = downsample(img2r, down_factor)
-    
+
     img1r = laplacian(img1r, ksize=ksize)
     img2r = laplacian(img2r, ksize=ksize)
 
@@ -158,6 +158,8 @@ def error_on_points(xyd, disp, values=values_default, kind='rms'):
         return np.sqrt(((disps - d)**2).mean())
     elif kind == 'abs':
         return abs(disps - d).mean()
+    elif kind == 'close':
+        return np.sqrt((d * (disps - d)**2).mean())
     else:
         raise ValueError()
 
@@ -174,3 +176,17 @@ def points_image(xyd, shape):
         img[yy, xx] = dd
 
     return img
+
+
+def error_on_disp(ref_disp, disp, values=values_default, kind='rms'):
+    assert ref_disp.ndim == 2 and disp.ndim == 2
+    if ref_disp.shape != disp.shape:
+        # ref_disp = cv2.resize(ref_disp, disp.shape[::-1])
+        disp = cv2.resize(disp, ref_disp.shape[::-1])
+
+    if kind == 'rms':
+        return np.sqrt(((disp - ref_disp)**2).mean())
+    elif kind == 'abs':
+        return abs(disp - ref_disp).mean()
+    else:
+        raise ValueError()

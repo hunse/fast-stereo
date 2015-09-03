@@ -2,58 +2,25 @@
 Filtering of BP over time.
 """
 import collections
- 
+
 import numpy as np
 import cv2
- 
+
 import matplotlib.pyplot as plt
- 
+
 import gridfill
- 
+
 from kitti.data import Calib, homogeneous_transform, filter_disps
 from kitti.raw import load_stereo_video, load_video_odometry, get_position_transform, get_frame_inds
 from kitti.velodyne import load_disparity_points
 
-from bp_wrapper import coarse_bp, fine_bp, fovea_bp
+from bp_truth import load_fine
+from bp_wrapper import coarse_bp, fine_bp, fovea_bp, points_image, error_on_points, error_on_disp
 
-from hunse_tools.timing import tic, toc 
+from hunse_tools.timing import tic, toc
 from nltk.compat import raw_input
 
 full_shape = (375, 1242)
-
-def error_on_points(xyd, disp, n_disp, kind='rms'):
-    # clip left points with no possible disparity matches
-    xyd = xyd[xyd[:, 0] >= n_disp]
-
-    x, y, d = xyd.T
-
-    ratio = np.asarray(disp.shape) / np.asarray(full_shape, dtype=float)
-    xr = (x * ratio[1]).astype(int)
-    yr = (y * ratio[0]).astype(int)
-    disps = disp[yr, xr]
-
-    if kind == 'rms':
-        return np.sqrt(((disps - d)**2).mean())
-    elif kind == 'abs':
-        return abs(disps - d).mean()
-    elif kind == 'close':
-        return np.sqrt((d * (disps - d)**2).mean())
-    else:
-        raise ValueError()
-
-
-def points_image(xyd, shape):
-    x, y, d = xyd.T
-
-    ratio = np.asarray(shape) / np.asarray(full_shape, dtype=float)
-    xr = (x * ratio[1]).astype(int)
-    yr = (y * ratio[0]).astype(int)
-
-    img = np.zeros(shape)
-    for xx, yy, dd in zip(xr, yr, d):
-        img[yy, xx] = dd
-
-    return img
 
 
 def max_points2disp(xyd, disp):
@@ -104,9 +71,9 @@ class BryanFilter(object):
         coarse_shape - (height, width) of downsampled frames for coarse BP
         fine_shape - shape of full frames after possible downsampling to level of foveal BP
         foveal_shape - shape of fovea at full resolution (prior to any downsampling)
-        n - number of frames to retain   
+        n - number of frames to retain
         """
-        
+
         self.coarse_shape = np.asarray(coarse_shape)
         self.fine_shape = np.asarray(fine_shape)
         self.fine_full_ratio = self.fine_shape / np.asarray(full_shape, dtype=float)
@@ -134,7 +101,7 @@ class BryanFilter(object):
     def compute(self, pos, coarse_disp, fovea_disp, fovea_ij, disp2imu, imu2disp):
         assert all(coarse_disp.shape == self.coarse_shape)
         assert all(fovea_disp.shape == self.fovea_shape)
-        
+
         # --- translate fovea_ij from full_shape into fine_shape
         fovea_ij = np.round(np.asarray(fovea_ij) * self.fine_full_ratio)
         assert all(fovea_ij >= 0)
@@ -212,7 +179,7 @@ class BryanFilter(object):
             cf_foveanesses.append(cf_foveaness)
 
 #         toc()
-        
+
         if 0:
             plt.figure(101)
             plt.clf()
@@ -254,7 +221,7 @@ class BryanFilter(object):
         error = self.disp - disps
 #         self.cost[:] = (error**2).sum(0) + (stds**2).sum(0)
         self.cost[:] = self.disp * ((error**2).sum(0) + (stds**2).sum(0))
-#         self.cost[:] = (w * (error**2 + stds**2)).sum(0)        
+#         self.cost[:] = (w * (error**2 + stds**2)).sum(0)
 
 
         # else:
@@ -275,7 +242,7 @@ class BryanFilter(object):
         mask = np.ones(self.cost.shape, dtype=bool)
         mask[fm:-fm, fn:-fn] = 0
         self.cost[mask] = 0
-        
+
 #         toc()
 
         return self.disp
@@ -291,6 +258,7 @@ if __name__ == '__main__':
     drive = 51
     video = load_stereo_video(drive)
     positions = load_video_odometry(drive)
+    ref_disps = load_fine(drive)
     initial = video[0]
 
     n_disp = 128
@@ -342,7 +310,7 @@ if __name__ == '__main__':
 #    plot_disp2 = ax_disp2.imshow(high1, vmin=0, vmax=n_disp)
 #    plot_truth = ax_truth.imshow(low0, vmin=0, vmax=n_disp)
 #     ax_cost.imshow(filt.cost)  # for tight layout
-# 
+#
 #     ax_frame.set_title('Left camera frame (red: current fovea, green: next fovea)')
 #     ax_coarse.set_title('Coarse')
 #     ax_fovea.set_title('Fovea')
@@ -357,19 +325,19 @@ if __name__ == '__main__':
         tic('Coarse BP')
         coarse_disp = coarse_bp(frame, **coarse_params)
         toc()
-        
+
         ratio = np.round(float(frame.shape[1]) / float(coarse_disp.shape[0]))
         ij0 = np.round(np.asarray(fovea_ij) / ratio)
         coarse_shape = np.round(np.asarray(fovea_shape) / ratio)
         ij1 = ij0 + coarse_shape
         coarse_subwindow = coarse_disp[ij0[0]:ij1[0], ij0[1]:ij1[1]]
-        
-        # TODO: scaling only the edges may be faster 
+
+        # TODO: scaling only the edges may be faster
         seed = cv2.resize(coarse_subwindow, fovea_shape[::-1])
         band_size = 20
         seed[band_size:-band_size, band_size:-band_size] = 0
-        
-        tic('Fine BP')        
+
+        tic('Fine BP')
         fovea_disp = fovea_bp(frame, fovea_ij, fovea_shape, seed, **fovea_params)
         toc()
 
@@ -395,7 +363,14 @@ if __name__ == '__main__':
         coarse_error = error_on_points(xyd, coarse_disp)
         filt_error = error_on_points(xyd, filt.disp)
         filt_nofovea_error = error_on_points(xyd, filt_nofovea.disp)
-        print("Errors %d: coarse = %0.3f, filt = %0.3f, filt fovea = %0.3f\n" %
+        print("Errors %d: coarse = %0.3f, filt = %0.3f, filt fovea = %0.3f" %
+              (iframe, coarse_error, filt_nofovea_error, filt_error))
+
+        ref_disp = ref_disps[iframe]
+        coarse_error = error_on_disp(ref_disp, coarse_disp)
+        filt_error = error_on_disp(ref_disp, filt.disp)
+        filt_nofovea_error = error_on_disp(ref_disp, filt_nofovea.disp)
+        print("Errors %d: coarse = %0.3f, filt = %0.3f, filt fovea = %0.3f" %
               (iframe, coarse_error, filt_nofovea_error, filt_error))
 
         # show results
@@ -413,7 +388,7 @@ if __name__ == '__main__':
 #         plot_disp2.set_data(filt_nofovea.disp)
 #         ax_cost.imshow(filt.cost)
 #         # ax_int.imshow(fcost)
-# 
+#
 #         truth = points_image(xyd, coarse_shape)
 #         plot_truth.set_data(truth)
         plot_disp.set_data(filt.disp)
@@ -421,7 +396,7 @@ if __name__ == '__main__':
         fig.canvas.draw()
 
         # if iframe >= 8:
-#         if filt_error > filt_nofovea_error:
-#             raw_input("Frame %d: Continue?" % iframe)
+        # if filt_error > filt_nofovea_error:
+        #     raw_input("Frame %d: Continue?" % iframe)
 
         fovea_ij = new_fovea_ij
