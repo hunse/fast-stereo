@@ -15,7 +15,7 @@ from transform import DisparityMemory, downsample
 
 class Filter:
     def __init__(self, average_disparity, frame_down_factor, mem_down_factor,
-                 fovea_shape, frame_shape, values):
+                 fovea_shape, frame_shape, values, verbose=False):
         """
         Arguments
         ---------
@@ -25,6 +25,7 @@ class Filter:
         fovea_shape - at full resolution
         values - depth of disparity volume at full resolution
         """
+        self.verbose = verbose
         self.use_uncertainty = False
         self.n_past_fovea = 0
 
@@ -59,7 +60,8 @@ class Filter:
         if self.use_uncertainty:
             self.uncertainty_memory.move(pos)
 
-        print('move time: ' + str(time.time() - start_time))
+        if self.verbose:
+            print('move time: ' + str(time.time() - start_time))
 
         # 1. Decide where to put fovea and move it there:
         if len(self.disparity_memory.transforms) == 0:
@@ -94,7 +96,8 @@ class Filter:
             assert fovea_corner[0] >= 0 and fovea_corner[1] >= self.values
             assert all(fovea_corner + self.fovea_shape <= self.frame_shape)
 
-        print('choose time: ' + str(time.time() - start_time))
+        if self.verbose:
+            print('choose time: ' + str(time.time() - start_time))
 
         # 2. Calculate disparity and store in memory:
         seed = np.zeros(self.frame_shape, dtype='uint8')
@@ -102,7 +105,8 @@ class Filter:
             seed += t
 
         no_seed = np.zeros((0,0), dtype='uint8')
-        print('seed time: ' + str(time.time() - start_time))
+        if self.verbose:
+            print('seed time: ' + str(time.time() - start_time))
 
         # --- fovea boundaries in frame coordinates ...
         fovea_y, fovea_x = fovea_corner
@@ -114,7 +118,8 @@ class Filter:
         # keep all disparities in full image coordinates
         disp *= self.frame_step
 
-        print('BP time: ' + str(time.time() - start_time))
+        if self.verbose:
+            print('BP time: ' + str(time.time() - start_time))
 
         # --- downsample and remember disparity
         downsampled = downsample(disp[:,self.values:], self.mem_down_factor)
@@ -130,7 +135,8 @@ class Filter:
              uncertainty = np.abs(downsampled - prior_disparity)
              self.uncertainty_memory.remember(pos, uncertainty)
 
-        print('finish time: ' + str(time.time() - start_time))
+        if self.verbose:
+            print('finish time: ' + str(time.time() - start_time))
 
         return disp, fovea_corner
 
@@ -188,7 +194,7 @@ if __name__ == "__main__":
 
     mem_down_factor = 2
     filter = Filter(average_disparity, frame_down_factor, mem_down_factor,
-                    fovea_shape, frame_shape, values)
+                    fovea_shape, frame_shape, values, verbose=False)
 
     fig = plt.figure(1)
     plt.show(block=False)
