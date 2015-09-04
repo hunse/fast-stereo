@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from kitti.data import Calib
 
 from data import KittiSource
-from bryanfilter import get_shifted_points, max_points2disp
+
 
 def get_position_weights(shape):
     h = shape[0]/3 #height of blended region
@@ -55,8 +55,7 @@ class UnusuallyClose:
         pos - position of camera rig from which disparity was found
         """
         assert disp.shape == self.average_disparity.shape
-
-        surprise = disp
+        surprise = disp.astype(float)  # use floats for math
 
         """
         Here we used to subtract projections of past disparity frames so that importance
@@ -71,7 +70,7 @@ class UnusuallyClose:
 #             surprise = disp - projection
 #             print(time.time()-start_time)
 
-        above_average = np.maximum(0, surprise-self.average_disparity)
+        above_average = np.maximum(0, surprise - self.average_disparity)
 #         above_average[0:disp.shape[0]/3,:] = 0 # ignore top of image
         above_average = above_average * self.pos_weights
 
@@ -91,12 +90,14 @@ class UnusuallyClose:
 
 
 def get_average_disparity(ground_truth):
-    result = np.zeros_like(ground_truth[0], dtype='int')
+    result = np.zeros_like(ground_truth[0], dtype=np.float32)
 
     for frame in ground_truth:
         result += frame
 
-    return result / len(ground_truth)
+    result /= len(ground_truth)
+    return result.astype(ground_truth[0].dtype)
+
 
 if __name__ == '__main__':
 #     get_position_weights((10,30))

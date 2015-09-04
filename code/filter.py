@@ -14,7 +14,8 @@ from importance import UnusuallyClose, get_average_disparity
 from transform import DisparityMemory, downsample
 
 class Filter:
-    def __init__(self, average_disparity, down_factor, fovea_shape, frame_shape, values):
+    def __init__(self, average_disparity, frame_down_factor, mem_down_factor,
+                 fovea_shape, frame_shape, values):
         """
         Arguments
         ---------
@@ -27,24 +28,27 @@ class Filter:
         self.use_uncertainty = False
         self.n_past_fovea = 0
 
-        self.down_factor = down_factor
-        self.values = values
+        self.frame_down_factor = frame_down_factor
+        self.mem_down_factor = mem_down_factor
+        self.frame_step = 2**frame_down_factor
+        self.mem_step = 2**mem_down_factor #step size for uncertainty and importance calculations (pixels)
 
-        self.average_disparity = downsample(average_disparity, down_factor=down_factor)
+        self.average_disparity = downsample(
+            average_disparity, down_factor=mem_down_factor)
         self.frame_shape = frame_shape
         self.fovea_shape = fovea_shape
         self.shape = self.average_disparity.shape #for decision-related memory
-        self.step = 2**down_factor #step size for uncertainty and importance calculations (pixels)
+
+        self.values = values
 
         self.params = {'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425, 'data_max': 32.024780646200725, 'ksize': 3}
         self.iters = 3
 
-        self.disparity_memory = DisparityMemory(self.shape, down_factor, n=1)
-        self.uncertainty_memory = DisparityMemory(self.shape, down_factor, n=1)
+        self.disparity_memory = DisparityMemory(self.shape, mem_down_factor, n=1)
+        self.uncertainty_memory = DisparityMemory(self.shape, mem_down_factor, n=1)
         self.fovea_memory = DisparityMemory(frame_shape, 0, fovea_shape=fovea_shape, n=self.n_past_fovea)
 
         self._uc = UnusuallyClose(self.average_disparity)
-
 
     def process_frame(self, pos, frame):
         start_time = time.time()
@@ -80,11 +84,15 @@ class Filter:
             assert cost.shape == self.shape
 
             # c) Find region of highest cost and put fovea there
-            small_fovea_shape = np.array(self.fovea_shape) / self.step
-            fovea_corner = _choose_fovea(cost, small_fovea_shape, 0) # downsampled coords
-            fovea_corner = np.array(fovea_corner) * self.step + np.array([0, self.values])
+            mem_fovea_shape = np.array(self.fovea_shape) / self.mem_step
+            fovea_corner = _choose_fovea(cost, mem_fovea_shape, 0)
+            fovea_corner = np.array(fovea_corner) * self.mem_step + np.array([0, self.values])
+
+            # fovea corner can be slightly too large, due to rounding errors
+            fovea_max = np.array(self.frame_shape) - self.fovea_shape
+            fovea_corner = np.minimum(fovea_corner, fovea_max)
             assert fovea_corner[0] >= 0 and fovea_corner[1] >= self.values
-            assert all(fovea_corner + self.fovea_shape < self.frame_shape)
+            assert all(fovea_corner + self.fovea_shape <= self.frame_shape)
 
         print('choose time: ' + str(time.time() - start_time))
 
@@ -96,17 +104,20 @@ class Filter:
         no_seed = np.zeros((0,0), dtype='uint8')
         print('seed time: ' + str(time.time() - start_time))
 
-        # --- fovea boundaries in full image coordinates ...
+        # --- fovea boundaries in frame coordinates ...
         fovea_y, fovea_x = fovea_corner
         fovea_height, fovea_width = self.fovea_shape
         disp = foveal_bp2(
             frame, fovea_x, fovea_y, fovea_width, fovea_height, no_seed,
             values=self.values, down_factor=0, iters=self.iters, **self.params)
 
+        # keep all disparities in full image coordinates
+        disp *= self.frame_step
+
         print('BP time: ' + str(time.time() - start_time))
 
         # --- downsample and remember disparity
-        downsampled = downsample(disp[:,self.values:], self.down_factor)
+        downsampled = downsample(disp[:,self.values:], self.mem_down_factor)
         assert downsampled.shape == self.shape
         self.disparity_memory.remember(pos, downsampled)
 
@@ -134,7 +145,7 @@ def _choose_fovea(cost, fovea_shape, n_disp):
     fcostr -= icost[:-fm, fn:]
     fcostr -= icost[fm:, :-fn]
     fcostr += icost[:-fm, :-fn]
-    # fcostr[:, :n_disp] = -np.inf  # need space left of fovea for disparity
+    fcostr[:, :n_disp] = -np.inf  # need space left of fovea for disparity
 
     fovea_ij = np.unravel_index(np.argmax(fcost), fcost.shape)
     return fovea_ij
@@ -157,7 +168,6 @@ def expand_coarse(coarse, down_factor):
 
     return blank
 
-# TODO: replace my downsample with Eric's
 
 if __name__ == "__main__":
 
@@ -169,15 +179,16 @@ if __name__ == "__main__":
 
     source = KittiSource(51, 50)
 
-    down_factor = 1
-    frame_shape = downsample(source.video[0][0], down_factor).shape
+    frame_down_factor = 1
+    frame_shape = downsample(source.video[0][0], frame_down_factor).shape
 #     fovea_shape = np.array(frame_shape)/4
     fovea_shape = (80, 80)
-    average_disparity = downsample(get_average_disparity(source.ground_truth), down_factor)
+    average_disparity = downsample(get_average_disparity(source.ground_truth), frame_down_factor)
     values = frame_shape[1] - average_disparity.shape[1]
 
     mem_down_factor = 2
-    filter = Filter(average_disparity, mem_down_factor, fovea_shape, frame_shape, values)
+    filter = Filter(average_disparity, frame_down_factor, mem_down_factor,
+                    fovea_shape, frame_shape, values)
 
     fig = plt.figure(1)
     plt.show(block=False)
@@ -191,20 +202,29 @@ if __name__ == "__main__":
         start_time = time.time()
 
         if use_coarse:
-            down_factor = 1
+            down_factor = 2
             params = {'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425, 'data_max': 32.024780646200725, 'ksize': 3}
-            coarse_disp = coarse_bp(source.video[i], down_factor=down_factor, iters=3, values=values, **params)
-            disp = expand_coarse(coarse_disp, down_factor)
+            coarse_disp = coarse_bp(source.video[i], down_factor=down_factor,
+                                    iters=3, values=values, **params)
+            # disp = coarse_disp
+            # disp = expand_coarse(coarse_disp, frame_down_factor)
+            disp = expand_coarse(coarse_disp, down_factor - frame_down_factor)
             disp = disp[:frame_shape[0],:frame_shape[1]]
         else:
-            frame = [downsample(source.video[i][0], down_factor), downsample(source.video[i][1], down_factor)]
+            frame = [downsample(source.video[i][0], frame_down_factor),
+                     downsample(source.video[i][1], frame_down_factor)]
             disp, fovea_corner = filter.process_frame(source.positions[i], frame)
 
         times.append(time.time() - start_time)
-        costs.append(cost(disp[:,values:], downsample(source.ground_truth[i], down_factor), average_disparity))
+        true_disp = downsample(source.ground_truth[i], frame_down_factor)
+        costs.append(cost(disp[:,values:], true_disp, average_disparity))
 
         plt.clf()
-        plt.imshow(disp, vmin=0, vmax=values)
+        plt.subplot(211)
+        if len(filter.disparity_memory.transforms) > 0:
+            plt.imshow(filter.disparity_memory.transforms[0], vmin=0, vmax=128)
+        plt.subplot(212)
+        plt.imshow(disp, vmin=0, vmax=128)
 
         if not use_coarse:
             fovea_centre = np.array(fovea_corner) + np.array(fovea_shape)/2

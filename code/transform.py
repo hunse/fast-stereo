@@ -6,9 +6,8 @@ import matplotlib.pyplot as plt
 from kitti.data import Calib
 
 from data import KittiSource
-from bryanfilter import get_shifted_points, max_points2disp
+from bp_wrapper import get_shifted_points, points2disp_max
 
-# TODO: projection not working properly when subsampled
 
 class DisparityMemory():
     def __init__(self, shape, down_factor, n=1, fovea_shape=None, fill_method='smudge'):
@@ -25,15 +24,10 @@ class DisparityMemory():
         """
 
         self.shape = shape
-        self.full_shape = np.array(shape) * 2**down_factor
         self.fovea_shape = fovea_shape
         self.n = n
 
-        self.cX, self.cY = np.meshgrid(range(self.full_shape[1]), range(self.full_shape[0]))
-        self.cX = downsample(self.cX, down_factor)
-        self.cY = downsample(self.cY, down_factor)
-
-        calib = Calib();
+        calib = Calib()
         self.disp2imu = calib.get_disp2imu()
         self.imu2disp = calib.get_imu2disp()
 
@@ -50,7 +44,6 @@ class DisparityMemory():
         Transforms remembered disparities into new position's reference frame
         """
         self.transforms = self._transform(pos)
-
 
     def remember(self, pos, disp, fovea_corner=None):
         """
@@ -87,21 +80,18 @@ class DisparityMemory():
 
             self.past_disparity.append(masked)
 
-
     def _transform(self, new_pos):
         result = []
 
         for i in range(len(self.past_position)):
             #note: get_shifted_points only processes disp>0
-            xyd = get_shifted_points(self.past_disparity[i], self.past_position[i],
-                                    new_pos, self.cX, self.cY,
-                                    self.disp2imu, self.imu2disp,
-                                    final_shape=self.shape, full_shape=self.full_shape)
+            xyd = get_shifted_points(
+                self.past_disparity[i], self.past_position[i], new_pos,
+                self.disp2imu, self.imu2disp)
 
             xyd[:, :2] = np.round(xyd[:, :2])
-            transformed = np.empty(self.shape)
-            transformed[:] = -1
-            max_points2disp(xyd, transformed)
+            transformed = np.zeros(self.shape, dtype=np.uint8)
+            points2disp_max(xyd, transformed)
 
 #             start_time = time.time()
             if self.fill_method == 'smudge':
@@ -116,15 +106,13 @@ class DisparityMemory():
         return result
 
 def downsample(img, down_factor=2):
-    if 1:
+    if 0:
         # Bryan's downsample
         step = 2**down_factor
         return img[step/2::step,step/2::step]
     else:
         # Eric's downsample
         import cv2
-        if img.dtype == np.int64:
-            img = img.astype(np.float32)
         for i in xrange(down_factor):
             img = cv2.pyrDown(img)
         return img
@@ -139,7 +127,7 @@ def interp(disp):
     coords = np.array(np.nonzero(valid_mask)).T
     values = disp[valid_mask]
     it = interpolate.NearestNDInterpolator(coords, values)
-#             it = interpolate.LinearNDInterpolator(coords, values, fill_value=0)
+    # it = interpolate.LinearNDInterpolator(coords, values, fill_value=0)
     return it(list(np.ndindex(disp.shape))).reshape(disp.shape)
 
 if __name__ == '__main__':

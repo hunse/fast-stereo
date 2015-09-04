@@ -15,49 +15,12 @@ from kitti.raw import load_stereo_video, load_video_odometry, get_position_trans
 from kitti.velodyne import load_disparity_points
 
 from bp_truth import load_fine
-from bp_wrapper import coarse_bp, fine_bp, fovea_bp, points_image, error_on_points, error_on_disp
+from bp_wrapper import (
+    coarse_bp, fine_bp, fovea_bp, points_image, error_on_points, error_on_disp,
+    full_shape, points2disp_max, get_shifted_points)
 
 from hunse_tools.timing import tic, toc
-from nltk.compat import raw_input
-
-full_shape = (375, 1242)
-
-
-def max_points2disp(xyd, disp):
-    import scipy.weave
-    p = xyd
-    d = disp
-    code = r"""
-    for (int k = 0; k < Np[0]; k++) {
-        int x = P2(k, 0), y = P2(k, 1);
-        if (x >= 0 & x < Nd[1] & y >= 0 & y < Nd[0]) {
-            double z = P2(k, 2);
-            if (z > D2(y, x))
-                D2(y, x) = z;
-        }
-    }
-    """
-    scipy.weave.inline(code, ['d', 'p'])
-
-
-def get_shifted_points(disp, pos0, pos1, X, Y, disp2imu, imu2disp, final_shape=None, full_shape=full_shape):
-    # make points
-    m = disp >= 0
-    xyd = np.vstack([X[m], Y[m], disp[m]]).T
-
-    if not np.allclose(pos0, pos1):
-        # make position transform
-        imu2imu = get_position_transform(pos0, pos1, invert=True)
-        disp2disp = np.dot(disp2imu, np.dot(imu2imu, imu2disp))
-
-        # apply position transform
-        xyd = homogeneous_transform(xyd, disp2disp)
-
-    # scale back into `shape` coordinates
-    final_shape = disp.shape if final_shape is None else final_shape
-    xyd[:, 0] *= float(final_shape[1]) / full_shape[1]
-    xyd[:, 1] *= float(final_shape[0]) / full_shape[0]
-    return xyd
+# from nltk.compat import raw_input
 
 
 class BryanFilter(object):
@@ -133,7 +96,7 @@ class BryanFilter(object):
                     coarse, pos, cur_pos, self.cX, self.cY, disp2imu, imu2disp)
                 c_xyd[:, :2] = np.round(c_xyd[:, :2])
                 c_disp = -np.ones(self.coarse_shape)
-                max_points2disp(c_xyd, c_disp)
+                points2disp_max(c_xyd, c_disp)
                 c_disps_raw.append(c_disp)
 
                 # fill missing values
@@ -170,7 +133,7 @@ class BryanFilter(object):
                     f_xyd = get_shifted_points(fovea, pos, cur_pos, fX, fY, disp2imu, imu2disp, final_shape=self.fine_shape)
                     f_xyd[:, :2] = np.round(f_xyd[:, :2])
                     f_disp = -np.ones(self.fine_shape)
-                    max_points2disp(f_xyd, f_disp)
+                    points2disp_max(f_xyd, f_disp)
 
                     cf_disp[f_disp >= 0] = f_disp[f_disp >= 0]
                     cf_foveaness[f_disp >= 0] = 1

@@ -79,6 +79,7 @@ def foveal_bp(frame, fovea_x, fovea_y, seed, values=values_default, down_factor=
     disp = bp.stereo_fovea(img1, img2, fovea_x, fovea_y, seed=seed, values=values, levels=5, smooth=.7, seed_weight=.01, iters=iters, **params)
     return disp
 
+
 def foveal_bp2(frame, fovea_x, fovea_y, fovea_width, fovea_height, seed, values=values_default, down_factor=0, ksize=1, iters=5, **params):
     img1, img2 = frame
 
@@ -99,12 +100,12 @@ def foveal_bp2(frame, fovea_x, fovea_y, fovea_width, fovea_height, seed, values=
     fovea_x = fovea_x / 2**down_factor
     fovea_y = fovea_y / 2**down_factor
 
-    disp = bp.stereo_fovea2(img1h, img2h, img1d, img2d, fovea_x, fovea_y, fovea_width, fovea_height,
-                           seed=seed, values=values, levels=5, smooth=.7, seed_weight=.01, iters=iters, **params)
+    disp = bp.stereo_fovea2(
+        img1h, img2h, img1d, img2d, fovea_x, fovea_y, fovea_width, fovea_height,
+        seed=seed, values=values, levels=5, smooth=.7, seed_weight=.01, iters=iters, **params)
 
     disp = disp[:frame[0].shape[0],:frame[0].shape[1]] #upscaling and downscaling may add a row or column
     return disp
-
 
 
 def fine_bp(frame, values=values_default, levels=5, ksize=9, down_factor=0, **params):
@@ -190,3 +191,47 @@ def error_on_disp(ref_disp, disp, values=values_default, kind='rms'):
         return abs(disp - ref_disp).mean()
     else:
         raise ValueError()
+
+
+def points2disp_max(xyd, disp):
+    """Convert points to disparity, taking the max when points overlap"""
+    import scipy.weave
+    p = xyd
+    d = disp
+    code = r"""
+    for (int k = 0; k < Np[0]; k++) {
+        int x = P2(k, 0), y = P2(k, 1);
+        if (x >= 0 & x < Nd[1] & y >= 0 & y < Nd[0]) {
+            double z = P2(k, 2);
+            if (z > D2(y, x))
+                D2(y, x) = z;
+        }
+    }
+    """
+    scipy.weave.inline(code, ['d', 'p'])
+
+
+def get_shifted_points(disp, pos0, pos1, disp2imu, imu2disp, out_shape=None):
+    m = disp >= 0
+    i, j = m.nonzero()
+    xyd = np.vstack([j, i, disp[m]]).T
+
+    in_shape = disp.shape
+    xyd[:, 0] *= float(full_shape[1]) / in_shape[1]
+    xyd[:, 1] *= float(full_shape[0]) / in_shape[0]
+    # xyd[:, 2] *= float(full_shape[1]) / in_shape[1]
+
+    if not np.allclose(pos0, pos1):
+        # make position transform
+        imu2imu = get_position_transform(pos0, pos1, invert=True)
+        disp2disp = np.dot(disp2imu, np.dot(imu2imu, imu2disp))
+
+        # apply position transform
+        xyd = homogeneous_transform(xyd, disp2disp)
+
+    # scale back into `shape` coordinates
+    out_shape = disp.shape if out_shape is None else out_shape
+    xyd[:, 0] *= float(out_shape[1]) / full_shape[1]
+    xyd[:, 1] *= float(out_shape[0]) / full_shape[0]
+    # xyd[:, 2] *= float(out_shape[1]) / full_shape[1]
+    return xyd
