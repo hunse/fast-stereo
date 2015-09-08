@@ -244,10 +244,12 @@ if __name__ == "__main__":
 
         plt.clf()
         plt.subplot(211)
+        extent = (values, disp.shape[1], disp.shape[0], 0)
         if len(filter.disparity_memory.transforms) > 0:
-            plt.imshow(filter.disparity_memory.transforms[0], vmin=0, vmax=128)
+            plt.imshow(filter.disparity_memory.transforms[0], vmin=0, vmax=128,
+                       extent=extent)
         plt.subplot(212)
-        plt.imshow(disp, vmin=0, vmax=128)
+        plt.imshow(disp[:,values:], vmin=0, vmax=128, extent=extent)
 
         if not use_coarse:
             fovea_centre = np.array(fovea_corner) + np.array(fovea_shape)/2
@@ -256,6 +258,9 @@ if __name__ == "__main__":
             plt.scatter(fovea_corner[1], fovea_corner[0]+fovea_shape[0], s=50, c='white', marker='.')
             plt.scatter(fovea_corner[1]+fovea_shape[1], fovea_corner[0], s=50, c='white', marker='.')
             plt.scatter(fovea_corner[1]+fovea_shape[1], fovea_corner[0]+fovea_shape[0], s=50, c='white', marker='.')
+
+        plt.xlim(extent[:2])
+        plt.ylim(extent[2:])
 
         fig.canvas.draw()
 #         time.sleep(0.5)
