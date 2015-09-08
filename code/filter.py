@@ -180,6 +180,29 @@ def cost(disp, ground_truth_disp, average_disp=None):
         weighted = importance * error
         return np.mean(weighted)**0.5
 
+def cost_on_points(disp, ground_truth_points, average_disp=None):
+    from bp_wrapper import full_shape
+
+    xyd = ground_truth_points
+    xyd = xyd[xyd[:, 0] >= 128]  # clip left points
+    x, y, d = ground_truth_points.T
+    x = x - 128  # shift x points
+    full_shape = (full_shape[0], full_shape[1] - 128)
+
+    ratio = np.asarray(disp.shape) / np.asarray(full_shape, dtype=float)
+    xr = (x * ratio[1]).astype(int)
+    yr = (y * ratio[0]).astype(int)
+    disps = disp[yr, xr]
+
+    if average_disp is not None:
+        assert average_disp.shape == disp.shape
+
+        importance = np.maximum(0, d.astype(float) - average_disp[yr, xr])
+        importance /= importance.mean()
+        return np.sqrt(np.mean(importance * (disps - d)**2))
+    else:
+        return np.sqrt(np.mean((disps - d)**2))
+
 def expand_coarse(coarse, down_factor):
     step = 2**down_factor
     blank = np.zeros((coarse.shape[0]*step, coarse.shape[1]*step),
@@ -199,14 +222,18 @@ if __name__ == "__main__":
     use_coarse = 1
     ###############################################
 
+    # source = KittiSource(51, 5)
+    # source = KittiSource(51, 30)
     # source = KittiSource(51, 100)
     # source = KittiSource(51, 249)
-    source = KittiSource(91, 30)
+    source = KittiSource(91, 10)
+    # source = KittiSource(91, None)
 
     frame_down_factor = 1
     frame_shape = downsample(source.video[0][0], frame_down_factor).shape
     # fovea_shape = np.array(frame_shape)/4
     fovea_shape = (80, 80)
+    # fovea_shape = (120, 120)
     average_disparity = downsample(
         get_average_disparity(source.ground_truth), frame_down_factor)
     values = frame_shape[1] - average_disparity.shape[1]
@@ -219,6 +246,7 @@ if __name__ == "__main__":
     plt.show(block=False)
 
     costs = []
+    costs_on_points = []
     times = []
 
     for i in range(source.n_frames):
@@ -239,8 +267,11 @@ if __name__ == "__main__":
             disp, fovea_corner = filter.process_frame(source.positions[i], frame)
 
         times.append(time.time() - start_time)
+
         true_disp = downsample(source.ground_truth[i], frame_down_factor)
         costs.append(cost(disp[:,values:], true_disp, average_disparity))
+        costs_on_points.append(cost_on_points(
+            disp[:,values:], source.true_points[i], average_disparity))
 
         plt.clf()
         plt.subplot(211)
@@ -266,4 +297,5 @@ if __name__ == "__main__":
 #         time.sleep(0.5)
 
     print(np.mean(costs))
+    print(np.mean(costs_on_points))
     print(np.mean(times))
