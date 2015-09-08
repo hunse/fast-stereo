@@ -159,10 +159,12 @@ def _choose_fovea(cost, fovea_shape, n_disp):
 def cost(disp, ground_truth_disp, average_disp):
     assert disp.shape == ground_truth_disp.shape == average_disp.shape
 
-    importance = np.maximum(0, ground_truth_disp - average_disp)
-    error = (disp - ground_truth_disp)**2
+    importance = np.maximum(0, ground_truth_disp.astype(float) - average_disp)
+    importance /= importance.mean()
+
+    error = (disp.astype(float) - ground_truth_disp)**2
+    # return np.mean(error)**0.5
     weighted = importance * error
-#     print(weighted.shape)
     return np.mean(weighted)**0.5
 
 def expand_coarse(coarse, down_factor):
