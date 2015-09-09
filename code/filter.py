@@ -45,15 +45,19 @@ class Filter:
         # self.params = {
         #     'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
         #     'data_max': 32.024780646200725, 'ksize': 3}  # original hyperopt
-        self.params = {
-            'data_weight': 0.15109941436798274, 'disc_max': 44.43671813879002,
-            'data_max': 68.407170602610137, 'ksize': 5}  # hyperopt on 100 images
+        # self.params = {
+        #     'data_weight': 0.15109941436798274, 'disc_max': 44.43671813879002,
+        #     'data_max': 68.407170602610137, 'ksize': 5}  # hyperopt on 100 images
         # self.params = {
         #     'data_weight': 0.2715404479972163, 'disc_max': 2.603682635476145,
         #     'data_max': 156312.43116792402, 'ksize': 3}  # Bryan's hyperopt on 250 images
         # self.params = {
         #     'data_weight': 1.2, 'disc_max': 924.0,
         #     'data_max': 189.0, 'ksize': 5}  # random
+        self.params = {
+            'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
+            'data_max': 32.024780646200725, 'ksize': 3}  # coarse
+
         self.iters = 3
 
         self.disparity_memory = DisparityMemory(self.shape, mem_down_factor, n=1)
@@ -111,20 +115,22 @@ class Filter:
             print('choose time: ' + str(time.time() - start_time))
 
         # 2. Calculate disparity and store in memory:
-        seed = np.zeros(self.frame_shape, dtype='uint8')
-        for t in self.fovea_memory.transforms:
-            seed += t
+        if len(self.fovea_memory.transforms) == 0:
+            seed = np.zeros((0,0), dtype='uint8')
+        else:
+            seed = np.zeros(self.frame_shape, dtype='uint8')
+            for t in self.fovea_memory.transforms:
+                seed += t
 
-        no_seed = np.zeros((0,0), dtype='uint8')
         if self.verbose:
             print('seed time: ' + str(time.time() - start_time))
 
         # --- fovea boundaries in frame coordinates ...
-        fovea_y, fovea_x = fovea_corner
-        fovea_height, fovea_width = self.fovea_shape
         disp = foveal_bp2(
-            frame, fovea_x, fovea_y, fovea_width, fovea_height, no_seed,
-            values=self.values, down_factor=0, iters=self.iters, **self.params)
+            frame, fovea_corner, fovea_shape, seed,
+            values=self.values, iters=self.iters, **self.params)
+        # disp = coarse_bp(frame, down_factor=1, iters=3, values=self.values, **self.params)
+        # disp = cv2.pyrUp(disp)[:self.frame_shape[0], :self.frame_shape[1]]
 
         # keep all disparities in full image coordinates
         disp *= self.frame_step
@@ -180,6 +186,29 @@ def cost(disp, ground_truth_disp, average_disp=None):
         weighted = importance * error
         return np.mean(weighted)**0.5
 
+def cost_on_points(disp, ground_truth_points, average_disp=None):
+    from bp_wrapper import full_shape
+
+    xyd = ground_truth_points
+    xyd = xyd[xyd[:, 0] >= 128]  # clip left points
+    x, y, d = ground_truth_points.T
+    x = x - 128  # shift x points
+    full_shape = (full_shape[0], full_shape[1] - 128)
+
+    ratio = np.asarray(disp.shape) / np.asarray(full_shape, dtype=float)
+    xr = (x * ratio[1]).astype(int)
+    yr = (y * ratio[0]).astype(int)
+    disps = disp[yr, xr]
+
+    if average_disp is not None:
+        assert average_disp.shape == disp.shape
+
+        importance = np.maximum(0, d.astype(float) - average_disp[yr, xr])
+        importance /= importance.mean()
+        return np.sqrt(np.mean(importance * (disps - d)**2))
+    else:
+        return np.sqrt(np.mean((disps - d)**2))
+
 def expand_coarse(coarse, down_factor):
     step = 2**down_factor
     blank = np.zeros((coarse.shape[0]*step, coarse.shape[1]*step),
@@ -196,69 +225,170 @@ if __name__ == "__main__":
     ###### different methods and variations #######
     use_uncertainty = True
     n_past_fovea = 0
-    use_coarse = 1
+
+    run_coarse = 1
+    run_fine = 1
     ###############################################
 
+    # source = KittiSource(51, 5)
+    # source = KittiSource(51, 30)
     # source = KittiSource(51, 100)
     # source = KittiSource(51, 249)
-    source = KittiSource(91, 30)
+    source = KittiSource(91, 10)
+    # source = KittiSource(91, None)
 
     frame_down_factor = 1
+    mem_down_factor = 2     # relative to the frame down factor
+    coarse_down_factor = 2  # for the coarse comparison
+
+    full_values = 128
+
     frame_shape = downsample(source.video[0][0], frame_down_factor).shape
     # fovea_shape = np.array(frame_shape)/4
+    # fovea_shape = (0, 0)
     fovea_shape = (80, 80)
-    average_disparity = downsample(
+    # fovea_shape = (120, 120)
+    average_disp = downsample(
         get_average_disparity(source.ground_truth), frame_down_factor)
-    values = frame_shape[1] - average_disparity.shape[1]
+    values = frame_shape[1] - average_disp.shape[1]
 
-    mem_down_factor = 2
-    filter = Filter(average_disparity, frame_down_factor, mem_down_factor,
+    filter = Filter(average_disp, frame_down_factor, mem_down_factor,
                     fovea_shape, frame_shape, values, verbose=False)
 
     fig = plt.figure(1)
     plt.show(block=False)
 
-    costs = []
-    times = []
+    table = dict()
+    times = dict(coarse=[], fine=[], filter=[])
+
+    def append_table(key, disp, true_disp, true_points):
+        table.setdefault(key + '_du', []).append(cost(disp, true_disp))
+        table.setdefault(key + '_dw', []).append(cost(disp, true_disp, average_disp))
+        table.setdefault(key + '_pu', []).append(cost_on_points(disp, true_points))
+        table.setdefault(key + '_pw', []).append(cost_on_points(disp, true_points, average_disp))
 
     for i in range(source.n_frames):
         print(i)
 
-        start_time = time.time()
-
-        if use_coarse:
-            down_factor = 2
-            params = {'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425, 'data_max': 32.024780646200725, 'ksize': 3}
-            coarse_disp = coarse_bp(source.video[i], down_factor=down_factor,
-                                    iters=3, values=128, **params)
-            disp = expand_coarse(coarse_disp, down_factor - frame_down_factor)
-            disp = disp[:frame_shape[0],:frame_shape[1]]
-        else:
-            frame = [downsample(source.video[i][0], frame_down_factor),
-                     downsample(source.video[i][1], frame_down_factor)]
-            disp, fovea_corner = filter.process_frame(source.positions[i], frame)
-
-        times.append(time.time() - start_time)
+        frame = [downsample(source.video[i][0], frame_down_factor),
+                 downsample(source.video[i][1], frame_down_factor)]
         true_disp = downsample(source.ground_truth[i], frame_down_factor)
-        costs.append(cost(disp[:,values:], true_disp, average_disparity))
+        true_points = source.true_points[i]
 
+        # --- coarse
+        if run_coarse:
+            params = {
+                'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
+                'data_max': 32.024780646200725, 'ksize': 3}
+            coarse_time = time.time()
+            coarse_disp = coarse_bp(frame, down_factor=1, iters=3, values=values, **params)
+            coarse_disp = cv2.pyrUp(coarse_disp)[:frame_shape[0],:frame_shape[1]]
+            coarse_disp *= 2
+            coarse_time = time.time() - coarse_time
+
+            append_table('coarse', coarse_disp[:,values:], true_disp, true_points)
+            times['coarse'].append(coarse_time)
+
+        # --- fine
+        if run_fine:
+            params = {
+                'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
+                'data_max': 32.024780646200725, 'ksize': 3}
+            fine_time = time.time()
+            fine_disp = coarse_bp(frame, down_factor=0, iters=3, values=values, **params)
+            fine_disp *= 2
+            fine_time = time.time() - fine_time
+
+            append_table('fine', fine_disp[:,values:], true_disp, true_points)
+            times['fine'].append(fine_time)
+
+        # --- filter
+        filter_time = time.time()
+        disp, fovea_corner = filter.process_frame(source.positions[i], frame)
+        # disp, fovea_corner = filter.process_frame(source.positions[i], source.video[i])
+        filter_time = time.time() - filter_time
+
+        append_table('filter', disp[:,values:], true_disp, true_points)
+        times['filter'].append(filter_time)
+
+        # --- fovea
+        fovea0 = slice(fovea_corner[0], fovea_corner[0]+fovea_shape[0])
+        fovea1 = slice(fovea_corner[1], fovea_corner[1]+fovea_shape[1])
+        fovea1v = slice(fovea1.start - values, fovea1.stop - values)
+        disp_fovea = disp[fovea0, fovea1]
+        true_fovea = true_disp[fovea0, fovea1v]
+        table.setdefault('true_fovea', []).append(cost(disp_fovea, true_fovea))
+
+        if run_fine:
+            fine_fovea = fine_disp[fovea0, fovea1]
+            table.setdefault('fine_fovea', []).append(cost(disp_fovea, fine_fovea))
+
+        # --- plot
+        extent = (values, disp.shape[1], disp.shape[0], 0)
+
+        r, c = 3, 2
+        i = np.array([0])
+        def next_subplot(title):
+            i[:] += 1
+            ax = plt.subplot(r, c, i[0])
+            plt.title(title)
+            return ax
+
+        plt.figure(1)
         plt.clf()
-        plt.subplot(211)
-        if len(filter.disparity_memory.transforms) > 0:
-            plt.imshow(filter.disparity_memory.transforms[0], vmin=0, vmax=128)
-        plt.subplot(212)
-        plt.imshow(disp, vmin=0, vmax=128)
+        next_subplot('frame')
+        plt.imshow(frame[0][:, values:], cmap='gray')
 
-        if not use_coarse:
-            fovea_centre = np.array(fovea_corner) + np.array(fovea_shape)/2
-            plt.scatter(fovea_centre[1], fovea_centre[0], s=200, c='white', marker='+', linewidths=2)
-            plt.scatter(fovea_corner[1], fovea_corner[0], s=50, c='white', marker='.')
-            plt.scatter(fovea_corner[1], fovea_corner[0]+fovea_shape[0], s=50, c='white', marker='.')
-            plt.scatter(fovea_corner[1]+fovea_shape[1], fovea_corner[0], s=50, c='white', marker='.')
-            plt.scatter(fovea_corner[1]+fovea_shape[1], fovea_corner[0]+fovea_shape[0], s=50, c='white', marker='.')
+        next_subplot('coarse')
+        if run_coarse:
+            plt.imshow(coarse_disp[:,values:], vmin=0, vmax=128, extent=extent)
+
+        next_subplot('fine')
+        if run_fine:
+            plt.imshow(fine_disp[:,values:], vmin=0, vmax=128, extent=extent)
+
+        # next_subplot('disparity memory')
+        # if len(filter.disparity_memory.transforms) > 0:
+        #     plt.imshow(filter.disparity_memory.transforms[0], vmin=0, vmax=128,
+        #                extent=extent)
+
+        next_subplot('filter')
+        plt.imshow(disp[:,values:], vmin=0, vmax=128, extent=extent)
+
+        fovea_centre = np.array(fovea_corner) + np.array(fovea_shape)/2
+        plt.scatter(fovea_centre[1], fovea_centre[0], s=200, c='white', marker='+', linewidths=2)
+        plt.scatter(fovea_corner[1], fovea_corner[0], s=50, c='white', marker='.')
+        plt.scatter(fovea_corner[1], fovea_corner[0]+fovea_shape[0], s=50, c='white', marker='.')
+        plt.scatter(fovea_corner[1]+fovea_shape[1], fovea_corner[0], s=50, c='white', marker='.')
+        plt.scatter(fovea_corner[1]+fovea_shape[1], fovea_corner[0]+fovea_shape[0], s=50, c='white', marker='.')
+
+        plt.xlim(extent[:2])
+        plt.ylim(extent[2:])
+
+        next_subplot('fovea - fine')
+        if run_fine:
+            fovea_diff = disp_fovea.astype(float) - fine_fovea
+            plt.imshow(fovea_diff)
+            plt.colorbar()
 
         fig.canvas.draw()
-#         time.sleep(0.5)
+        # time.sleep(0.5)
 
-    print(np.mean(costs))
-    print(np.mean(times))
+        print("(%0.3f, %0.3f)" % (table['coarse_pu'][-1], table['filter_pu'][-1]))
+        print("(%0.3f, %0.3f)" % (table['true_fovea'][-1], table['fine_fovea'][-1]))
+        raw_input("Pause...")
+
+        if 0 and table['coarse_pu'][-1] < table['filter_pu'][-1]:
+            diff = disp.astype(float)[:,values:] - coarse_disp[:,values:]
+            print(diff.min(), diff.max())
+            plt.figure(2)
+            plt.clf()
+            plt.imshow(diff, extent=extent)
+            plt.show(block=False)
+
+            raw_input("Bad... (%0.3f, %0.3f)" % (
+                table['coarse_pu'][-1], table['filter_pu'][-1]))
+
+    # print(np.mean(costs))
+    # print(np.mean(costs_on_points))
+    # print(np.mean(times))

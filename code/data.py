@@ -9,8 +9,9 @@ import scipy.ndimage
 import matplotlib.pyplot as plt
 import time
 
-from kitti.raw import get_inds, get_video_dir, get_video_images, load_video_odometry
 from kitti.data import get_drive_dir
+from kitti.raw import get_inds, get_video_dir, get_video_images, load_video_odometry
+from kitti.velodyne import load_disparity_points
 
 from bp_wrapper import coarse_bp, foveal_bp
 
@@ -54,6 +55,14 @@ class KittiSource:
             result.append(gt_frame)
 
         return result
+
+    @property
+    def true_points(self):
+        class Accessor(object):
+            def __getitem__(_, i):
+                return load_disparity_points(self.drive, i)
+
+        return Accessor()
 
 
 def load_stereo_video(drive, n_frames):
