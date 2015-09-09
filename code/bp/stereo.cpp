@@ -639,7 +639,6 @@ void bp_ms_fovea2(
             for (int y = 0; y < height; y++) {
                 for (int x = 0; x < width; x++) {
                     for (int value = 0; value < values; value++) {
-                        //TODO: is values/2 sensible or do we have to deal with full value range in coarse image?
                         (*u[i])(x, y, value) = (*u[i+1])(x/2, y/2, value);
                         (*d[i])(x, y, value) = (*d[i+1])(x/2, y/2, value);
                         (*l[i])(x, y, value) = (*l[i+1])(x/2, y/2, value);
@@ -662,7 +661,6 @@ void bp_ms_fovea2(
     collect_messages(*u[0], *d[0], *l[0], *r[0], *data[0]);
 
     // one final iteration in fovea at finer resolution (using dataf) ...
-
     values = dataf->depth();
     int width = dataf->width();
     int height = dataf->height();
@@ -708,10 +706,8 @@ cv::Mat stereo_ms_fovea2(
     int fovea_x, int fovea_y, int fovea_width, int fovea_height)
 {
     //create coarse data volume
-//     cv::Mat img1d((img1.rows+1)/2, (img1.cols+1)/2, CV_8U, cv::Scalar(0));
-//     cv::Mat img2d((img2.rows+1)/2, (img2.cols+1)/2, CV_8U, cv::Scalar(0));
-    cv::pyrDown(img1, img1d);
-    cv::pyrDown(img2, img2d);
+    // cv::pyrDown(img1, img1d);
+    // cv::pyrDown(img2, img2d);
     volume<float> *datad = comp_data(
         img1d, img2d, values/2, data_weight, data_max, smooth);
 

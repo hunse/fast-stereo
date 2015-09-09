@@ -63,6 +63,7 @@ def coarse_bp(frame, values=values_default, down_factor=3, ksize=1, iters=5, **p
 
     return disp
 
+
 # TODO: less conflicty name
 def foveal_bp(frame, fovea_x, fovea_y, seed, values=values_default, down_factor=0, ksize=1, iters=5, **params):
     img1, img2 = frame
@@ -76,18 +77,14 @@ def foveal_bp(frame, fovea_x, fovea_y, seed, values=values_default, down_factor=
     fovea_x = fovea_x / 2**down_factor
     fovea_y = fovea_y / 2**down_factor
 
-    disp = bp.stereo_fovea(img1, img2, fovea_x, fovea_y, seed=seed, values=values, levels=5, smooth=.7, seed_weight=.01, iters=iters, **params)
+    disp = bp.stereo_fovea(img1, img2, fovea_x, fovea_y, seed=seed, values=values, levels=5, seed_weight=.01, iters=iters, **params)
     return disp
 
 
-def foveal_bp2(frame, fovea_x, fovea_y, fovea_width, fovea_height, seed, values=values_default, down_factor=0, ksize=1, iters=5, **params):
+def foveal_bp2(frame, fovea_corner, fovea_shape, seed, values=values_default, ksize=1, iters=5, **params):
     img1, img2 = frame
 
-    values_coarse = values / 2**down_factor
-
     # high resolution (used in fovea; maybe some downsampling)
-    img1 = downsample(img1, down_factor)
-    img2 = downsample(img2, down_factor)
     img1h = laplacian(img1, ksize=ksize)
     img2h = laplacian(img2, ksize=ksize)
 
@@ -97,12 +94,11 @@ def foveal_bp2(frame, fovea_x, fovea_y, fovea_width, fovea_height, seed, values=
     img1d = laplacian(img1d, ksize=ksize)
     img2d = laplacian(img2d, ksize=ksize)
 
-    fovea_x = fovea_x / 2**down_factor
-    fovea_y = fovea_y / 2**down_factor
-
+    fovea_y, fovea_x = fovea_corner
+    fovea_height, fovea_width = fovea_shape
     disp = bp.stereo_fovea2(
         img1h, img2h, img1d, img2d, fovea_x, fovea_y, fovea_width, fovea_height,
-        seed=seed, values=values, levels=5, smooth=.7, seed_weight=.01, iters=iters, **params)
+        seed=seed, values=values, levels=5, seed_weight=.01, iters=iters, **params)
 
     disp = disp[:frame[0].shape[0],:frame[0].shape[1]] #upscaling and downscaling may add a row or column
     return disp

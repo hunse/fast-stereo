@@ -65,10 +65,9 @@ def get_row(drive):
             'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
             'data_max': 32.024780646200725, 'ksize': 3}
         coarse_time = time.time()
-        coarse_disp = coarse_bp(source.video[i], down_factor=coarse_down_factor,
-                         iters=3, values=full_values, **params)
-        coarse_disp = expand_coarse(coarse_disp, coarse_down_factor - frame_down_factor)
-        coarse_disp = coarse_disp[:frame_shape[0],:frame_shape[1]]
+        coarse_disp = coarse_bp(frame, down_factor=1, iters=3, values=values, **params)
+        coarse_disp = cv2.pyrUp(coarse_disp)[:frame_shape[0],:frame_shape[1]]
+        coarse_disp *= 2
         coarse_time = time.time() - coarse_time
 
         append_table('coarse', coarse_disp[:,values:], true_disp, true_points)
@@ -79,10 +78,8 @@ def get_row(drive):
             'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
             'data_max': 32.024780646200725, 'ksize': 3}
         fine_time = time.time()
-        fine_disp = coarse_bp(source.video[i], down_factor=frame_down_factor,
-                              # iters=10, values=full_values, **params)
-                              iters=3, values=full_values, **params)
-                              # iters=50, values=full_values, **params)
+        fine_disp = coarse_bp(frame, down_factor=0, iters=3, values=values, **params)
+        fine_disp *= 2
         fine_time = time.time() - fine_time
 
         append_table('fine', fine_disp[:,values:], true_disp, true_points)
@@ -96,11 +93,15 @@ def get_row(drive):
         append_table('filter', disp[:,values:], true_disp, true_points)
         times['filter'].append(filter_time)
 
-        disp_fovea = disp[fovea_corner[0]:fovea_corner[0]+fovea_shape[0],
-                          fovea_corner[1]:fovea_corner[1]+fovea_shape[1]]
-        true_fovea = true_disp[fovea_corner[0]:fovea_corner[0]+fovea_shape[0],
-                               fovea_corner[1]-values:fovea_corner[1]-values+fovea_shape[1]]
-        table.setdefault('fovea', []).append(cost(disp_fovea, true_fovea))
+        # --- fovea
+        fovea0 = slice(fovea_corner[0], fovea_corner[0]+fovea_shape[0])
+        fovea1 = slice(fovea_corner[1], fovea_corner[1]+fovea_shape[1])
+        fovea1v = slice(fovea1.start - values, fovea1.stop - values)
+        disp_fovea = disp[fovea0, fovea1]
+        true_fovea = true_disp[fovea0, fovea1v]
+        fine_fovea = fine_disp[fovea0, fovea1]
+        table.setdefault('true_fovea', []).append(cost(disp_fovea, true_fovea))
+        table.setdefault('fine_fovea', []).append(cost(disp_fovea, fine_fovea))
 
     sys.stdout.write("\n")
 
@@ -127,6 +128,6 @@ keys = sorted(list(rows[0]))
 # for drive, row in zip(drives, rows):
 #     print('|'.join(['%3d      ' % drive] + ['%10.3f' % row[key] for key in keys]))
 
-print('|'.join("%10s" % v for v in ['drive'] + drives))
+print(' |'.join("%10s" % v for v in ['drive'] + drives))
 for key in keys:
-    print('%10s|' % key + '|'.join('%10.3f' % row[key] for row in rows))
+    print('%10s |' % key + ' |'.join('%10.3f' % row[key] for row in rows))
