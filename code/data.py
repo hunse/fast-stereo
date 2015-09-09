@@ -80,7 +80,7 @@ def get_ground_truth_dir(drive):
 
 def calc_ground_truth(frame, n_disp):
     params = {'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425, 'data_max': 32.024780646200725, 'ksize': 1}
-    gt = coarse_bp(frame, down_factor=0, iters=10, values=n_disp, **params)
+    gt = coarse_bp(frame, down_factor=0, iters=50, values=n_disp, **params)
     gt = gt[:,n_disp:]
     return gt
 

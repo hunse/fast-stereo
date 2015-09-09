@@ -108,7 +108,7 @@ def foveal_bp2(frame, fovea_x, fovea_y, fovea_width, fovea_height, seed, values=
     return disp
 
 
-def fine_bp(frame, values=values_default, levels=5, ksize=9, down_factor=0, **params):
+def fine_bp(frame, values=values_default, levels=5, ksize=9, **params):
     # params = dict(data_weight=0.07, data_max=100, disc_max=15)
     img1, img2 = frame
 

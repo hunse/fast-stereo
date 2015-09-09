@@ -42,7 +42,18 @@ class Filter:
 
         self.values = values
 
-        self.params = {'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425, 'data_max': 32.024780646200725, 'ksize': 3}
+        # self.params = {
+        #     'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
+        #     'data_max': 32.024780646200725, 'ksize': 3}  # original hyperopt
+        self.params = {
+            'data_weight': 0.15109941436798274, 'disc_max': 44.43671813879002,
+            'data_max': 68.407170602610137, 'ksize': 5}  # hyperopt on 100 images
+        # self.params = {
+        #     'data_weight': 0.2715404479972163, 'disc_max': 2.603682635476145,
+        #     'data_max': 156312.43116792402, 'ksize': 3}  # Bryan's hyperopt on 250 images
+        # self.params = {
+        #     'data_weight': 1.2, 'disc_max': 924.0,
+        #     'data_max': 189.0, 'ksize': 5}  # random
         self.iters = 3
 
         self.disparity_memory = DisparityMemory(self.shape, mem_down_factor, n=1)
@@ -156,21 +167,26 @@ def _choose_fovea(cost, fovea_shape, n_disp):
     fovea_ij = np.unravel_index(np.argmax(fcost), fcost.shape)
     return fovea_ij
 
-def cost(disp, ground_truth_disp, average_disp):
-    assert disp.shape == ground_truth_disp.shape == average_disp.shape
+def cost(disp, ground_truth_disp, average_disp=None):
+    assert disp.shape == ground_truth_disp.shape
+    error = (disp.astype(float) - ground_truth_disp)**2
 
-    importance = np.maximum(0, ground_truth_disp - average_disp)
-    error = (disp - ground_truth_disp)**2
-    weighted = importance * error
-#     print(weighted.shape)
-    return np.mean(weighted)**0.5
+    if average_disp is None:
+        return np.mean(error)**0.5
+    else:
+        assert average_disp.shape == ground_truth_disp.shape
+        importance = np.maximum(0, ground_truth_disp.astype(float) - average_disp)
+        importance /= importance.mean()
+        weighted = importance * error
+        return np.mean(weighted)**0.5
 
 def expand_coarse(coarse, down_factor):
     step = 2**down_factor
-    blank = np.zeros((coarse.shape[0]*step, coarse.shape[1]*step), dtype='uint8')
+    blank = np.zeros((coarse.shape[0]*step, coarse.shape[1]*step),
+                     dtype=coarse.dtype)
     for i in range(step):
         for j in range(step):
-            blank[i::step,j::step] = coarse_disp
+            blank[i::step,j::step] = coarse
 
     return blank
 
@@ -180,16 +196,19 @@ if __name__ == "__main__":
     ###### different methods and variations #######
     use_uncertainty = True
     n_past_fovea = 0
-    use_coarse = False
+    use_coarse = 1
     ###############################################
 
-    source = KittiSource(51, 50)
+    # source = KittiSource(51, 100)
+    # source = KittiSource(51, 249)
+    source = KittiSource(91, 30)
 
     frame_down_factor = 1
     frame_shape = downsample(source.video[0][0], frame_down_factor).shape
-#     fovea_shape = np.array(frame_shape)/4
+    # fovea_shape = np.array(frame_shape)/4
     fovea_shape = (80, 80)
-    average_disparity = downsample(get_average_disparity(source.ground_truth), frame_down_factor)
+    average_disparity = downsample(
+        get_average_disparity(source.ground_truth), frame_down_factor)
     values = frame_shape[1] - average_disparity.shape[1]
 
     mem_down_factor = 2
@@ -211,9 +230,7 @@ if __name__ == "__main__":
             down_factor = 2
             params = {'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425, 'data_max': 32.024780646200725, 'ksize': 3}
             coarse_disp = coarse_bp(source.video[i], down_factor=down_factor,
-                                    iters=3, values=values, **params)
-            # disp = coarse_disp
-            # disp = expand_coarse(coarse_disp, frame_down_factor)
+                                    iters=3, values=128, **params)
             disp = expand_coarse(coarse_disp, down_factor - frame_down_factor)
             disp = disp[:frame_shape[0],:frame_shape[1]]
         else:
