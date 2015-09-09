@@ -1,12 +1,15 @@
 # Figures for papersize
 
+import time
 import numpy as np
 import matplotlib.pyplot as plt
+import cPickle as pickle
 from data import load_stereo_video
-from bp_wrapper import foveal_bp
+from bp_wrapper import foveal_bp, coarse_bp
 from data import KittiSource
-from transform import DisparityMemory
+from transform import DisparityMemory, downsample
 from importance import UnusuallyClose, get_average_disparity
+from filter import expand_coarse, cost
 
 
 def trim(disp, vmax, edge):
@@ -152,9 +155,89 @@ def importance():
     plt.tight_layout()
     plt.show(block=True)
 
+def rationale():
+    """
+    Figure that illustrates rationale for fovea approach, i.e. diminishing returns 
+    with increasing runtime via further iterations at a given downfactor, but 
+    possibly too-high cost of using lower downfactor. 
+    """
+    source = KittiSource(51, 25)
+#     source = KittiSource(51, 100)
+    
+    # TODO: is this weighted cost? 
+    
+    frame_down_factor = 1
+    frame_shape = downsample(source.video[0][0], frame_down_factor).shape
+    
+    average_disparity = downsample(
+        get_average_disparity(source.ground_truth), frame_down_factor)
+
+    params = {'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425, 'data_max': 32.024780646200725, 'ksize': 3}
+    
+#     iterations = [1, 2, 3]
+    iterations = [1, 2, 3, 4, 5, 7, 10, 15]
+    mean_coarse_times = []
+    mean_coarse_costs = []
+    mean_fine_times = []
+    mean_fine_costs = []
+    
+    for j in range(len(iterations)):
+        coarse_times = []
+        coarse_costs = []
+        fine_times = []
+        fine_costs = []
+        
+        for i in range(source.n_frames):
+            print(i)
+    
+            coarse_down_factor = 2
+            fine_down_factor = 1
+            frame_down_factor = 1
+            
+            coarse_time, coarse_cost = _evaluate_frame(source, i, frame_shape, 
+                    frame_down_factor+1, frame_down_factor, iterations[j], average_disparity, params)
+            fine_time, fine_cost = _evaluate_frame(source, i, frame_shape, 
+                    frame_down_factor+0, frame_down_factor, iterations[j], average_disparity, params)
+
+            coarse_times.append(coarse_time)
+            coarse_costs.append(coarse_cost)            
+            fine_times.append(fine_time)
+            fine_costs.append(fine_cost)            
+    
+        mean_coarse_times.append(np.mean(coarse_times))
+        mean_coarse_costs.append(np.mean(coarse_costs))
+        mean_fine_times.append(np.mean(fine_times))
+        mean_fine_costs.append(np.mean(fine_costs))
+    
+    print(mean_coarse_times)
+    print(mean_coarse_costs)
+    print(mean_fine_times)    
+    print(mean_fine_costs)
+    
+    plt.plot(mean_coarse_times, mean_coarse_costs, color='k', marker='s', markersize=12)
+    plt.plot(mean_fine_times, mean_fine_costs, color='k', marker='o', markersize=12)
+    plt.xlabel('Runtime (s)', fontsize=18)
+    plt.ylabel('Weighted RMS Disparity', fontsize=18)
+    plt.gca().tick_params(labelsize='18')
+    plt.show()
+    
+    
+def _evaluate_frame(source, frame_num, frame_shape, down_factor, frame_down_factor, iters, average_disparity, params):
+    values = 128/2**frame_down_factor
+    start_time = time.time()
+    coarse_disp = coarse_bp(source.video[frame_num], down_factor=down_factor,
+                            iters=iters, values=128, **params)
+    disp = expand_coarse(coarse_disp, down_factor - frame_down_factor)
+    disp = disp[:frame_shape[0],:frame_shape[1]]    
+    elapsed_time = time.time() - start_time
+    
+    true_disp = downsample(source.ground_truth[frame_num], frame_down_factor)
+    
+    return elapsed_time, cost(disp[:,values:], true_disp, average_disparity)
 
 if __name__ == '__main__':
 #     fovea_examples()
 #     smudge_vs_interp()
 #     seed_outside_fovea()
-    importance()
+#     importance()
+    rationale()
