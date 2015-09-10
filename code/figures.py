@@ -9,7 +9,7 @@ from bp_wrapper import foveal_bp, coarse_bp
 from data import KittiSource
 from transform import DisparityMemory, downsample
 from importance import UnusuallyClose, get_average_disparity
-from filter import expand_coarse, cost
+from filter import expand_coarse, cost, cost_on_points
 
 
 def trim(disp, vmax, edge):
@@ -217,7 +217,7 @@ def rationale():
     plt.plot(mean_coarse_times, mean_coarse_costs, color='k', marker='s', markersize=12)
     plt.plot(mean_fine_times, mean_fine_costs, color='k', marker='o', markersize=12)
     plt.xlabel('Runtime (s)', fontsize=18)
-    plt.ylabel('Weighted RMS Disparity', fontsize=18)
+    plt.ylabel('Weighted RMS Disparity Error (pixels)', fontsize=18)
     plt.gca().tick_params(labelsize='18')
     plt.show()
     
@@ -231,9 +231,10 @@ def _evaluate_frame(source, frame_num, frame_shape, down_factor, frame_down_fact
     disp = disp[:frame_shape[0],:frame_shape[1]]    
     elapsed_time = time.time() - start_time
     
-    true_disp = downsample(source.ground_truth[frame_num], frame_down_factor)
-    
-    return elapsed_time, cost(disp[:,values:], true_disp, average_disparity)
+#     true_disp = downsample(source.ground_truth[frame_num], frame_down_factor)    
+#     return elapsed_time, cost(disp[:,values:], true_disp, average_disparity)
+    true_points = source.true_points[frame_num]
+    return elapsed_time, cost_on_points(disp[:,values:], true_points)
 
 if __name__ == '__main__':
 #     fovea_examples()

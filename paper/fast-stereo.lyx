@@ -266,16 +266,51 @@ Markov Random Fields and Loopy Belief Propagation
 \end_layout
 
 \begin_layout Standard
-[TODO: describe MRF]
+Due to ambiguities in pixel-by-pixel correspondences across stereo image
+ pairs, disparity estimation is more accurate when it takes into account
+ statistical relationships between disparities at different image positions.
+ Useful disparity images have tens of thousands of pixels or more, so it
+ is not practical to model the full correlation matrix.
+ A popular and successful approach [TODO: refs] has been to model disparity
+ images as Markov random fields.
+ In a Markov random field, each region is independent of the rest of the
+ field, conditional on values in the region's boundary.
+ That is, 
+\begin_inset Formula $p(x_{i}|x_{b},x_{o})=p(x_{i}|x_{b})$
+\end_inset
+
+, where 
+\begin_inset Formula $x_{i}$
+\end_inset
+
+ is the field inside the boundary, 
+\begin_inset Formula $x_{b}$
+\end_inset
+
+ is the part of the field that makes up the boundary, and 
+\begin_inset Formula $x_{o}$
+\end_inset
+
+ is the field outside the boundary [TODO: ref Fieguth].
+ A variety of numerical approaches exist for estimating the maximum a posteriori
+ disparity image, given uncertain pixel-by-pixel estimates.
+ 
 \end_layout
 
 \begin_layout Standard
-Belief propagation is an algorithm for inference on graphical models, inlcuding
- Markov random fields.
- It produces exact solutions on trees [TODO: ref].
- Loops prevent exact inference in Markov random fields, but the algorithm
- typically produces good approximations.
- [TODO: ref]
+One such numerical approach is Loopy Belief Propagation (BP).
+ Belief Propagation is an algorithm for inference on graphical models (inlcuding
+ Bayesian networks and Markov random fields).
+ BP produces exact solutions on trees [TODO: ref].
+ The statistical dependencies in a Markov random field contain loops, and
+ these prevent exact inference.
+ However, the algorithm typically produces good approximations after running
+ for a few iterations [TODO: ref].
+ 
+\end_layout
+
+\begin_layout Standard
+[TODO: introduce BP in terms of probabilities]
 \end_layout
 
 \begin_layout Standard
@@ -346,8 +381,18 @@ where
 \end_layout
 
 \begin_layout Standard
-[TODO: briefly describe MRF and multiscale belief propagation; summarize
- Felzenszwalb's methods and say we used his code]
+We used an implementation of loopy BP [TODO: ref Felzenszwalb & Huttenlocher]
+ with several optimizations that provide orders-of-magnitude acceleration.
+ The most salient of these in the present context is a multiscale approach
+ that reduces the numbers of iterations needed to propagate information
+ to distant parts of the image.
+ The first step in this process is the construction of a data cost pyramid.
+ Beginning with the full cost volume, a coarser volume is created (half
+ the size in each dimension) by summing the costs over 2x2 neighbourhoods
+ of pixels.
+ This is repeated four or five more times, producing coarser levels of the
+ pyramid.
+ [TODO: describe multiscale messages]
 \end_layout
 
 \begin_layout Standard
@@ -374,6 +419,103 @@ System Overview
 \end_layout
 
 \begin_layout Standard
+Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:motivation"
+
+\end_inset
+
+ illustrates the motivation for our approach.
+ The two curves show error in stereo disparity estimation with different
+ image resolutions.
+ The lower-resolution images (left curve) are downsampled by a factor of
+ two in each dimension, relative to the higher-resolution images.
+ Downsampling decreases runtime and increases error.
+ For a given resolution, error decreases with increasing numbers of iterations
+ of belief propagation (BP), but most of this decrease occurs in the first
+ few iterations.
+ Beyond 5-10 iterations, error can only be reduced substantially further
+ by switching to a higher resolution (e.g.
+ by switching from the left curve to the right curve).
+ 
+\end_layout
+
+\begin_layout Standard
+Suppose we have a certain time budget per frame (e.g.
+ 1/4s) and the right curve is entirely outside it.
+ In this case, we can only afford to process the full frame at lower resolution.
+ However, it may be possible to reduce error somewhat below the left curve,
+ by processing only part of each frame at higher resolution.
+ This part can be whatever size uses all the available time.
+ Furthermore, in many applications (e.g.
+ navigation, grasping), some areas in each frame are likely to be more important
+ than others.
+ If the most important areas are processed at higher resolution, then the
+ runtime may remain acceptable while the importance-weighted error approaches
+ that of higher-resolution BP.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figures/fovea-rationale.png
+	scale 30
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Multiscale belief propagation on example data, illustrating the motivation
+ for our approach.
+ Disparity estimation error is plotted vs.
+ runtime.
+ The right curve (circles) were obtained with high-resolution images, and
+ the left curve (squares; higher error) with lower-resoluton versions of
+ the same images.
+ Within each curve, the runtime varies due to varying numbers of iterations
+ at each scale (1, 2, 3, 4, 5, 7, 10, and 15 iterations).
+ Given a time budget of, for example, 0.25s/frame, it would not be possible
+ to process these images at high resolution.
+ However, if certain areas in the images are of greater practical interest,
+ then results that are nearly as useful might be achieved by processing
+ just those areas at high resolution.
+ The data are 25 frames taken from the KITTI dataset [TODO: ref], downsampled
+ by a factor of two (high resolution) and four (low resolution) in each
+ dimension.
+ 
+\end_layout
+
+\end_inset
+
+
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:motivation"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
 The system performs multiscale belief propagation (BP) with different numbers
  of scales in different parts of the image.
  The number of operations in BP scales as [TODO].
@@ -390,16 +532,11 @@ Importantly, messages from coarser scales are used at the finest scale in
  the fovea.
  This makes depth estimates in the fovea continuous with those in the surroundin
 g areas, and also makes them similar to those of full belief propagation
- (differing only due to fine-scale propagation across the border in full
- BP).
- [TODO: efficient data cost?] 
-\end_layout
-
-\begin_layout Standard
-We also experimented with running multiscale BP independently in the fovea,
- and using other means to encourage continuity with the surrounding area,
- such as copying message messages from the surrounding area to the border
- of the fovea.
+ (differing due to fine-scale propagation across the border in full BP).
+ [TODO: describe efficient data cost and other differences this creates]
+ We also experimented with running multiscale BP independently in the fovea,
+ and promoting continuity with the surround in other ways, such as copying
+ message messages from the surround into adjacent outer pixels of the fovea.
  However, these approaches were less effective because they do not allow
  information from coarse scales to propagate from other image regions across
  the fovea.
