@@ -254,7 +254,7 @@ void bp_cb(volume<float> &u, volume<float> &d,
 
 // multiscale belief propagation
 void bp_ms(
-    volume<float> *data0, int iters, int levels, float disc_max)
+    volume<float> *data0, int iters, int levels, float disc_max, float data_exp=1.0)
 {
     volume<float> *u[levels];
     volume<float> *d[levels];
@@ -279,7 +279,7 @@ void bp_ms(
         for (int y = 0; y < old_height; y++) {
             for (int x = 0; x < old_width; x++) {
                 for (int value = 0; value < values; value++) {
-                    (*data[i])(x/2, y/2, value) += (*data[i-1])(x, y, value);
+                    (*data[i])(x/2, y/2, value) += data_exp * (*data[i-1])(x, y, value);
                 }
             }
         }
@@ -338,12 +338,13 @@ void bp_ms(
 cv::Mat stereo_ms(
     cv::Mat img1, cv::Mat img2, cv::Mat seed,
     int values, int iters, int levels, float smooth,
-    float data_weight, float data_max, float seed_weight, float disc_max)
+    float data_weight, float data_max, float data_exp,
+    float seed_weight, float disc_max)
 {
     volume<float> *data = comp_data(
         img1, img2, values, data_weight, data_max, smooth);
     add_seed_cost(*data, seed, seed_weight);
-    bp_ms(data, iters, levels, disc_max);
+    bp_ms(data, iters, levels, disc_max, data_exp);
     cv::Mat out = max_value(*data);
     delete data;
     return out;
@@ -671,7 +672,6 @@ void bp_ms_fovea2(
     volume<float> *lf = new volume<float>(width, height, values, false);
     volume<float> *rf = new volume<float>(width, height, values, false);
 
-    // this loop takes 50ms
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
             for (int value = 0; value < values; value++) {
@@ -688,7 +688,6 @@ void bp_ms_fovea2(
     delete l[0];
     delete r[0];
 
-    //this call takes ~160ms
     bp_cb(*uf, *df, *lf, *rf, *dataf, iters, disc_max);
 
     collect_messages(*uf, *df, *lf, *rf, *dataf);
@@ -776,12 +775,13 @@ cv::Mat stereo_ms_fovea2(
 volume<float> *stereo_ms_volume(
     cv::Mat img1, cv::Mat img2, cv::Mat seed,
     int values, int iters, int levels, float smooth,
-    float data_weight, float data_max, float seed_weight, float disc_max)
+    float data_weight, float data_max, float data_exp,
+    float seed_weight, float disc_max)
 {
     volume<float> *data = comp_data(
         img1, img2, values, data_weight, data_max, smooth);
     add_seed_cost(*data, seed, seed_weight);
-    bp_ms(data, iters, levels, disc_max);
+    bp_ms(data, iters, levels, disc_max, data_exp);
     return data;
 }
 

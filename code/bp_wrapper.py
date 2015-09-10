@@ -106,8 +106,8 @@ def foveal_bp2(frame, fovea_corner, fovea_shape, seed, values=values_default, ks
 
 def fine_bp(frame, values=values_default, levels=5, ksize=9, **params):
     # params = dict(data_weight=0.07, data_max=100, disc_max=15)
-    img1, img2 = frame
 
+    img1, img2 = frame
     img1 = laplacian(img1, ksize=ksize)
     img2 = laplacian(img2, ksize=ksize)
 

@@ -36,7 +36,8 @@ cdef extern from "stereo.h":
     cdef Mat stereo_ms(
         Mat a, Mat b, Mat seed,
         int values, int iters, int levels, float smooth,
-        float data_weight, float data_max, float seed_weight, float disc_max)
+        float data_weight, float data_max, float data_exp,
+        float seed_weight, float disc_max)
     cdef Mat stereo_ms_fovea(
         Mat a, Mat b, Mat seed,
         int values, int iters, int levels, float smooth,
@@ -50,7 +51,8 @@ cdef extern from "stereo.h":
     cdef volume[float]* stereo_ms_volume(
         Mat a, Mat b, Mat seed,
         int values, int iters, int levels, float smooth,
-        float data_weight, float data_max, float seed_weight, float disc_max)
+        float data_weight, float data_max, float data_exp,
+        float seed_weight, float disc_max)
     cdef Mat stereo_ms_probseed(
         Mat img1, Mat img2, Mat seedlist,
         int values, int iters, int levels, float smooth,
@@ -65,7 +67,7 @@ def stereo(
         np.ndarray[uchar, ndim=2, mode="c"] b,
         np.ndarray[uchar, ndim=2, mode="c"] seed = np.array([[]], dtype='uint8'),
         int values=64, int iters=5, int levels=5, float smooth=0.7,
-        float data_weight=0.07, float data_max=15,
+        float data_weight=0.07, float data_max=15, float data_exp=1.0,
         float seed_weight=1, float disc_max=1.7, bool return_volume=False):
 
     assert a.shape[0] == b.shape[0] and a.shape[1] == b.shape[1]
@@ -96,7 +98,7 @@ def stereo(
     if not return_volume:
         # run belief propagation
         zi = stereo_ms(x, y, u, values, iters, levels, smooth,
-                       data_weight, data_max, seed_weight, disc_max)
+                       data_weight, data_max, data_exp, seed_weight, disc_max)
 
         # copy data off
         ci = np.zeros_like(a)
@@ -107,7 +109,7 @@ def stereo(
         # run belief propagation
         zv = stereo_ms_volume(
             x, y, u, values, iters, levels, smooth,
-            data_weight, data_max, seed_weight, disc_max)
+            data_weight, data_max, data_exp, seed_weight, disc_max)
 
         # copy data off
         cv = np.zeros((m, n, values), dtype='float32')
@@ -202,16 +204,15 @@ def stereo_fovea2(
     else:
         u.create(0, 0, CV_8U)
 
-    # declare C variables (doesn't work inside IF block)
-    cdef Mat zi
-    cdef np.ndarray[uchar, ndim=2, mode="c"] ci
-
     # run belief propagation
-    zi = stereo_ms_fovea2(x, y, xd, yd, u, values, iters, levels, smooth,
-               data_weight, data_max, seed_weight, disc_max, fovea_x, fovea_y, fovea_width, fovea_height)
+    cdef Mat zi = stereo_ms_fovea2(
+        x, y, xd, yd, u, values, iters, levels, smooth,
+        data_weight, data_max, seed_weight, disc_max,
+        fovea_x, fovea_y, fovea_width, fovea_height)
 
     # copy data off
-    ci = np.zeros((zi.rows, zi.cols), dtype='uint8')
+    cdef np.ndarray[uchar, ndim=2, mode="c"] ci = np.zeros(
+        (zi.rows, zi.cols), dtype='uint8')
     ci[:, :] = <np.uint8_t[:zi.rows, :zi.cols]> zi.data
 
     return ci
