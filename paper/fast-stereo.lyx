@@ -266,9 +266,9 @@ Markov Random Fields and Loopy Belief Propagation
 \end_layout
 
 \begin_layout Standard
-Due to ambiguities in pixel-by-pixel correspondences across stereo image
- pairs, disparity estimation is more accurate when it takes into account
- statistical relationships between disparities at different image positions.
+Due to ambiguities in pixel-by-pixel correspondences across image pairs,
+ disparity estimation is more accurate when it takes into account statistical
+ relationships between disparities at different image positions.
  Useful disparity images have tens of thousands of pixels or more, so it
  is not practical to model the full correlation matrix.
  A popular and successful approach [TODO: refs] has been to model disparity
@@ -293,19 +293,19 @@ Due to ambiguities in pixel-by-pixel correspondences across stereo image
 
  is the field outside the boundary [TODO: ref Fieguth].
  A variety of numerical approaches exist for estimating the maximum a posteriori
- disparity image, given uncertain pixel-by-pixel estimates.
+ disparity image given uncertain pixel-by-pixel estimates.
  
 \end_layout
 
 \begin_layout Standard
-One such numerical approach is Loopy Belief Propagation (BP).
- Belief Propagation is an algorithm for inference on graphical models (inlcuding
- Bayesian networks and Markov random fields).
+One such numerical approach is belief propagation (BP), an algorithm for
+ inference on graphical models, inlcuding Bayesian networks and Markov random
+ fields.
  BP produces exact solutions on trees [TODO: ref].
  The statistical dependencies in a Markov random field contain loops, and
  these prevent exact inference.
- However, the algorithm typically produces good approximations after running
- for a few iterations [TODO: ref].
+ However, BP typically produces good approximations after running for a
+ few iterations [TODO: ref].
  
 \end_layout
 
@@ -384,14 +384,14 @@ where
 We used an implementation of loopy BP [TODO: ref Felzenszwalb & Huttenlocher]
  with several optimizations that provide orders-of-magnitude acceleration.
  The most salient of these in the present context is a multiscale approach
- that reduces the numbers of iterations needed to propagate information
- to distant parts of the image.
+ that reduces the iterations needed to propagate information to distant
+ parts of the image.
  The first step in this process is the construction of a data cost pyramid.
- Beginning with the full cost volume, a coarser volume is created (half
- the size in each dimension) by summing the costs over 2x2 neighbourhoods
+ Beginning with the full cost volume, a coarser volume is created, half
+ the size in each dimension, by summing the costs over 2x2 neighbourhoods
  of pixels.
- This is repeated four or five more times, producing coarser levels of the
- pyramid.
+ This is then repeated with on the coarser volume, and so on for several
+ levels, producing coarser levels of the pyramid.
  [TODO: describe multiscale messages]
 \end_layout
 
@@ -402,7 +402,7 @@ Disparity is estimated after belief propagation as
 \begin_layout Standard
 \begin_inset Formula 
 \[
-D_{x,y,k}=\operatorname{arg\,min}_{d}\,C_{x,y,d,k}.
+D_{x,y,k}^{est}=\operatorname{arg\,min}_{d}\,C_{x,y,d,k}.
 \]
 
 \end_inset
@@ -599,7 +599,7 @@ status open
 \align center
 \begin_inset Graphics
 	filename system-sketch.pdf
-	scale 75
+	scale 60
 	BoundingBox 130bp 150bp 590bp 390bp
 
 \end_inset
@@ -644,7 +644,11 @@ If the cameras are moving, we project
  system, then the corresponding estimate in the left camera's new coordinate
  system, and finally into a disparity image from the approximate perspective
  of the new camera position.
- Due to changes in perspective, there is not a one-to-one map between pixels
+ 
+\end_layout
+
+\begin_layout Standard
+Due to changes in perspective, there is not a one-to-one map between pixels
  in the previous and new disparity images, so some pixels in the remapped
  disparity image are blank.
  We experimented with two ways of filling in the blank pixels.
@@ -653,7 +657,83 @@ If the cameras are moving, we project
  Some pixels also corresponded to multiple previous disparities per frame
  rather than zero or one.
  [TODO: For these pixels, the largest disparity is chosen (corresponding
- to the nearest surface).]
+ to the nearest surface).] Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:interp"
+
+\end_inset
+
+ compares these two methods.
+ Taking the maximum was much faster than bilinear interpolation (XXs vs.
+ XXs), with comparable results, so we used the former method.
+ 
+\end_layout
+
+\begin_layout Standard
+[TODO: use whole frame as seed with lower weight?]
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figures/smudge-vs-interp.png
+	scale 50
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Comparison of interpolation methods for remapped data.
+ The top left panel is a disparity map 
+\begin_inset Formula $D_{k}^{est}$
+\end_inset
+
+.
+ The top right is the previous frame's estimate, 
+\begin_inset Formula $D_{k-1}^{est}$
+\end_inset
+
+, remapped into the current frame's perspective.
+ Aside from the missing data (dark blue points) this is a fair approximation
+ of the current disparity estimate, because while the cameras are moving,
+ nothing else in the scene is moving.
+ The bottom right panel shows linear interpolation of the remapped data.
+ The bottom left panel is the maximum of the remapped image, and copies
+ of this image shifted one pixel vertically and one pixel both left and
+ right.
+ 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:interp"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Subsection
@@ -707,7 +787,6 @@ This method also allows the algorithm to ignore information from past frames
  Certain other ways of efficiently using information from past frames (e.g.
  low-pass filtering the depth, or using a cost term or prior probability
  without saturation) do not have this advantage.
- 
 \end_layout
 
 \begin_layout Standard
@@ -879,7 +958,7 @@ where
 \end_layout
 
 \begin_layout Subsection
-Disparity Decisions and Fovea Placement
+Fovea Placement
 \end_layout
 
 \begin_layout Standard
@@ -889,26 +968,204 @@ Disparity Decisions and Fovea Placement
 \end_layout
 
 \begin_layout Standard
-[JO: I think we should derive the uncertainty for a single 
-\begin_inset Formula $(x,y,k)$
+In each frame, the system tries to place the fovea in order to minimize
+ a task-specific cost function.
+ The cost functions consider disparity estimation error and also the frame-by-fr
+ame relevance of different image regions to the task.
+ The simplest cost we use is the unweighted squared error, 
+\begin_inset Formula 
+\[
+C_{x,y}^{u}=(D_{x,y}^{est}-D_{x,y})^{2},
+\]
+
 \end_inset
 
- first, then use those to compute the uncertainty for the whole image 
-\begin_inset Formula $k$
+where 
+\begin_inset Formula $D_{x,y}$
 \end_inset
 
-.]
+ is ground-truth disparity.
+ In various contexts we used three variations of 
+\begin_inset Quotes eld
+\end_inset
+
+ground truth
+\begin_inset Quotes erd
+\end_inset
+
+.
+ First, we used ground truth that is provided with the Kitti dataset for
+ selected isolated frames.
+ Second, we used LIDAR data, which is available for all video frames.
+ Its limitations are that it is somewhat sparser than the images, it does
+ not cover the upper visual field, and (importantly) it is not synchronized
+ with the camera sensors.
+ The latter limiation introduces large errors around the edges of moving
+ objects.
+ Our final variation of 
+\begin_inset Quotes eld
+\end_inset
+
+ground truth
+\begin_inset Quotes erd
+\end_inset
+
+ was high-resolution BP with 50 iterations.
+ This was expected to be somewhat inaccurate, but more accurate on average
+ than our faster approaches.
+ 
 \end_layout
 
 \begin_layout Standard
-\noindent
-[TODO: 
-\emph on
-don't think we're using any of this either.
+We also used importance-weighted cost, 
+\begin_inset Formula 
+\[
+C_{x,y}^{w}=w_{x,y}(D_{x,y}^{est}-D_{x,y})^{2},
+\]
 
-\emph default
- We use a variety of uncertainty cost functions for different tasks.
- We denote the uncertainty cost for each pixel 
+\end_inset
+
+where the weight 
+\begin_inset Formula $w_{x,y}$
+\end_inset
+
+ emphasizes task-critical regions.
+ A wide variety of weighting schemes are possible.
+ One obvious scheme for navigation is to emphasize regions in the direction
+ of travel, because the risk of collisions with obstacles is greatest in
+ this direction.
+ Another is to emphasize regions in which surfaces are relatively close
+ (i.e.
+ disparity is high).
+ Before processing each frame, we downsampled the previous frame's disparity
+ estimate by a factor of eight in each dimension, and projected it into
+ the current perspective.
+ We will refer to this remapped disparity as 
+\begin_inset Formula $D_{x,y}^{m}$
+\end_inset
+
+.
+ This provided an initial estimate of the disparities in different parts
+ of the image that was useful for fovea placement, with minimal computational
+ cost due to downsampling.
+ 
+\end_layout
+
+\begin_layout Standard
+Weighting by proximity emphasizes the ground in front of the car, which
+ is always close, even though it is typically clear of obstacles.
+ Instead, we used the following proximity weight: 
+\begin_inset Formula 
+\[
+w_{x,y}^{p}=\max(D_{x,y}^{m}-\bar{D}_{x,y},0),
+\]
+
+\end_inset
+
+where 
+\begin_inset Formula $\bar{D}_{x,y}$
+\end_inset
+
+ is the mean disparity at location 
+\begin_inset Formula $x,y$
+\end_inset
+
+.
+ This emphasizes parts of the image in which surfaces are closer than usual.
+ We combined this frame-by-frame weight with a static weight template 
+\begin_inset Formula $w_{x,y}^{s}$
+\end_inset
+
+, which was highest in the horizontal centre of the image (the direction
+ of travel) and also lower at the top of the image than the bottom.
+ Figure XX shows an example frame in which a cyclist is strongly emphasized
+ by this method.
+ 
+\end_layout
+
+\begin_layout Standard
+We calculated 
+\begin_inset Formula $\bar{D}_{x,y}$
+\end_inset
+
+ over entire videos before processing, which would be unrealistic in the
+ field.
+ However, a recursive low-pass filter with a long time constant would have
+ a similar effect with low computational burden.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figures/importance.png
+	scale 50
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Weighting by disparity in excess of the average.
+ Top: Average disparity 
+\begin_inset Formula $\bar{D}_{x,y}$
+\end_inset
+
+ estimated over a long image sequence.
+ Center: Disparity 
+\begin_inset Formula $D_{x,y}$
+\end_inset
+
+ estimated in a single frame.
+ Bottom: The weight 
+\begin_inset Formula $w^{s}w^{p}$
+\end_inset
+
+, where 
+\begin_inset Formula $w^{s}$
+\end_inset
+
+ is a static weight template that emphasizes the direction of travel, and
+ 
+\begin_inset Formula $w_{x,y}^{p}=\max(D_{x,y}^{m}-\bar{D}_{x,y},0)$
+\end_inset
+
+.
+ 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+[TODO: discuss also weighting by uncertainty?]
+\end_layout
+
+\begin_layout Standard
+relevant image regions that are is deviate have top of the visual fionly
+ covers the bottom wWe approximated least-squareWe denote the uncertainty
+ at for each pixel 
 \begin_inset Formula $(x,y)$
 \end_inset
 
@@ -1443,6 +1700,177 @@ name "tab:parameters"
 Results
 \end_layout
 
+\begin_layout Subsection
+Motivating Examples
+\end_layout
+
+\begin_layout Standard
+Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:fovea-examples"
+
+\end_inset
+
+ shows two disparity estimates from a single frame, with the fovea in different
+ places (the centres are marked with white + signs).
+ These examples were processed with multiple levels of resolution, with
+ a small high-resolution region in the centre and multiple levels of decreasing
+ resolution with greater distance from the centre, analogous to the human
+ eye and visual cortex.
+ The total runtime of BP in these examples is only a few times as great
+ as BP at the lowest resolution.
+ In the top frame, the fovea clearly resolves the cyclist, while in the
+ bottom frame the fovea correctly interprets a low-disparity region in which
+ the top frame has an artefact.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figures/fovea-examples.png
+	scale 50
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Examples of foveal multiscale belief propagation.
+ The white + marks indicate fovea centres.
+ These examples were processed at multiple resolutions, with equal computational
+ demands at each of these resolutions (e.g.
+ a parafoveal region twice the size of the fovea had half the resolution).
+ In the top panel, the fovea resolves a cyclist at high resolution.
+ There is a large artefact in the top-centre of the image.
+ In the bottom panel (same frame), the fovea is instead centred on this
+ artefact, and corrects it.
+ 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:fovea-examples"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:seed-example"
+
+\end_inset
+
+ shows an example of the disparity estimation that is improved through the
+ use of information from a previous frame.
+ The top panel is the same as that of Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:fovea-examples"
+
+\end_inset
+
+.
+ It contains an artefact in the sky, which is featureless in this scene
+ and therfore has ambiguous disparity.
+ The centre panel is a remapped disparity estimate from a foveal and parafoveal
+ region in the previous frame, overlapping with the artefact in the top
+ centre.
+ The bottom panel shows a new estimate (with the fovea on the cyclist, similar
+ to that of the top panel) but with an additional cost term that penalizes
+ deviations from the remapped estimate in the centre panel.
+ This example illustrates that information from previous frames has the
+ potential to improve disparity estimates, as one would expect due to correlatio
+ns over time.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figures/seed-vs-no-seed.png
+	scale 50
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+An example of the use of information from a previous frame to improve disparity
+ estimation.
+ Top: Estimate with fovea on cyclist, as the top panel of figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:fovea-examples"
+
+\end_inset
+
+.
+ Centre: A remapped estimate from the fovea of the previous frame, in which
+ the fovea was in the top centre of the image.
+ Bottom: New disparity estimate with fovea on the cyclist, but also using
+ the prior estimate from the centre panel.
+ The prior estimate resolves the ambiguity in the current frame, and corrects
+ the artefact.
+ 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:seed-example"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
 \begin_layout Standard
 - [TODO: flops per frame]
 \end_layout
@@ -1516,10 +1944,7 @@ key "Abrams1989"
 .
  A recent system that achieved appropriate speeds (ref Villgrattner) used
  actuators that cost thousands of dollars each.
- Furthermore, this system used only two cameras with short focal lengths,
- and therefore has nothing analogous to a human fovea.
- Foveal/peripheral pairs of actuated cameras, and longer lenses, would be
- correspondingly more difficult to actuate.
+ 
 \end_layout
 
 \begin_layout Subsection
@@ -1527,36 +1952,88 @@ Future Work
 \end_layout
 
 \begin_layout Standard
-We are intersted in adapting this system for a panoramic catadoptric stereo
- camera that we have recently developed (in preparation), and testing it
- in robot navigation applications.
+This approach is suited to navigation in mobile robots with limited processing
+ power.
+ We are specifically intersted in adapting this system for a panoramic catadoptr
+ic stereo sensor that is in development, and testing it in navigation among
+ pedestrians.
+ This may allow further fine-tuning of the importance weights.
+ For example the weights could be more directly tied to decisions that the
+ robot must make, e.g.
+ whether a narrow gap is too narrow to navigate.
  
 \end_layout
 
 \begin_layout Standard
-Our current system has relatively high fidelity in a single small region
- and low fidelity in the rest of the scene.
- One possibility for future work would be to use more than two levels of
- fidelity.
- For example, a foveal region of width 
-\begin_inset Formula $w$
+Another potential direction for future work would be to adapt the method
+ to parallel hardware such as a GPU or FPGA.
+ The multiple-resolution version of our approach (figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:fovea-examples"
+
 \end_inset
 
- that is processed at full resolution could be surrounded by a region of
- width 
-\begin_inset Formula $2w$
+) is well suited for such an implementation, because each scale has the
+ same number of pixels.
+ For example, if the fovea is 
+\begin_inset Formula $m$
 \end_inset
 
- that is processed at half resolution, and so on, so that concentric windows
- would each require about the same computation time.
- We expect that this would reduce discontinuities at window edges.
- However, to support more than two scales at the same frame rate, other
- parameters (e.g.
- fovea size, numbers of iterations per scale) would have to be reduced.
- More work is needed to determine whether this would improve performance
- over the current system.
- A more complex weighted integral image over uncertainty cost would be needed
- for such a system in order to choose fovea locations.
+ by 
+\begin_inset Formula $n$
+\end_inset
+
+pixels, then the immediate parafoveal region is 
+\begin_inset Formula $2m$
+\end_inset
+
+ by 
+\begin_inset Formula $2n$
+\end_inset
+
+, downsampled by a factor of two, for a total of 
+\begin_inset Formula $m$
+\end_inset
+
+ by 
+\begin_inset Formula $n$
+\end_inset
+
+pixels.
+ An FPGA with a capacity for 
+\begin_inset Formula $m$
+\end_inset
+
+ by 
+\begin_inset Formula $n$
+\end_inset
+
+ pixels could process a frame in a few steps, potentially yielding very
+ high framerates with modest hardware.
+ 
+\end_layout
+
+\begin_layout Subsection
+Conclusion
+\end_layout
+
+\begin_layout Standard
+TODO
+\end_layout
+
+\begin_layout Section*
+Acknowledgements 
+\end_layout
+
+\begin_layout Standard
+This work was supported in part by a Mitacs and CrossWing Inc.
+ The authors thank John-Paul Gignac of CrossWing Inc.
+ for helpful discussions.
+ 
+\end_layout
+
+\begin_layout Standard
 \begin_inset CommandInset bibtex
 LatexCommand bibtex
 bibfiles "fast-stereo"
