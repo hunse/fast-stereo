@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 import cv2
 
-from bp_wrapper import foveal_bp, foveal_bp2, coarse_bp
+from bp_wrapper import foveal_bp, foveal_bp2, coarse_bp, laplacian
 from data import KittiSource
 from importance import UnusuallyClose, get_average_disparity
 from transform import DisparityMemory, downsample
@@ -129,6 +129,7 @@ class Filter:
         disp = foveal_bp2(
             frame, fovea_corner, fovea_shape, seed,
             values=self.values, iters=self.iters, **self.params)
+
         # disp = coarse_bp(frame, down_factor=1, iters=3, values=self.values, **self.params)
         # disp = cv2.pyrUp(disp)[:self.frame_shape[0], :self.frame_shape[1]]
 
@@ -277,11 +278,11 @@ if __name__ == "__main__":
 
         # --- coarse
         if run_coarse:
-            params = {
+            coarse_params = {
                 'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
                 'data_max': 32.024780646200725, 'ksize': 3}
             coarse_time = time.time()
-            coarse_disp = coarse_bp(frame, down_factor=1, iters=3, values=values, **params)
+            coarse_disp = coarse_bp(frame, down_factor=1, iters=3, values=values, **coarse_params)
             coarse_disp = cv2.pyrUp(coarse_disp)[:frame_shape[0],:frame_shape[1]]
             coarse_disp *= 2
             coarse_time = time.time() - coarse_time
@@ -291,21 +292,35 @@ if __name__ == "__main__":
 
         # --- fine
         if run_fine:
-            params = {
-                'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
-                'data_max': 32.024780646200725, 'ksize': 3}
+            # fine_params = {
+            #     'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
+            #     'data_max': 32.024780646200725, 'ksize': 3, 'data_exp': 1.}
+            fine_params = {
+                'data_exp': 78.405691668008387,
+                'data_weight': 0.12971562499581216, 'data_max': 0.012708212809027446,
+                'ksize': 3, 'disc_max': 172501.67276668231}
+
+            # fine_params = {'data_weight': 0.07, 'disc_max': 1.7,
+            #                'data_max': 15, 'ksize': 3}
+            # fine_params = {'data_weight': 0.07, 'disc_max': 15,
+            #                'data_max': 90, 'ksize': 3}
+
+            # fine_params = {
+            #     'data_weight': 0.16145115747533928, 'disc_max': 2,
+            #     'data_max': 32.024780646200725, 'ksize': 3}
             fine_time = time.time()
-            fine_disp = coarse_bp(frame, down_factor=0, iters=3, values=values, **params)
+            fine_disp = coarse_bp(frame, down_factor=0, iters=3, values=values, **fine_params)
             fine_disp *= 2
             fine_time = time.time() - fine_time
 
             append_table('fine', fine_disp[:,values:], true_disp, true_points)
             times['fine'].append(fine_time)
 
+            print(table['fine_pu'])
+
         # --- filter
         filter_time = time.time()
         disp, fovea_corner = filter.process_frame(source.positions[i], frame)
-        # disp, fovea_corner = filter.process_frame(source.positions[i], source.video[i])
         filter_time = time.time() - filter_time
 
         append_table('filter', disp[:,values:], true_disp, true_points)
@@ -338,6 +353,11 @@ if __name__ == "__main__":
         plt.clf()
         next_subplot('frame')
         plt.imshow(frame[0][:, values:], cmap='gray')
+
+        next_subplot('fine input')
+        if run_fine:
+            lap = laplacian(frame[0], ksize=fine_params['ksize'])
+            plt.imshow(lap[:, values:], cmap='gray')
 
         next_subplot('coarse')
         if run_coarse:

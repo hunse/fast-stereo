@@ -698,17 +698,113 @@ void bp_ms_fovea2(
     delete rf;
 }
 
+volume<float> *comp_data_fovea(
+    cv::Mat img1, cv::Mat img2, int values, int fx, int fy, int fwidth, int fheight,
+    float lambda, float threshold, float sigma)
+{
+    // int values = img2.cols - img1.cols + 1;
+    // assert(values > 0);
+    // assert(img1.rows == img2.rows);
+    assert(fx >= values);
+    volume<float> *data = new volume<float>(fwidth, fheight, values);
+
+    img1.convertTo(img1, CV_32F);
+    img2.convertTo(img2, CV_32F);
+
+    cv::Mat sm1, sm2;
+    if (sigma >= 0.1) {
+        cv::Size size(9, 9);
+        cv::GaussianBlur(img1, sm1, size, sigma);
+        cv::GaussianBlur(img2, sm2, size, sigma);
+    } else {
+        sm1 = img1;
+        sm2 = img2;
+    }
+
+    volume<float> &datar = *data;
+    const int x2 = values - 1;
+
+    // single pixel differencing
+    for (int y = 0; y < fheight; y++) {
+        const float* sm1i = sm1.ptr<float>(fy+y);
+        const float* sm2i = sm2.ptr<float>(fy+y);
+
+        for (int x = 0; x < fwidth; x++) {
+            for (int value = 0; value < values; value++) {
+                float val = abs(sm1i[fx+x] - sm2i[fx+x+x2-value]);
+                datar(x, y, value) = lambda * std::min(val, threshold);
+            }
+        }
+    }
+
+    return data;
+}
+
+volume<float> *comp_data_down1(
+    cv::Mat img1, cv::Mat img2, int values,
+    float lambda, float threshold, float sigma)
+{
+    assert(img1.type() == CV_8U);
+    assert(img2.type() == CV_8U);
+
+    int width = img1.cols;
+    int height = img1.rows;
+    // volume<float> *data = new volume<float>(width/2, height/2, values/2);
+    volume<float> *data = new volume<float>((width+1)/2, (height+1)/2, values/2);
+
+    if (lambda == 0) {
+        return data;
+    }
+
+    img1.convertTo(img1, CV_32F);
+    img2.convertTo(img2, CV_32F);
+
+    cv::Mat sm1, sm2;
+    if (sigma >= 0.1) {
+        cv::Size size(9, 9);
+        cv::GaussianBlur(img1, sm1, size, sigma);
+        cv::GaussianBlur(img2, sm2, size, sigma);
+    } else {
+        sm1 = img1;
+        sm2 = img2;
+    }
+
+    volume<float> &datar = *data;
+
+    for (int y = 0; y < height; y++) {
+        const float* sm1i = sm1.ptr<float>(y);
+        const float* sm2i = sm2.ptr<float>(y);
+
+        for (int x = values-1; x < width; x++) {
+            for (int value = 0; value < values; value++) {
+                float val = abs(sm1i[x] - sm2i[x-value]);
+                datar(x/2, y/2, value/2) += lambda * std::min(val, threshold);
+            }
+        }
+    }
+
+    return data;
+}
+
 cv::Mat stereo_ms_fovea2(
     cv::Mat img1, cv::Mat img2, cv::Mat img1d, cv::Mat img2d, cv::Mat seed,
     int values, int iters, int levels, float smooth,
     float data_weight, float data_max, float seed_weight, float disc_max,
     int fovea_x, int fovea_y, int fovea_width, int fovea_height)
 {
+    assert(seed.empty());
+
     //create coarse data volume
-    // cv::pyrDown(img1, img1d);
-    // cv::pyrDown(img2, img2d);
-    volume<float> *datad = comp_data(
-        img1d, img2d, values/2, data_weight, data_max, smooth);
+    volume<float> *datad;
+    if (1) {
+        // cv::pyrDown(img1, img1d);
+        // cv::pyrDown(img2, img2d);
+        datad = comp_data(
+            img1d, img2d, values/2, data_weight, data_max, smooth);
+    } else {
+        datad = comp_data_down1(
+            img1, img2, values, data_weight, data_max, smooth);
+    }
 
     if (!seed.empty()) {
         cv::Mat seedd((seed.rows+1)/2, (seed.cols+1)/2, CV_8U, cv::Scalar(0));
@@ -745,9 +841,12 @@ cv::Mat stereo_ms_fovea2(
         img1f, img2f, values, data_weight, data_max, smooth);
     if (!seed.empty()) add_seed_cost(*dataf, seedf, seed_weight);
 
-//     volume<float> *dataf = new volume<float>(1, 1, 1);
+    // volume<float> *dataf = comp_data_fovea(
+    //     img1, img2, values, fovea_x, fovea_y, fovea_width, fovea_height,
+    //     data_weight, data_max, smooth);
+    // assert(seed.empty());
+
     bp_ms_fovea2(datad, dataf, iters, levels, disc_max, fovea_x, fovea_y);
-//     bp_ms(datad, iters, levels, disc_max);
 
     cv::Mat outd = max_value(*datad);
     outd *= 2;
@@ -758,6 +857,20 @@ cv::Mat stereo_ms_fovea2(
     cv::Mat out(outd.rows*2, outd.cols*2, CV_8U, cv::Scalar(0));
     cv::pyrUp(outd, out);
 
+    // // testing with fine...
+    // volume<float> *data = comp_data(
+    //     img1, img2, values, data_weight, data_max, smooth);
+    // bp_ms(data, iters, levels, disc_max);
+    // cv::Mat outfine = max_value(*data);
+
+    // for (int y = 0; y < out.rows; y++) {
+    //     uchar* outi = out.ptr<uchar>(y);
+    //     uchar* outfinei = outfine.ptr<uchar>(y);
+    //     for (int x = 0; x < out.cols; x++) {
+    //         outi[x] = outfinei[x];
+    //     }
+    // }
+
     for (int y = 1; y < fovea_height-1; y++) {
         uchar* outi = out.ptr<uchar>(y+fovea_y);
         uchar* outfi = outf.ptr<uchar>(y);
@@ -765,6 +878,11 @@ cv::Mat stereo_ms_fovea2(
         for (int x = 1; x < fovea_width-1; x++) {
             outi[x+fovea_x] = outfi[x];
         }
+
+        // uchar* outfinei = outfine.ptr<uchar>(y+fovea_y);
+        // for (int x = 1; x < fovea_width-1; x++) {
+        //     outi[x+fovea_x] = outfinei[x+fovea_x];
+        // }
     }
 
     return out;

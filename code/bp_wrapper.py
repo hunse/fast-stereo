@@ -65,7 +65,7 @@ def coarse_bp(frame, values=values_default, down_factor=3, ksize=1, iters=5, **p
 
 
 # TODO: less conflicty name
-def foveal_bp(frame, fovea_x, fovea_y, seed, values=values_default, down_factor=0, ksize=1, iters=5, **params):
+def foveal_bp(frame, fovea_corner, seed, values=values_default, down_factor=0, ksize=1, iters=5, **params):
     img1, img2 = frame
 
     values_coarse = values / 2**down_factor
@@ -74,6 +74,7 @@ def foveal_bp(frame, fovea_x, fovea_y, seed, values=values_default, down_factor=
     img1 = laplacian(img1, ksize=ksize)
     img2 = laplacian(img2, ksize=ksize)
 
+    fovea_y, fovea_x = fovea_corner
     fovea_x = fovea_x / 2**down_factor
     fovea_y = fovea_y / 2**down_factor
 
