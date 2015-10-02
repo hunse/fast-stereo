@@ -111,7 +111,7 @@ def fine_bp(frame, values=values_default, levels=5, ksize=9, **params):
     img1 = laplacian(img1, ksize=ksize)
     img2 = laplacian(img2, ksize=ksize)
 
-    disp = bp.stereo(img1d, img2d, values=values, levels=levels, **params)
+    disp = bp.stereo(img1, img2, values=values, levels=levels, **params)
     return disp
 
 

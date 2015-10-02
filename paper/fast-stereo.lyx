@@ -461,13 +461,13 @@ Suppose we have a certain time budget per frame (e.g.
 \begin_inset Float figure
 wide false
 sideways false
-status collapsed
+status open
 
 \begin_layout Plain Layout
 \align center
 \begin_inset Graphics
 	filename figures/fovea-rationale.png
-	scale 30
+	scale 40
 
 \end_inset
 
