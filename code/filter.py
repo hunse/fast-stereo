@@ -2,6 +2,8 @@
 
 # TODO: fovea memory for seed
 
+from collections import defaultdict
+
 import time
 import numpy as np
 import matplotlib.pyplot as plt
@@ -127,7 +129,7 @@ class Filter:
 
         # --- fovea boundaries in frame coordinates ...
         disp = foveal_bp2(
-            frame, fovea_corner, fovea_shape, seed,
+            frame, fovea_corner, self.fovea_shape, seed,
             values=self.values, iters=self.iters, **self.params)
 
         # disp = coarse_bp(frame, down_factor=1, iters=3, values=self.values, **self.params)
@@ -259,14 +261,14 @@ if __name__ == "__main__":
     fig = plt.figure(1)
     plt.show(block=False)
 
-    table = dict()
+    table = defaultdict(list)
     times = dict(coarse=[], fine=[], filter=[])
 
     def append_table(key, disp, true_disp, true_points):
-        table.setdefault(key + '_du', []).append(cost(disp, true_disp))
-        table.setdefault(key + '_dw', []).append(cost(disp, true_disp, average_disp))
-        table.setdefault(key + '_pu', []).append(cost_on_points(disp, true_points))
-        table.setdefault(key + '_pw', []).append(cost_on_points(disp, true_points, average_disp))
+        table.setdefault('du_' + key, []).append(cost(disp, true_disp))
+        table.setdefault('dw_' + key, []).append(cost(disp, true_disp, average_disp))
+        table.setdefault('pu_' + key, []).append(cost_on_points(disp, true_points))
+        table.setdefault('pw_' + key, []).append(cost_on_points(disp, true_points, average_disp))
 
     for i in range(source.n_frames):
         print(i)
@@ -292,13 +294,16 @@ if __name__ == "__main__":
 
         # --- fine
         if run_fine:
-            # fine_params = {
-            #     'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
-            #     'data_max': 32.024780646200725, 'ksize': 3, 'data_exp': 1.}
             fine_params = {
-                'data_exp': 78.405691668008387,
-                'data_weight': 0.12971562499581216, 'data_max': 0.012708212809027446,
-                'ksize': 3, 'disc_max': 172501.67276668231}
+                'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
+                'data_max': 32.024780646200725, 'ksize': 3, 'data_exp': 1.}
+            # fine_params = {'iters': 3, 'ksize': 5, 'data_weight': 0.0002005996175, 'data_max': 109.330237051, 'data_exp': 6.79481234475, 'disc_max': 78.4595739304}
+
+
+            # fine_params = {
+            #     'data_exp': 78.405691668008387,
+            #     'data_weight': 0.12971562499581216, 'data_max': 0.012708212809027446,
+            #     'ksize': 3, 'disc_max': 172501.67276668231}
 
             # fine_params = {'data_weight': 0.07, 'disc_max': 1.7,
             #                'data_max': 15, 'ksize': 3}
@@ -316,8 +321,6 @@ if __name__ == "__main__":
             append_table('fine', fine_disp[:,values:], true_disp, true_points)
             times['fine'].append(fine_time)
 
-            print(table['fine_pu'])
-
         # --- filter
         filter_time = time.time()
         disp, fovea_corner = filter.process_frame(source.positions[i], frame)
@@ -325,6 +328,7 @@ if __name__ == "__main__":
 
         append_table('filter', disp[:,values:], true_disp, true_points)
         times['filter'].append(filter_time)
+        print("filter time: %s" % filter_time)
 
         # --- fovea
         fovea0 = slice(fovea_corner[0], fovea_corner[0]+fovea_shape[0])
@@ -332,16 +336,25 @@ if __name__ == "__main__":
         fovea1v = slice(fovea1.start - values, fovea1.stop - values)
         disp_fovea = disp[fovea0, fovea1]
         true_fovea = true_disp[fovea0, fovea1v]
-        table.setdefault('true_fovea', []).append(cost(disp_fovea, true_fovea))
+        table['du_fovea_filter'].append(cost(disp_fovea, true_fovea))
+
+        if run_coarse:
+            coarse_fovea = coarse_disp[fovea0, fovea1]
+            table['du_fovea_coarse'].append(cost(coarse_fovea, true_fovea))
+            table['cu_fovea_filter'].append(cost(disp_fovea, coarse_fovea))
 
         if run_fine:
             fine_fovea = fine_disp[fovea0, fovea1]
-            table.setdefault('fine_fovea', []).append(cost(disp_fovea, fine_fovea))
+            table['du_fovea_fine'].append(cost(fine_fovea, true_fovea))
+            table['fu_fovea_filter'].append(cost(disp_fovea, fine_fovea))
+
+        if run_coarse and run_fine:
+            table['fu_fovea_coarse'].append(cost(coarse_fovea, fine_fovea))
 
         # --- plot
         extent = (values, disp.shape[1], disp.shape[0], 0)
 
-        r, c = 3, 2
+        r, c = 4, 2
         i = np.array([0])
         def next_subplot(title):
             i[:] += 1
@@ -367,10 +380,10 @@ if __name__ == "__main__":
         if run_fine:
             plt.imshow(fine_disp[:,values:], vmin=0, vmax=128, extent=extent)
 
-        # next_subplot('disparity memory')
-        # if len(filter.disparity_memory.transforms) > 0:
-        #     plt.imshow(filter.disparity_memory.transforms[0], vmin=0, vmax=128,
-        #                extent=extent)
+        next_subplot('disparity memory')
+        if len(filter.disparity_memory.transforms) > 0:
+            plt.imshow(filter.disparity_memory.transforms[0], vmin=0, vmax=128,
+                       extent=extent)
 
         next_subplot('filter')
         plt.imshow(disp[:,values:], vmin=0, vmax=128, extent=extent)
@@ -385,7 +398,13 @@ if __name__ == "__main__":
         plt.xlim(extent[:2])
         plt.ylim(extent[2:])
 
-        next_subplot('fovea - fine')
+        next_subplot('fovea_filter|coarse')
+        if run_coarse:
+            fovea_diff = disp_fovea.astype(float) - coarse_fovea
+            plt.imshow(fovea_diff)
+            plt.colorbar()
+
+        next_subplot('fovea_filter|fine')
         if run_fine:
             fovea_diff = disp_fovea.astype(float) - fine_fovea
             plt.imshow(fovea_diff)
@@ -394,11 +413,14 @@ if __name__ == "__main__":
         fig.canvas.draw()
         # time.sleep(0.5)
 
-        print("(%0.3f, %0.3f)" % (table['coarse_pu'][-1], table['filter_pu'][-1]))
-        print("(%0.3f, %0.3f)" % (table['true_fovea'][-1], table['fine_fovea'][-1]))
+        print("pu (coarse, filter): (%0.3f, %0.3f)" % (table['pu_coarse'][-1], table['pu_filter'][-1]))
+        print("du fovea (coarse, filter, fine): (%0.3f, %0.3f, %0.3f)" % (
+            table['du_fovea_coarse'][-1], table['du_fovea_filter'][-1], table['du_fovea_fine'][-1]))
+        print("fu fovea (coarse, filter): (%0.3f, %0.3f)" % (
+            table['fu_fovea_coarse'][-1], table['fu_fovea_filter'][-1]))
         raw_input("Pause...")
 
-        if 0 and table['coarse_pu'][-1] < table['filter_pu'][-1]:
+        if 0 and table['pu_coarse'][-1] < table['pu_filter'][-1]:
             diff = disp.astype(float)[:,values:] - coarse_disp[:,values:]
             print(diff.min(), diff.max())
             plt.figure(2)
@@ -407,7 +429,10 @@ if __name__ == "__main__":
             plt.show(block=False)
 
             raw_input("Bad... (%0.3f, %0.3f)" % (
-                table['coarse_pu'][-1], table['filter_pu'][-1]))
+                table['pu_coarse'][-1], table['pu_filter'][-1]))
+
+    for key in sorted(list(table)):
+        print('%20s | %10.3f' % (key, np.mean(table[key])))
 
     # print(np.mean(costs))
     # print(np.mean(costs_on_points))
