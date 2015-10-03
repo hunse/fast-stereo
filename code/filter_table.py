@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 import sys
 import time
 import numpy as np
@@ -39,17 +41,17 @@ def get_row(drive):
     filter = Filter(average_disp, frame_down_factor, mem_down_factor,
                     fovea_shape, frame_shape, values, verbose=False)
 
-    table = dict()
+    table = defaultdict(list)
     # table = dict(coarse=[], coarse_w=[], fine=[], fine_w=[],
     #              filter=[], filter_w=[], fovea=[])
     # table = dict(in_fovea=[], weighted=[], unweighted=[], fine=[], coarse=[])
     times = dict(coarse=[], fine=[], filter=[])
 
     def append_table(key, disp, true_disp, true_points):
-        table.setdefault(key + '_du', []).append(cost(disp, true_disp))
-        table.setdefault(key + '_dw', []).append(cost(disp, true_disp, average_disp))
-        table.setdefault(key + '_pu', []).append(cost_on_points(disp, true_points))
-        table.setdefault(key + '_pw', []).append(cost_on_points(disp, true_points, average_disp))
+        table['du_' + key].append(cost(disp, true_disp))
+        table['dw_' + key].append(cost(disp, true_disp, average_disp))
+        table['pu_' + key].append(cost_on_points(disp, true_points))
+        table['pw_' + key].append(cost_on_points(disp, true_points, average_disp))
 
     for i in range(source.n_frames):
         sys.stdout.write("%d " % i)
@@ -97,11 +99,15 @@ def get_row(drive):
         fovea0 = slice(fovea_corner[0], fovea_corner[0]+fovea_shape[0])
         fovea1 = slice(fovea_corner[1], fovea_corner[1]+fovea_shape[1])
         fovea1v = slice(fovea1.start - values, fovea1.stop - values)
+        coarse_fovea = coarse_disp[fovea0, fovea1]
+        fine_fovea = fine_disp[fovea0, fovea1]
         disp_fovea = disp[fovea0, fovea1]
         true_fovea = true_disp[fovea0, fovea1v]
-        fine_fovea = fine_disp[fovea0, fovea1]
-        table.setdefault('true_fovea', []).append(cost(disp_fovea, true_fovea))
-        table.setdefault('fine_fovea', []).append(cost(disp_fovea, fine_fovea))
+        table['du_fovea_coarse'].append(cost(coarse_fovea, true_fovea))
+        table['du_fovea_fine'].append(cost(fine_fovea, true_fovea))
+        table['du_fovea_filter'].append(cost(disp_fovea, true_fovea))
+        table['fu_fovea_coarse'].append(cost(coarse_fovea, fine_fovea))
+        table['fu_fovea_filter'].append(cost(disp_fovea, fine_fovea))
 
     sys.stdout.write("\n")
 
@@ -128,6 +134,7 @@ keys = sorted(list(rows[0]))
 # for drive, row in zip(drives, rows):
 #     print('|'.join(['%3d      ' % drive] + ['%10.3f' % row[key] for key in keys]))
 
-print(' |'.join("%10s" % v for v in ['drive'] + drives))
+print('%20s |' % 'drive' + ' |'.join("%10s" % v for v in drives))
+print('-' * 79)
 for key in keys:
-    print('%10s |' % key + ' |'.join('%10.3f' % row[key] for row in rows))
+    print('%20s |' % key + ' |'.join('%10.3f' % row[key] for row in rows))

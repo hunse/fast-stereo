@@ -12,7 +12,8 @@
 cv::Mat stereo_ms(
     cv::Mat img1, cv::Mat img2, cv::Mat seed,
     int values, int iters, int levels, float smooth,
-    float data_weight, float data_max, float seed_weight, float disc_max);
+    float data_weight, float data_max, float data_exp,
+    float seed_weight, float disc_max);
 
 cv::Mat stereo_ms_fovea(
     cv::Mat img1, cv::Mat img2, cv::Mat seed,
@@ -29,7 +30,8 @@ cv::Mat stereo_ms_fovea2(
 volume<float> *stereo_ms_volume(
     cv::Mat img1, cv::Mat img2, cv::Mat seed,
     int values, int iters, int levels, float smooth,
-    float data_weight, float data_max, float seed_weight, float disc_max);
+    float data_weight, float data_max, float data_exp,
+    float seed_weight, float disc_max);
 
 cv::Mat stereo_ms_probseed(
     cv::Mat img1, cv::Mat img2, cv::Mat seedlist,
