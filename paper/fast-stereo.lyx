@@ -123,8 +123,8 @@ Introduction
 \end_layout
 
 \begin_layout Standard
-Knowledge of distances to surfaces in the environment is essential for robot
- navigation, manipulation, etc.
+Information about locations of surfaces in the environment is essential
+ for robot navigation, manipulation, etc.
  Stereoscopic disparity, i.e.
  difference in the location of a given feature in images from two offset
  cameras, is a rich source of this information.
@@ -133,9 +133,11 @@ Knowledge of distances to surfaces in the environment is essential for robot
  Compared to other approaches to depth estimation, stereo is currently more
  cost effective than LIDAR, and it can provide estimates from a large field
  of view at high higher frame rates.
+ It is also more economical and higher-resolution than time-of-flight devices.
  In contrast with systems that rely on patterned infrared illumination (e.g.
- the Microsoft Kinect), stereo matching is also viable in a wide range of
- indoor and outdoor lighting conditions.
+ the Microsoft Kinect), it is not limited by infrared interference from
+ sunlight.
+ 
 \end_layout
 
 \begin_layout Standard
@@ -143,51 +145,62 @@ The first step in stereo depth estimation is to match image features in
  one camera with those in the other camera.
  This is done by comparing a small region of one image with a range of horizonta
 lly-offset regions in the other image.
- The most similar region in the second image, or perhaps one of the few
- most similar regions, is more likely than others to correspond to the same
- point in physical space.
- Sparse stereo methods match only a minority of features, particularly those
- that are distinctive and therefore likely to be matched correctly [TODO:
- ref].
- They do not estimate depth in regions with more ambiguous features.
- In contrast, dense methods provide estimates over the whole field of view,
- even in featureless regions.
- Dense methods are particularly useful for many robotics applications, because
- surface locations may be important whether or not they are filled with
- distinctive visual features.
- However, in the absence of distinctive features (e.g.
- on an image of a textureless wall), a wide range of regions may match equally
+ The most similar region in the second image (or perhaps one of the few
+ most similar regions) is relatively likely to correspond to the same point
+ in physical space.
+ 
+\emph on
+Sparse
+\emph default
+ stereo methods match only a minority of features, i.e.
+ distinctive ones that are likely to be matched correctly [TODO: ref].
+ In contrast, 
+\emph on
+dense
+\emph default
+ methods provide estimates over the whole field of view, even in featureless
+ regions.
+ Dense methods are of interest in robotics, because surface locations may
+ affect the robot whether or not they are filled with distinctive visual
+ features.
+ However, in the absence of distinctive features, e.g.
+ in an image of a textureless wall, a wide range of regions may match equally
  well.
- Information from other, more distinctive parts of the image, must somehow
- be taken into account to resolve the ambiguity.
+ Information from more distinctive parts of the image must be used to resolve
+ ambiguity.
 \end_layout
 
 \begin_layout Standard
-A successful approach has been to model the disparity map as a Markov random
- field [TODO: ref], in which neighbouring disparities are highly correlated.
- Given this model, if an ambiguous region (with a broad probability density
- over disparities) is surrounded by unambiguous regions (with narrow probability
- densities), then its ambiguity is resolved by the spatial correlations.
- Given a typical natural image pair with varied ambiguity in different parts,
- the maximum a posteriori depth image can be approximated from the Markov
- random field model in various ways, including loopy belief propagation
- (ref), graph cuts (ref), and Markov Chain Monte Carlo (ref) methods.
+Neighbouring disparities are highly correlated except at object boundaries.
+ If an ambiguous region (with a broad probability density over disparities)
+ is close to unambiguous regions (with narrow probability densities), then
+ accounting for spatial correlations can improve disparity estimates in
+ the ambiguous region.
+ A successful computational approach has been to model disparity maps as
+ Markov random fields [TODO: ref].
+ Maximum 
+\emph on
+a posteriori
+\emph default
+ depth images can be estimated quite accurately from the Markov random field
+ model using loopy belief propagation (ref), graph cuts (ref), or Markov
+ Chain Monte Carlo (ref) methods.
  However, despite many recent advances in efficiency, these methods remain
  computationally intensive.
- This limits these methods' practicality for robots, which require high
- frame rates with modest computational resources.
+ This limits their practicality for robots, which require high frame rates
+ with modest computational resources.
  
 \end_layout
 
 \begin_layout Standard
-This study takes a biologically inspired approach to work around this problem.
- The human visual system uses disparity as a depth cue, and the brain only
- has enough neurons to process a small fraction of the visual field in detail
- at any given time.
- A disproportionately large amount of cortex is dedicated to the centre
- of the visual field (the fovea), with progressively fewer cortical resources
- available for more peripheral regions of the visual field, a concept known
- as cortical magnification 
+In this study we explore the benefits of processing different parts of the
+ scene in different levels of detail.
+ This approach is broadly inspired by primate visual systems.
+ Primates use disparity as a depth cue, but in contrast with conventional
+ image processing, a disproportionately large amount of cortex is dedicated
+ to the centre of the visual field (the fovea), with progressively fewer
+ cortical resources available for more peripheral regions of the visual
+ field 
 \begin_inset CommandInset citation
 LatexCommand cite
 key "Daniel1961"
@@ -196,53 +209,116 @@ key "Daniel1961"
 
 .
  The eyes move frequently, typically jumping to a new target several times
- per second, to sense and analyze detailed information from different parts
- of the scene in series.
- These rapid eye movements (saccades) are sometimes directed to salient
- visual features, such as the onset of motion.
- However, importantly, the eyes are most often directed in a task-dependent
- manner, e.g.
- to the next set of letters, while reading 
+ per second, to sense and analyze detail from different parts of the scene
+ in series.
+ Analogously, in this study we process 
+\begin_inset Quotes eld
+\end_inset
+
+foveal
+\begin_inset Quotes erd
+\end_inset
+
+ image regions at high resolution and 
+\begin_inset Quotes eld
+\end_inset
+
+peripheral
+\begin_inset Quotes erd
+\end_inset
+
+ regions at lower resolution in order to save computation time.
+ 
+\end_layout
+
+\begin_layout Standard
+The key problem is where to locate the fovea in each frame.
+ Primates address this problem through sophisticated systems for directing
+ visual attention and eye movements (reviewed by 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Kowler2011,Hayhoe2005,Schutz2011"
+
+\end_inset
+
+).
+ Computational models of these systems, and applications to computer vision
+ and robotics, are reviewed by 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Borji2013,Frintrop2010,Kimura2013"
+
+\end_inset
+
+[also Tsotsos (2011)].
+ As discussed in these reviews, human eye movements are occasionally directed
+ to salient visual features (such as the onset of motion) but in most situations
+ are overwhelmingly determined by task demands.
+ Examples of task-dependent targets include the next word while reading
+ 
 \begin_inset CommandInset citation
 LatexCommand cite
 key "Rayner2010"
 
 \end_inset
 
-, or to the edge of an obstacle [TODO: ref], or to something the person
- intends to pick up 
+, the edge of an obstacle while walking (Rothkopf & Ballard, 2007), an object
+ the person wants to pick up 
 \begin_inset CommandInset citation
 LatexCommand cite
 key "Johansson2001"
 
 \end_inset
 
-.
- The visual target can even be a completely featureless region, as when
- a person glances at a spot on a table which is indistinct except that the
- person means to put something there [TODO: ref].
+, etc.
+ The visual target can even be a completely featureless region.
+ For example people often glance at a spot on a table where they intend
+ to put something, even though this spot may be visually indistinct [TODO:
+ ref].
+ However, eye movements are very often determined by a combination of bottom-up
+ and top-down factors.
  
 \end_layout
 
 \begin_layout Standard
-Taking inspiration from the primate visual system, our goal was to obtain
+A simple example of bottom-up / top-down interaction occurs in visual search
+ tasks.
+ Viewing an image of many small shapes, humans can rapidly find shapes with
+ a distinctive feature (e.g.
+ the yellow ones; the horizontal ones; etc.) Interestingly, visual search
+ for more complex conjunctions of features (e.g.
+ horizontal yellow shapes) is more slower and less automatic 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Treisman1980"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+Taking inspiration from the primate visual system, our goal here is to obtain
  practical real-time stereo depth estimates by allocating computational
- resources to the most task-relevant sub-images in each frame.
- We defined task-specific cost functions that weigh squared estimation errors
- according to their location, magnitude, and sign (i.e.
- whether the error is an overestimate or underestimate).
- Given such a cost function, our system estimates the cost at each pixel,
- and moves a 
+ resources to the most task-relevant image regions in each frame.
+ Taking further inspiration from visual search results, we direct the fovea
+ using a simple visual feature that is relevant to visual navigation.
+ Specifically, we use previous frames to estimate an expected diparity map,
+ and define an 
 \begin_inset Quotes eld
 \end_inset
 
-fovea
+importance map
 \begin_inset Quotes erd
 \end_inset
 
- (a small window in which accurate, computationally intensive analysis is
- performed) to the image region with highest cost.
- We show that this approach allows improved estimation of obstacle distances
+ as the half-rectified difference between expected disparity and a time-average
+ disparity (see Maki et al., 2000, for another use of depth as an attention
+ cue).
+ This allowed us to direct the fovea to regions in which surfaces seem to
+ be closer than normal for that part of the visual field, which often correspond
+ to obstacles.
+ We show that this approach allows improved estimation of obstacle surfaces
  at practical frame rates.
  
 \end_layout
@@ -744,10 +820,10 @@ Using Information from Past Frames in Disparity Estimates
 If information is not propagated across the image (e.g.
  through BP) then dense stereo estimates typically have large errors in
  many small patches, corresponding to spurious correlations.
- BP greatly reduces such errors, but it does not remove them completely.
+ BP over the disparity map reduces such errors.
  Further improvements are possible by propagating information over time,
- across a sequence of frames, so that each pixel has neighbours in time
- as well as horizontally and vertically [TODO: ref].
+ so that each pixel has neighbours in time as well as horizontally and verticall
+y (Zhu et al., 2010).
  This information can be useful if for example certain features have been
  more distinct in previous frames due to differences in viewpoint.
  However, this process is expensive in terms of runtime and memory.
