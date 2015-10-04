@@ -182,9 +182,9 @@ Neighbouring disparities are highly correlated except at object boundaries.
 \emph on
 a posteriori
 \emph default
- depth images can be estimated quite accurately from the Markov random field
- model using loopy belief propagation (ref), graph cuts (ref), or Markov
- Chain Monte Carlo (ref) methods.
+ depth images can be estimated from the Markov random field model using
+ various methods, such as loopy belief propagation and graph cuts [Tappen
+ & Freeman, 2003; Szeliski et al., 2008].
  However, despite many recent advances in efficiency, these methods remain
  computationally intensive.
  This limits their practicality for robots, which require high frame rates
@@ -345,10 +345,10 @@ Markov Random Fields and Loopy Belief Propagation
 Due to ambiguities in pixel-by-pixel correspondences across image pairs,
  disparity estimation is more accurate when it takes into account statistical
  relationships between disparities at different image positions.
- Useful disparity images have tens of thousands of pixels or more, so it
- is not practical to model the full correlation matrix.
- A popular and successful approach [TODO: refs] has been to model disparity
- images as Markov random fields.
+ Disparity images of practical interest have tens of thousands of pixels
+ or more, so it is not feasible to work with the full correlation matrix.
+ A popular and successful approach (e.g.
+ Sun et al., 2003) has been to model disparity images as Markov random fields.
  In a Markov random field, each region is independent of the rest of the
  field, conditional on values in the region's boundary.
  That is, 
@@ -359,80 +359,203 @@ Due to ambiguities in pixel-by-pixel correspondences across image pairs,
 \begin_inset Formula $x_{i}$
 \end_inset
 
- is the field inside the boundary, 
+ is the part of the field inside the boundary, 
 \begin_inset Formula $x_{b}$
 \end_inset
 
- is the part of the field that makes up the boundary, and 
+ is the part that comprises the boundary, and 
 \begin_inset Formula $x_{o}$
 \end_inset
 
- is the field outside the boundary [TODO: ref Fieguth].
- A variety of numerical approaches exist for estimating the maximum a posteriori
+ is the part outside the boundary [TODO: ref Fieguth].
+ A variety of numerical approaches exist for estimating the maximum 
+\emph on
+a posteriori
+\emph default
  disparity image given uncertain pixel-by-pixel estimates.
  
 \end_layout
 
 \begin_layout Standard
-One such numerical approach is belief propagation (BP), an algorithm for
- inference on graphical models, inlcuding Bayesian networks and Markov random
- fields.
- BP produces exact solutions on trees [TODO: ref].
- The statistical dependencies in a Markov random field contain loops, and
- these prevent exact inference.
- However, BP typically produces good approximations after running for a
- few iterations [TODO: ref].
+One such approach is belief propagation (BP), a general algorithm for inference
+ on graphical models (inlcuding Bayesian networks as well as Markov random
+ fields).
+ While BP provides exact solutions on trees, this is prevented in by loops
+ in the statistical relationships of Markov random fields.
+ However, 
+\begin_inset Quotes eld
+\end_inset
+
+loopy
+\begin_inset Quotes erd
+\end_inset
+
+ BP typically produces good approximations after running for a few iterations
+ [TODO: ref Murphy et al., 1999].
  
 \end_layout
 
 \begin_layout Standard
-[TODO: introduce BP in terms of probabilities]
+The starting point for our work is a BP implementation (Felzenszwalb & Huttenloc
+her, 2006) that has several optimizations, which together accelerate the
+ algorithm by several orders of magnitude.
+ One of these optimizations is a multiscale approach that reduces the iterations
+ needed to propagate information to distant parts of the image.
+ Our modification consists simply of executing finer scales (which take
+ up most of the computation time) only in sub-images rather than over the
+ whole image.
+ 
 \end_layout
 
 \begin_layout Standard
-The algorithm minimizes a sum of two cost terms, called the data cost and
- the discontinuity cost.
- In stereo estimation, the data cost is evaluated as a function of pixel
- locations 
-\begin_inset Formula $x,y$
+The BP implementation of (Felzenszwalb & Huttenlocher, 2006) results in
+ a labelling 
+\begin_inset Formula $f$
 \end_inset
 
- in the left image and disparity 
-\begin_inset Formula $d$
+, which assigns a label 
+\begin_inset Formula $f_{p}\in\mathcal{L}$
 \end_inset
 
- of offset pixels in the right image.
- The data cost increases with increasing difference in appearance between
- a neighbourhood around pixel 
-\begin_inset Formula $x,y$
+ to pixel 
+\begin_inset Formula $p$
 \end_inset
 
- in the left image and a neighbourhood around pixel 
-\begin_inset Formula $x-d,y$
+.
+ 
+\begin_inset Formula $\mathcal{L}$
 \end_inset
 
- in the right image.
- We use a neighbourhood of one pixel, because larger neighbourhoods tend
- not to produce much more accurate results after belief propagation [TODO:
- ref].
- Specifically, if 
-\begin_inset Formula $I^{l}$
-\end_inset
-
- and 
-\begin_inset Formula $I^{r}$
-\end_inset
-
- are 2D luminance images from the left and right cameras, then the data
- cost is 
+ are disparities in the context of stereo.
+ The algorithm minimizes an energy function 
 \begin_inset Formula 
 \[
-C_{x,y,d,k}=\min\left\{ \left|I_{x,y,k}^{l}-I_{x-d,y,k}^{r}\right|,C_{\mathrm{max}}\right\} ,
+E(f)=\sum_{p\in\mathcal{P}}D_{p}(f_{p})+\sum_{p,q\in\mathcal{N}}V(f_{p}-f_{q})
 \]
 
 \end_inset
 
 where 
+\begin_inset Formula $D_{p}$
+\end_inset
+
+ (the 
+\begin_inset Quotes eld
+\end_inset
+
+data cost
+\begin_inset Quotes erd
+\end_inset
+
+) is the cost of labelling 
+\begin_inset Formula $p$
+\end_inset
+
+ as 
+\begin_inset Formula $f_{p}$
+\end_inset
+
+, and 
+\begin_inset Formula $V(f_{p}-f_{q})$
+\end_inset
+
+ (the 
+\begin_inset Quotes eld
+\end_inset
+
+discontinuity cost
+\begin_inset Quotes erd
+\end_inset
+
+) is an additional cost of labelling neighbouring pixels 
+\begin_inset Formula $p$
+\end_inset
+
+ and 
+\begin_inset Formula $q$
+\end_inset
+
+ as 
+\begin_inset Formula $f_{p}$
+\end_inset
+
+ and 
+\begin_inset Formula $f_{q}$
+\end_inset
+
+.
+ Because disparity of neighbouring pixels is correlated, a larger discontinuity
+ cost is assigned for larger differences between neighbours.
+ Minimizing the above energy corresponds to maximum a posteriori estimation
+ in a probabilistic context (Felzenszwalb & Huttenlocher, 2006).
+ 
+\end_layout
+
+\begin_layout Standard
+BP involves iterative computation and exhange of messages between pixels.
+ In iteration 
+\begin_inset Formula $t$
+\end_inset
+
+, the message 
+\begin_inset Formula $m_{p\to q}^{t}$
+\end_inset
+
+ from pixel 
+\begin_inset Formula $p$
+\end_inset
+
+ to pixel 
+\begin_inset Formula $q$
+\end_inset
+
+ is (Felzenszwalb & Huttenlocher, 2006)
+\begin_inset Formula 
+\[
+m_{p\to q}^{t}=min_{f_{p}}\left(V(f_{p}-f_{q})+D_{p}(f_{p})+\sum_{s\in\mathcal{N}(p)\q}m_{s\to p}^{t-1}\right)
+\]
+
+\end_inset
+
+where 
+\begin_inset Formula $\mathcal{N}(p)\q$
+\end_inset
+
+ consists of the neighbours of 
+\begin_inset Formula $p$
+\end_inset
+
+ other than 
+\begin_inset Formula $q$
+\end_inset
+
+.
+ After 
+\begin_inset Formula $T$
+\end_inset
+
+ iterations, final labels 
+\begin_inset Formula $f_{p}^{*}$
+\end_inset
+
+ are assigned as 
+\begin_inset Formula 
+\[
+f_{p}^{*}=\argmin_{f_{p}}D(f_{p})+\sum_{q\in\mathcal{N}(p)}m_{q\to p}^{T}.
+\]
+
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Standard
+In stereo estimation, the first step is to calculate a data cost volume
+ in terms of image coordinates 
+\begin_inset Formula $x,y=p$
+\end_inset
+
+ (where 
 \begin_inset Formula $x$
 \end_inset
 
@@ -440,54 +563,52 @@ where
 \begin_inset Formula $y$
 \end_inset
 
- are the horizontal and vertical image coordinates, respectively, 
-\begin_inset Formula $d$
+ are the horizontal and vertical image coordinates, respectively), and disparity
+ (in pixels) 
+\begin_inset Formula $d=f_{p}$
 \end_inset
 
- is the disparity (in pixels), 
-\begin_inset Formula $C_{\mathrm{max}}$
-\end_inset
-
- is a saturation value, and 
-\begin_inset Formula $k$
-\end_inset
-
- is the frame index.
- 
-\end_layout
-
-\begin_layout Standard
-We used an implementation of loopy BP [TODO: ref Felzenszwalb & Huttenlocher]
- with several optimizations that provide orders-of-magnitude acceleration.
- The most salient of these in the present context is a multiscale approach
- that reduces the iterations needed to propagate information to distant
- parts of the image.
- The first step in this process is the construction of a data cost pyramid.
- Beginning with the full cost volume, a coarser volume is created, half
- the size in each dimension, by summing the costs over 2x2 neighbourhoods
- of pixels.
- This is then repeated with on the coarser volume, and so on for several
- levels, producing coarser levels of the pyramid.
- [TODO: describe multiscale messages]
-\end_layout
-
-\begin_layout Standard
-Disparity is estimated after belief propagation as
-\end_layout
-
-\begin_layout Standard
+.
+ The data cost is specifically 
 \begin_inset Formula 
 \[
-D_{x,y,k}^{est}=\operatorname{arg\,min}_{d}\,C_{x,y,d,k}.
+D_{x,y,d}=\min\left\{ \left|I_{x,y}^{l}-I_{x-d,y}^{r}\right|,D_{\mathrm{max}}\right\} ,
 \]
 
 \end_inset
 
+where 
+\begin_inset Formula $I^{l}$
+\end_inset
 
+ and 
+\begin_inset Formula $I^{r}$
+\end_inset
+
+ are luminance of the left and right images.
+ 
+\begin_inset Formula $D_{\mathrm{max}}$
+\end_inset
+
+ is a saturation value that limits the cost of large discontinuities.
+ The saturation value is used because while most discontinuities are expected
+ to be small, some (at object boundaries) are expected to be larger, with
+ weak expectations about how much larger.
+ Prior to calculating the data cost, we processed the images with a Laplacian
+ filter, in order to emphasize edges.
+ 
 \end_layout
 
 \begin_layout Standard
-[TODO: Laplacian]
+We refer to the disparity estimated from BP in frame 
+\begin_inset Formula $k$
+\end_inset
+
+ as 
+\begin_inset Formula $d_{x,y,k}^{*}$
+\end_inset
+
+ .
 \end_layout
 
 \begin_layout Subsection
@@ -554,18 +675,18 @@ status open
 \begin_inset Caption Standard
 
 \begin_layout Plain Layout
-Multiscale belief propagation on example data, illustrating the motivation
- for our approach.
+Performance of multiscale belief propagation on example data, illustrating
+ the motivation for our approach.
  Disparity estimation error is plotted vs.
  runtime.
- The right curve (circles) were obtained with high-resolution images, and
- the left curve (squares; higher error) with lower-resoluton versions of
- the same images.
- Within each curve, the runtime varies due to varying numbers of iterations
- at each scale (1, 2, 3, 4, 5, 7, 10, and 15 iterations).
+ The right curve (circles) were obtained with a high-resolution stereo image
+ pair, and the left curve (squares; higher error) with lower-resoluton versions
+ of the same images.
+ Within each curve, the runtime varies with numbers of iterations at each
+ scale (1, 2, 3, 4, 5, 7, 10, and 15 iterations).
  Given a time budget of, for example, 0.25s/frame, it would not be possible
  to process these images at high resolution.
- However, if certain areas in the images are of greater practical interest,
+ However, if certain areas in the images were of greater practical interest,
  then results that are nearly as useful might be achieved by processing
  just those areas at high resolution.
  The data are 25 frames taken from the KITTI dataset [TODO: ref], downsampled
@@ -613,7 +734,7 @@ g areas, and also makes them similar to those of full belief propagation
  We also experimented with running multiscale BP independently in the fovea,
  and promoting continuity with the surround in other ways, such as copying
  message messages from the surround into adjacent outer pixels of the fovea.
- However, these approaches were less effective because they do not allow
+ However, these approaches were less effective because they did not allow
  information from coarse scales to propagate from other image regions across
  the fovea.
  
