@@ -42,9 +42,6 @@ def get_row(drive):
                     fovea_shape, frame_shape, values, verbose=False)
 
     table = defaultdict(list)
-    # table = dict(coarse=[], coarse_w=[], fine=[], fine_w=[],
-    #              filter=[], filter_w=[], fovea=[])
-    # table = dict(in_fovea=[], weighted=[], unweighted=[], fine=[], coarse=[])
     times = dict(coarse=[], fine=[], filter=[])
 
     def append_table(key, disp, true_disp, true_points):
@@ -129,12 +126,7 @@ for drive in drives:
 for row in rows:
     assert set(row) == set(rows[0]), "Rows have different keys"
 
-keys = sorted(list(rows[0]))
-# print('drive    |' + '|'.join('%10s' % key for key in keys))
-# for drive, row in zip(drives, rows):
-#     print('|'.join(['%3d      ' % drive] + ['%10.3f' % row[key] for key in keys]))
-
 print('%20s |' % 'drive' + ' |'.join("%10s" % v for v in drives))
 print('-' * 79)
-for key in keys:
+for key in sorted(list(rows[0])):
     print('%20s |' % key + ' |'.join('%10.3f' % row[key] for row in rows))
