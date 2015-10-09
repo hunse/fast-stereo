@@ -160,7 +160,13 @@ dense
  However, in the absence of distinctive features (e.g.
  in an image of a textureless wall), a wide range of regions may match equally
  well.
- 
+\end_layout
+
+\begin_layout Standard
+This is where Jeff can briefly mention some of the recent stereo foveation
+ methods.
+ However, none of them seem to mix both foveation and peripheral data.
+ And many of them use specialized hardware to speed them up.
 \end_layout
 
 \begin_layout Standard
@@ -278,7 +284,7 @@ A simple example of bottom-up / top-down interaction occurs in visual search
  a distinctive feature (e.g.
  the yellow ones; the horizontal ones; etc.) Interestingly, visual search
  for more complex conjunctions of features (e.g.
- horizontal yellow shapes) is more slower and less automatic 
+ horizontal yellow shapes) is slower and less automatic 
 \begin_inset CommandInset citation
 LatexCommand cite
 key "Treisman1980"
