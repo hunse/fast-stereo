@@ -89,11 +89,13 @@ def foveal_bp2(frame, fovea_corner, fovea_shape, seed, values=values_default, ks
     img1h = laplacian(img1, ksize=ksize)
     img2h = laplacian(img2, ksize=ksize)
 
-    # downsampled one more time (used in periphery)
-    img1d = downsample(img1, 1)
-    img2d = downsample(img2, 1)
-    img1d = laplacian(img1d, ksize=ksize)
-    img2d = laplacian(img2d, ksize=ksize)
+    # downsampled one more time (used in periphery) (NOTE: no longer used)
+    # img1d = downsample(img1, 1)
+    # img2d = downsample(img2, 1)
+    # img1d = laplacian(img1d, ksize=ksize)
+    # img2d = laplacian(img2d, ksize=ksize)
+    img1d = np.zeros((1, 1), dtype=np.uint8)
+    img2d = np.zeros((1, 1), dtype=np.uint8)
 
     fovea_y, fovea_x = fovea_corner
     fovea_height, fovea_width = fovea_shape
