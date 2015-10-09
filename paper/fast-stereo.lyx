@@ -126,7 +126,7 @@ Information about the locations of surfaces in the environment is essential
  cameras.
  Compared to other approaches to depth estimation, stereo is currently more
  cost effective than LIDAR, and it can provide estimates from a large field
- of view at high higher frame rates.
+ of view at high frame rates.
  It is also more economical and higher-resolution than time-of-flight devices.
  In contrast with systems that rely on patterned infrared illumination (e.g.
  the Microsoft Kinect), it is not limited by infrared interference from
@@ -157,18 +157,18 @@ dense
  Dense methods are of interest in robotics, because surface locations may
  affect the robot whether or not they are filled with distinctive visual
  features.
- However, in the absence of distinctive features, e.g.
- in an image of a textureless wall, a wide range of regions may match equally
+ However, in the absence of distinctive features (e.g.
+ in an image of a textureless wall), a wide range of regions may match equally
  well.
  
 \end_layout
 
 \begin_layout Standard
 Neighbouring disparities are highly correlated except at object boundaries.
- If an ambiguous region (with a broad probability density over disparities)
- is close to unambiguous regions (with narrow probability densities), then
- accounting for spatial correlations can profoundly improve estimates in
- the ambiguous region.
+ If an ambiguous region (with a broad probability density function spread
+ over a wide range of disparities) is close to unambiguous regions (with
+ narrow probability densities), then accounting for spatial correlations
+ can profoundly improve estimates in the ambiguous region.
  An effective approach is to model the disparity map as a Markov random
  field [TODO: ref].
  Then, maximum 
@@ -254,7 +254,7 @@ key "Rayner2010"
 \end_inset
 
 , the edge of an obstacle while walking (Rothkopf & Ballard, 2007), an object
- the person wants to pick up 
+ a person wants to pick up 
 \begin_inset CommandInset citation
 LatexCommand cite
 key "Johansson2001"
