@@ -12,10 +12,26 @@ import time
 from kitti.data import get_drive_dir
 from kitti.raw import get_inds, get_video_dir, get_video_images, load_video_odometry
 from kitti.velodyne import load_disparity_points
+from kitti.stereo import load_pair, load_disp
 
 from bp_wrapper import coarse_bp, foveal_bp
 
+
+class KittiMultiViewSource:
+    # Stereo benchmark pairs, ground truth, and surrounding multiview sequences
+    
+    def __init__(self, index, test=False):
+        self.frame_ten = load_pair(index, test)
+        self.ground_truth_NOC = load_disp(index, test, occluded=False)
+        self.ground_truth_OCC = load_disp(index, test, occluded=True)
+        self.frame_sequence = []
+        for i in range(21): 
+            frame = load_pair(index, test, frame=i, multiview=True)
+            self.frame_sequence.append(frame) 
+        
+    
 class KittiSource:
+    # This is for raw data
 
     def __init__(self, drive, n_frames=None, n_disp=128):
         self.drive = drive
@@ -96,7 +112,13 @@ def calc_ground_truth(frame, n_disp):
 
 
 if __name__ == '__main__':
-    source = KittiSource(51, 50)
+    source = KittiMultiViewSource(20)
+    
+    plt.imshow(source.frame_sequence[20][1], cmap='gray')
+    plt.show()
+    
+    
+#     source = KittiSource(51, 50)
 
 #     fig = plt.figure(1)
 #     fig.clf()
@@ -104,24 +126,24 @@ if __name__ == '__main__':
 #     plot_disp = ax_disp.imshow(source.ground_truth[0], vmin=0, vmax=128)
 #     plt.show(block=True)
 
-
-    video = load_stereo_video(51, 10)
-    frame = video[3]
-
-    #TODO: check params; compare coarse to coarse level of fovea; try data rather than subdata if not right
-#     coarse_bp(video[i], down_factor=down_factor, iters=iters)
-
-    params = {'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425, 'data_max': 32.024780646200725, 'ksize': 3}
-    start_time = time.time()
-    print('starting')
-    down_factor = 0
-    seed = np.zeros((0,0), dtype='uint8')
-    disp = foveal_bp(frame, 900, 200, seed, down_factor=down_factor, iters=5, **params)
-#     print(disp.shape)
-    print('finishing')
-    print(time.time() - start_time)
-    fig = plt.figure(2)
-    fig.clf()
-    ax_disp = plt.gca()
-    plot_disp = ax_disp.imshow(disp, vmin=0, vmax=128/2**down_factor)
-    plt.show(block=True)
+    
+#     video = load_stereo_video(51, 10)
+#     frame = video[3]
+# 
+#     #TODO: check params; compare coarse to coarse level of fovea; try data rather than subdata if not right
+# #     coarse_bp(video[i], down_factor=down_factor, iters=iters)
+# 
+#     params = {'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425, 'data_max': 32.024780646200725, 'ksize': 3}
+#     start_time = time.time()
+#     print('starting')
+#     down_factor = 0
+#     seed = np.zeros((0,0), dtype='uint8')
+#     disp = foveal_bp(frame, 900, 200, seed, down_factor=down_factor, iters=5, **params)
+# #     print(disp.shape)
+#     print('finishing')
+#     print(time.time() - start_time)
+#     fig = plt.figure(2)
+#     fig.clf()
+#     ax_disp = plt.gca()
+#     plot_disp = ax_disp.imshow(disp, vmin=0, vmax=128/2**down_factor)
+#     plt.show(block=True)
