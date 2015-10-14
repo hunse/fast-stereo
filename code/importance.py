@@ -11,6 +11,8 @@ from data import KittiSource
 
 
 def get_position_weights(shape):
+    #TODO: ignore top of image more fully?
+    
     h = shape[0]/3 #height of blended region
     vweight = np.ones(shape[0])
     vweight[:h+1] = np.linspace(0, 1, h+1)
@@ -21,6 +23,10 @@ def get_position_weights(shape):
     hweight[-1:-w-2:-1] = np.linspace(0, 1, w+1)
 
     return np.outer(vweight, hweight)
+
+def get_importance(position_weights, average_disp, disp):
+    above_average = np.maximum(0, disp.astype(float) - average_disp.astype(float))
+    return above_average * position_weights
 
 
 class UnusuallyClose:
@@ -33,17 +39,7 @@ class UnusuallyClose:
 
     def __init__(self, average_disparity):
         self.average_disparity = average_disparity
-
         s = self.average_disparity.shape
-
-#         self.cX, self.cY = np.meshgrid(range(s[1]), range(s[0]))
-#         calib = Calib();
-#         self.disp2imu = calib.get_disp2imu()
-#         self.imu2disp = calib.get_imu2disp()
-
-#         self.past_position = None
-#         self.past_disparity = None
-
         self.pos_weights = get_position_weights(s)
 
     def get_importance(self, disp):
@@ -55,38 +51,7 @@ class UnusuallyClose:
         pos - position of camera rig from which disparity was found
         """
         assert disp.shape == self.average_disparity.shape
-        surprise = disp.astype(float)  # use floats for math
-
-        """
-        Here we used to subtract projections of past disparity frames so that importance
-        was really only assigned to high disparities that are unexpected in the context
-        of past frames.
-        """
-#         if self.past_position is None:
-#             surprise = disp
-#         else:
-#             start_time = time.time()
-#             projection = self.project(self.past_position, pos, self.past_disparity)
-#             surprise = disp - projection
-#             print(time.time()-start_time)
-
-        above_average = np.maximum(0, surprise - self.average_disparity)
-#         above_average[0:disp.shape[0]/3,:] = 0 # ignore top of image
-        above_average = above_average * self.pos_weights
-
-#         self.past_position = pos
-#         self.past_disparity = disp
-
-        return above_average
-
-#     def project(self, old_pos, new_pos, old_disp):
-#         xyd = get_shifted_points(old_disp, old_pos, new_pos, self.cX, self.cY,
-#                                   self.disp2imu, self.imu2disp,
-#                                   final_shape=old_disp.shape, full_shape=old_disp.shape)
-#         xyd[:, :2] = np.round(xyd[:, :2])
-#         new_disp = np.zeros(old_disp.shape)
-#         max_points2disp(xyd, new_disp)
-#         return new_disp
+        return get_importance(self.pos_weights, self.average_disparity, disp.astype(float))
 
 
 def get_average_disparity(ground_truth):

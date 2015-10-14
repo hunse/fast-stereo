@@ -4,6 +4,7 @@
 
 from collections import defaultdict
 
+import sys
 import time
 import numpy as np
 import matplotlib.pyplot as plt
@@ -12,7 +13,7 @@ import cv2
 
 from bp_wrapper import foveal_bp, foveal_bp2, coarse_bp, laplacian
 from data import KittiSource
-from importance import UnusuallyClose, get_average_disparity
+from importance import UnusuallyClose, get_average_disparity, get_position_weights, get_importance
 from transform import DisparityMemory, downsample
 
 class Filter:
@@ -176,40 +177,75 @@ def _choose_fovea(cost, fovea_shape, n_disp):
     fovea_ij = np.unravel_index(np.argmax(fcost), fcost.shape)
     return fovea_ij
 
-def cost(disp, ground_truth_disp, average_disp=None):
-    assert disp.shape == ground_truth_disp.shape
-    error = (disp.astype(float) - ground_truth_disp)**2
+# def cost(disp, ground_truth_disp, average_disp=None):
+#     assert disp.shape == ground_truth_disp.shape
+#     error = (disp.astype(float) - ground_truth_disp)**2
+# 
+#     if average_disp is None:
+#         return np.mean(error)**0.5
+#     else:
+#         assert average_disp.shape == ground_truth_disp.shape
+#         importance = np.maximum(0, ground_truth_disp.astype(float) - average_disp)
+#         importance /= importance.mean()
+#         weighted = importance * error
+#         return np.mean(weighted)**0.5
 
-    if average_disp is None:
-        return np.mean(error)**0.5
-    else:
-        assert average_disp.shape == ground_truth_disp.shape
-        importance = np.maximum(0, ground_truth_disp.astype(float) - average_disp)
-        importance /= importance.mean()
-        weighted = importance * error
-        return np.mean(weighted)**0.5
-
-def cost_on_points(disp, ground_truth_points, average_disp=None):
-    from bp_wrapper import full_shape
+def cost_on_points(disp, ground_truth_points, average_disp=None, full_shape=(375,1242)):
+    #from bp_wrapper import full_shape
 
     xyd = ground_truth_points
     xyd = xyd[xyd[:, 0] >= 128]  # clip left points
-    x, y, d = ground_truth_points.T
+#     x, y, d = ground_truth_points.T
+    x, y, d = xyd.T
     x = x - 128  # shift x points
     full_shape = (full_shape[0], full_shape[1] - 128)
 
     ratio = np.asarray(disp.shape) / np.asarray(full_shape, dtype=float)
+    print(min(d))
     xr = (x * ratio[1]).astype(int)
     yr = (y * ratio[0]).astype(int)
     disps = disp[yr, xr]
 
-    if average_disp is not None:
-        assert average_disp.shape == disp.shape
+    im_d = np.zeros(disp.shape)
+    im_d[yr, xr] = d
+    im_disps = np.zeros(disp.shape)
+    im_disps[yr, xr] = disps
+    
+    
+#     plt.imshow(im_disps-im_d)
+#     plt.hist(im_disps.flatten()-im_d.flatten(), 100)
+#     print("------")
+#     print(np.std(disps-d))
+#     plt.scatter(disps, d)
 
-        importance = np.maximum(0, d.astype(float) - average_disp[yr, xr])
-        importance /= importance.mean()
+    if average_disp is not None:
+        assert average_disp.shape == disp.shape, (average_disp.shape, disp.shape)
+
+        
+        pos_weights = get_position_weights(disp.shape)
+        importance = get_importance(pos_weights[yr, xr], average_disp[yr, xr], d)
+        importance2 = np.maximum(0, d.astype(float) - average_disp[yr, xr])
+        sys.stdout.write("importance mean %f  %f\n" % (np.mean(importance), importance2.mean()))
+        sys.stdout.flush()
+
+#         plt.subplot(3,1,1)
+#         plt.imshow(average_disp)
+#         plt.colorbar()
+#         plt.subplot(3,1,2)
+#         plt.imshow(im_d)
+#         plt.colorbar()
+#         plt.subplot(3,1,3)
+#         im_importance = np.zeros(disp.shape)
+#         im_importance[yr, xr] = importance
+#         plt.imshow(im_importance)
+#         plt.colorbar()
+#         plt.show()
+
+        importance /= importance.mean()        
+
         return np.sqrt(np.mean(importance * (disps - d)**2))
     else:
+#         return np.mean(abs(disps - d))
         return np.sqrt(np.mean((disps - d)**2))
 
 def expand_coarse(coarse, down_factor):

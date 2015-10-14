@@ -20,14 +20,61 @@ from bp_wrapper import coarse_bp, foveal_bp
 class KittiMultiViewSource:
     # Stereo benchmark pairs, ground truth, and surrounding multiview sequences
     
-    def __init__(self, index, test=False):
+    def __init__(self, index, test=False, n_frames=0):
+        self.index = index
+        self.test = test
         self.frame_ten = load_pair(index, test)
         self.ground_truth_NOC = load_disp(index, test, occluded=False)
         self.ground_truth_OCC = load_disp(index, test, occluded=True)
         self.frame_sequence = []
-        for i in range(21): 
+        for i in range(10-n_frames, 10): 
             frame = load_pair(index, test, frame=i, multiview=True)
-            self.frame_sequence.append(frame) 
+            self.frame_sequence.append(frame)
+            
+    def get_ground_truth_points(self, occluded=False):
+        disp = self.ground_truth_OCC if occluded else self.ground_truth_NOC
+        Y, X = (disp > 0).nonzero() #missing data seems to be zero (min is zero) 
+        d = disp[Y, X] / 256.
+        return np.array([X, Y, d]).T
+            
+    def get_average_disparity(self):
+        """
+        Returns
+        -------
+        Average disparity over multiview frames based on coarse BP. Runs BP
+        if this doesn't exist yet.
+        """
+
+        # remember to delete the average files if you change these
+        n_disp = 128
+        down_factor = 2
+        iters = 5
+        #####
+        
+        average_path = get_average_path(self.index, self.test, True)
+        print(average_path)
+
+        if os.path.exists(average_path):
+            return scipy.ndimage.imread(average_path)
+        else:
+            result = []
+
+            for i in range(21):
+                frame = load_pair(self.index, self.test, frame=i, multiview=True)
+                
+                sys.stdout.write('finding ground truth for frame ' + str(i) + ' ')
+                sys.stdout.flush()
+                start_time = time.time()
+                gt_frame = calc_ground_truth(frame, n_disp, down_factor=down_factor, iters=iters)
+                print(str(time.time()-start_time) + 's')
+    
+                result.append(gt_frame)
+
+            result = np.mean(result, axis=0)            
+            scipy.misc.imsave(average_path, result.astype(np.uint8)) #note: the uint8 cast is important, otherwise the images are normalized
+            
+            return result
+            
         
     
 class KittiSource:
@@ -97,25 +144,47 @@ def load_stereo_video(drive, n_frames):
     right_images = get_video_images(right_path, right_inds)
     return np.array(zip(left_images, right_images))
 
+def get_average_path(index, test, multiview):
+    from kitti.data import data_dir
+     
+    path = os.path.join(
+        data_dir,
+        'data_stereo_flow_multiview' if multiview else 'data_stereo_flow',
+        'testing' if test else 'training',
+        'average_disp',
+        "%06d.png" % index)
+
+    return path
+    
 def get_ground_truth_dir(drive):
     result = os.path.join(get_drive_dir(drive), 'ground_truth', 'data')
     if not os.path.exists(result):
         os.makedirs(result)
     return result
 
-def calc_ground_truth(frame, n_disp):
+def calc_ground_truth(frame, n_disp, down_factor=0, iters=50):
     params = {'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425, 'data_max': 32.024780646200725, 'ksize': 1}
-    gt = coarse_bp(frame, down_factor=0, iters=50, values=n_disp, **params)
-    gt = gt[:,n_disp:]
+    gt = coarse_bp(frame, down_factor=down_factor, iters=iters, values=n_disp, **params)
+    n_coarse_disp = n_disp / 2**down_factor
+    gt = gt[:,n_coarse_disp:]
     return gt
 
 
 
 if __name__ == '__main__':
-    source = KittiMultiViewSource(20)
+    from bp_wrapper import points_image
     
-    plt.imshow(source.frame_sequence[20][1], cmap='gray')
+
+    source = KittiMultiViewSource(20, n_frames=2)
+    points = source.get_ground_truth_points(occluded=False)
+    print(points[:, 2].max())
+    ad = source.get_average_disparity()
+    plt.imshow(ad)
     plt.show()
+    
+#     print(len(source.frame_sequence))
+#     plt.imshow(source.frame_sequence[20][1], cmap='gray')
+#     plt.show()
     
     
 #     source = KittiSource(51, 50)
