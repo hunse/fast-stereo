@@ -93,9 +93,12 @@ for index in range(5):
     append_table('fine', fine_disp[:,values:], true_disp, true_points, average_disp, full_shape)
     times['fine'].append(fine_time)
     
-#     filter = Filter(average_disp, frame_down_factor, mem_down_factor,
-#                     fovea_shape, frame_shape, values, verbose=False)
-# 
+    filter = Filter(average_disp, frame_down_factor, mem_down_factor,
+                    fovea_shape, frame_shape, values, verbose=False, memory_length=0)
+    filter_disp, fovea_corner = filter.process_frame(None, frame_ten)
+    append_table('filter', filter_disp[:,values:], true_disp, true_points, average_disp, full_shape)
+
+    
 #     sys.stdout.write("%d " % i)
 #     sys.stdout.flush()
 #     

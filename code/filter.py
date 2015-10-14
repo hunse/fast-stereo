@@ -18,13 +18,14 @@ from transform import DisparityMemory, downsample
 
 class Filter:
     def __init__(self, average_disparity, frame_down_factor, mem_down_factor,
-                 fovea_shape, frame_shape, values, verbose=False):
+                 fovea_shape, frame_shape, values, verbose=False, memory_length=1):
         """
         Arguments
         ---------
         average_disparity - full resolution mean-disparity image
-        down_factor - number of times images are downsampled by 2 for decision-related memory
-            (this filter doesn't downsample for BP)
+        frame_down_factor - number of times incoming frame has already been
+            downsampled
+        mem_down_factor - number of additional times that memory is downsampled
         fovea_shape - at full resolution
         values - depth of disparity volume at full resolution
         """
@@ -32,7 +33,7 @@ class Filter:
         self.use_uncertainty = False
         self.n_past_fovea = 0
 
-        self.frame_down_factor = frame_down_factor
+#         self.frame_down_factor = frame_down_factor
         self.mem_down_factor = mem_down_factor
         self.frame_step = 2**frame_down_factor
         self.mem_step = 2**mem_down_factor #step size for uncertainty and importance calculations (pixels)
@@ -41,7 +42,7 @@ class Filter:
             average_disparity, down_factor=mem_down_factor)
         self.frame_shape = frame_shape
         self.fovea_shape = fovea_shape
-        self.shape = self.average_disparity.shape #for decision-related memory
+        self.memory_shape = self.average_disparity.shape 
 
         self.values = values
 
@@ -63,9 +64,9 @@ class Filter:
 
         self.iters = 3
 
-        self.disparity_memory = DisparityMemory(self.shape, mem_down_factor, n=1)
-        self.uncertainty_memory = DisparityMemory(self.shape, mem_down_factor, n=1)
-        self.fovea_memory = DisparityMemory(frame_shape, 0, fovea_shape=fovea_shape, n=self.n_past_fovea)
+        self.disparity_memory = DisparityMemory(self.memory_shape, n=memory_length)
+        self.uncertainty_memory = DisparityMemory(self.memory_shape, n=memory_length)
+        self.fovea_memory = DisparityMemory(frame_shape, fovea_shape=fovea_shape, n=self.n_past_fovea)
 
         self._uc = UnusuallyClose(self.average_disparity)
 
@@ -82,13 +83,23 @@ class Filter:
             print('move time: ' + str(time.time() - start_time))
 
         # 1. Decide where to put fovea and move it there:
-        if len(self.disparity_memory.transforms) == 0:
+        if self.disparity_memory.n > 0 and len(self.disparity_memory.transforms) == 0:
             fovea_corner = (
                 np.array(self.frame_shape) - np.array(self.fovea_shape)) / 2
             assert all(fovea_corner >= 0)
         else:
             # a) Transform disparity from previous frame and calculate importance
-            prior_disparity = self.disparity_memory.transforms[0] #in current frame coords
+            if self.disparity_memory.n > 0:
+                prior_disparity = self.disparity_memory.transforms[0] #in current frame coords
+            else:             
+                # we don't have GPS for multiview, so we're temporarily replacing past estimate with coarse 
+                # estimate from current frame 
+                params = {
+                    'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
+                    'data_max': 32.024780646200725, 'ksize': 3}
+                prior_disparity = coarse_bp(frame, down_factor=self.mem_down_factor, iters=5, values=self.values, **params)
+                prior_disparity *= self.frame_step
+                prior_disparity = prior_disparity[:,self.values/self.mem_step:]
 
             importance = self._uc.get_importance(prior_disparity)
 
@@ -101,7 +112,7 @@ class Filter:
             else:
                 cost = importance
 
-            assert cost.shape == self.shape
+            assert cost.shape == self.memory_shape
 
             # c) Find region of highest cost and put fovea there
             mem_fovea_shape = np.array(self.fovea_shape) / self.mem_step
@@ -144,7 +155,7 @@ class Filter:
 
         # --- downsample and remember disparity
         downsampled = downsample(disp[:,self.values:], self.mem_down_factor)
-        assert downsampled.shape == self.shape
+        assert downsampled.shape == self.memory_shape
         self.disparity_memory.remember(pos, downsampled)
 
         if self.n_past_fovea > 0:
@@ -177,18 +188,21 @@ def _choose_fovea(cost, fovea_shape, n_disp):
     fovea_ij = np.unravel_index(np.argmax(fcost), fcost.shape)
     return fovea_ij
 
-# def cost(disp, ground_truth_disp, average_disp=None):
-#     assert disp.shape == ground_truth_disp.shape
-#     error = (disp.astype(float) - ground_truth_disp)**2
-# 
-#     if average_disp is None:
-#         return np.mean(error)**0.5
-#     else:
-#         assert average_disp.shape == ground_truth_disp.shape
+def cost(disp, ground_truth_disp, average_disp=None):
+    assert disp.shape == ground_truth_disp.shape
+    error = (disp.astype(float) - ground_truth_disp)**2
+ 
+    if average_disp is None:
+        return np.mean(error)**0.5
+    else:
+        assert average_disp.shape == ground_truth_disp.shape
+        pos_weights = get_position_weights(disp.shape)
+        importance = get_importance(pos_weights, average_disp, ground_truth_disp)
+        
 #         importance = np.maximum(0, ground_truth_disp.astype(float) - average_disp)
-#         importance /= importance.mean()
-#         weighted = importance * error
-#         return np.mean(weighted)**0.5
+        importance /= importance.mean()
+        weighted = importance * error
+        return np.mean(weighted)**0.5
 
 def cost_on_points(disp, ground_truth_points, average_disp=None, full_shape=(375,1242)):
     #from bp_wrapper import full_shape
@@ -273,7 +287,7 @@ if __name__ == "__main__":
     # source = KittiSource(51, 30)
     # source = KittiSource(51, 100)
     # source = KittiSource(51, 249)
-    source = KittiSource(91, 10)
+    source = KittiSource(51, 10)
     # source = KittiSource(91, None)
 
     frame_down_factor = 1
@@ -292,7 +306,7 @@ if __name__ == "__main__":
     values = frame_shape[1] - average_disp.shape[1]
 
     filter = Filter(average_disp, frame_down_factor, mem_down_factor,
-                    fovea_shape, frame_shape, values, verbose=False)
+                    fovea_shape, frame_shape, values, verbose=False, memory_length=0)
 
     fig = plt.figure(1)
     plt.show(block=False)

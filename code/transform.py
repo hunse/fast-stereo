@@ -10,13 +10,11 @@ from bp_wrapper import get_shifted_points, points2disp_max
 
 
 class DisparityMemory():
-    def __init__(self, shape, down_factor, n=1, fovea_shape=None, fill_method='smudge'):
+    def __init__(self, shape, n=1, fovea_shape=None, fill_method='smudge'):
         """
         Arguments
         ---------
         shape - Expected shape of disparity images
-        down_factor - Downsampling factor used to produce expected disparity images
-            from full disparity images
         n - Number of past frames to retain
         fovea_shape - Shape of foveal region to remember (None=whole image)
         fill_method - default 'smudge' works fine and is fast, other options
@@ -53,7 +51,10 @@ class DisparityMemory():
         disp - Disparity image from this position
         fovea_centre - Centre coords of fovea (None=image centre)
         """
-
+        
+        if self.n == 0: 
+            return 
+        
         assert disp.shape == self.shape
 
         if len(self.past_position) == self.n:
