@@ -257,10 +257,11 @@ def cost_on_points(disp, ground_truth_points, average_disp=None, full_shape=(375
 
         importance /= importance.mean()        
 
-        return np.sqrt(np.mean(importance * (disps - d)**2))
+#         return np.sqrt(np.mean(importance * (disps - d)**2))
+        return np.mean(importance * np.abs(disps - d))
     else:
-#         return np.mean(abs(disps - d))
-        return np.sqrt(np.mean((disps - d)**2))
+        return np.mean(np.abs(disps - d))
+#         return np.sqrt(np.mean((disps - d)**2))
 
 def expand_coarse(coarse, down_factor):
     step = 2**down_factor

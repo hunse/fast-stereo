@@ -777,16 +777,16 @@ void comp_data_down_fovea(
     }
 
     // coarse
-    // for (int y = 0; y < height; y++) {
-    //     const float* sm1i = sm1.ptr<float>(y);
-    //     const float* sm2i = sm2.ptr<float>(y);
-    //     for (int x = values-1; x < width; x++) {
-    //         for (int value = 0; value < values; value++) {
-    //             float val = abs(sm1i[x] - sm2i[x-value]);
-    //             datad_(x/2, y/2, value) = lambda * std::min(val, threshold);
-    //         }
-    //     }
-    // }
+    for (int y = 0; y < height; y++) {
+        const float* sm1i = sm1.ptr<float>(y);
+        const float* sm2i = sm2.ptr<float>(y);
+        for (int x = values-1; x < width; x++) {
+            for (int value = 0; value < values; value++) {
+                float val = abs(sm1i[x] - sm2i[x-value]);
+                datad_(x/2, y/2, value) += lambda * std::min(val, threshold);
+            }
+        }
+    }
 
     // for (int y = 0; y < height; y += 2) {
     //     const float* sm1i = sm1.ptr<float>(y);
@@ -799,31 +799,31 @@ void comp_data_down_fovea(
     //     }
     // }
 
-    for (int y = 0; y < height; y += 2) {
-        const float* sm1i = sm1.ptr<float>(y);
-        const float* sm2i = sm2.ptr<float>(y);
-
-        for (int x = 0; x < values-1; x += 2)
-            for (int value = 0; value < values; value++)
-                datad_(x/2, y/2, value) = 0;
-
-        for (int x = values-1; x < width; x += 2) {
-            if (x < fx || x >= fx1 || y < fy || y >= fy1) {
-                for (int value = 0; value < values; value++) {
-                    float val = abs(sm1i[x] - sm2i[x-value]);
-                    datad_(x/2, y/2, value) = 4 * lambda * std::min(val, threshold);
-                }
-            }
-            // else {
-            //     for (int value = 0; value < values; value++)
-            //         datad_(x/2, y/2, value) = 0;
-            // }
-        }
-    }
-    for (int y = 0; y < fheight; y++)
-        for (int x = 0; x < fwidth; x++)
-            for (int value = 0; value < values; value++)
-                datad_((fx+x)/2, (fy+y)/2, value) += dataf_(x, y, value);
+//     for (int y = 0; y < height; y += 2) {
+//         const float* sm1i = sm1.ptr<float>(y);
+//         const float* sm2i = sm2.ptr<float>(y);
+// 
+//         for (int x = 0; x < values-1; x += 2)
+//             for (int value = 0; value < values; value++)
+//                 datad_(x/2, y/2, value) = 0;
+// 
+//         for (int x = values-1; x < width; x += 2) {
+//             if (x < fx || x >= fx1 || y < fy || y >= fy1) {
+//                 for (int value = 0; value < values; value++) {
+//                     float val = abs(sm1i[x] - sm2i[x-value]);
+//                     datad_(x/2, y/2, value) = 4 * lambda * std::min(val, threshold);
+//                 }
+//             }
+//             // else {
+//             //     for (int value = 0; value < values; value++)
+//             //         datad_(x/2, y/2, value) = 0;
+//             // }
+//         }
+//     }
+//     for (int y = 0; y < fheight; y++)
+//         for (int x = 0; x < fwidth; x++)
+//             for (int value = 0; value < values; value++)
+//                 datad_((fx+x)/2, (fy+y)/2, value) += dataf_(x, y, value);
 
 #else
 

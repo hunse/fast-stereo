@@ -9,7 +9,7 @@ import cv2
 
 from bp_wrapper import foveal_bp, foveal_bp2, coarse_bp, points_image
 from data import KittiSource, KittiMultiViewSource
-from importance import UnusuallyClose, get_average_disparity
+from importance import UnusuallyClose, get_average_disparity, get_position_weights, get_importance
 from transform import DisparityMemory, downsample
 from filter import Filter, cost_on_points, expand_coarse
 
@@ -45,7 +45,7 @@ def append_table(key, disp, true_disp, true_points, average_disp, full_shape):
 
 n_frames = 0
 #for index in range(1):
-for index in range(5):
+for index in range(5,10):
 #for index in range(195): 
     source = KittiMultiViewSource(index, test=False, n_frames=n_frames)
     full_shape = source.frame_ten[0].shape
@@ -59,7 +59,7 @@ for index in range(5):
     #true_disp = downsample(source.ground_truth_OCC, frame_down_factor)
     true_disp = None
     true_points = source.get_ground_truth_points(occluded=False)
-
+    
     # --- coarse
     params = {
         'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
@@ -98,7 +98,32 @@ for index in range(5):
     filter_disp, fovea_corner = filter.process_frame(None, frame_ten)
     append_table('filter', filter_disp[:,values:], true_disp, true_points, average_disp, full_shape)
 
+    print(fovea_corner)
     
+    pos_weights = get_position_weights(coarse_disp.shape)
+    print(pos_weights.shape)
+    print(average_disp.shape)
+    print(coarse_disp.shape)
+    importance = get_importance(pos_weights[:,values:], average_disp, coarse_disp[:,values:])
+
+    plt.subplot(3,1,1)
+    plt.imshow(importance)
+    plt.colorbar()
+    
+    plt.subplot(3,1,2)
+    plt.imshow(np.abs(coarse_disp[:,values:]-fine_disp[:,values:])*importance)
+#     plt.clim(0,90)
+    plt.colorbar()
+#     plt.subplot(3,1,2)
+#     plt.imshow(fine_disp[:,values:]*importance)
+#     plt.clim(0,90)
+#     plt.colorbar()
+    plt.subplot(3,1,3)
+    plt.imshow(np.abs(filter_disp[:,values:]-fine_disp[:,values:])*importance)
+#     plt.clim(0,90)
+    plt.colorbar()
+    plt.show()
+
 #     sys.stdout.write("%d " % i)
 #     sys.stdout.flush()
 #     
