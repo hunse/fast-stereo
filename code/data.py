@@ -19,7 +19,7 @@ from bp_wrapper import coarse_bp, foveal_bp
 
 class KittiMultiViewSource:
     # Stereo benchmark pairs, ground truth, and surrounding multiview sequences
-    
+
     def __init__(self, index, test=False, n_frames=0):
         self.index = index
         self.test = test
@@ -27,16 +27,16 @@ class KittiMultiViewSource:
         self.ground_truth_NOC = load_disp(index, test, occluded=False)
         self.ground_truth_OCC = load_disp(index, test, occluded=True)
         self.frame_sequence = []
-        for i in range(10-n_frames, 10): 
+        for i in range(10-n_frames, 10):
             frame = load_pair(index, test, frame=i, multiview=True)
             self.frame_sequence.append(frame)
-            
+
     def get_ground_truth_points(self, occluded=False):
         disp = self.ground_truth_OCC if occluded else self.ground_truth_NOC
-        Y, X = (disp > 0).nonzero() #missing data seems to be zero (min is zero) 
+        Y, X = (disp > 0).nonzero() #missing data seems to be zero (min is zero)
         d = disp[Y, X] / 256.
         return np.array([X, Y, d]).T
-            
+
     def get_average_disparity(self):
         """
         Returns
@@ -50,7 +50,7 @@ class KittiMultiViewSource:
         down_factor = 2
         iters = 5
         #####
-        
+
         average_path = get_average_path(self.index, self.test, True)
         print(average_path)
 
@@ -61,22 +61,25 @@ class KittiMultiViewSource:
 
             for i in range(21):
                 frame = load_pair(self.index, self.test, frame=i, multiview=True)
-                
+
                 sys.stdout.write('finding ground truth for frame ' + str(i) + ' ')
                 sys.stdout.flush()
                 start_time = time.time()
                 gt_frame = calc_ground_truth(frame, n_disp, down_factor=down_factor, iters=iters)
                 print(str(time.time()-start_time) + 's')
-    
+
                 result.append(gt_frame)
 
-            result = np.mean(result, axis=0)            
-            scipy.misc.imsave(average_path, result.astype(np.uint8)) #note: the uint8 cast is important, otherwise the images are normalized
-            
+            result = np.mean(result, axis=0)
+
+            # note: the uint8 cast is important, otherwise the images are normalized
+            result = np.round(result).astype(np.uint8)
+
+            scipy.misc.imsave(average_path, result)
+
             return result
-            
-        
-    
+
+
 class KittiSource:
     # This is for raw data
 
@@ -146,7 +149,7 @@ def load_stereo_video(drive, n_frames):
 
 def get_average_path(index, test, multiview):
     from kitti.data import data_dir
-     
+
     path = os.path.join(
         data_dir,
         'data_stereo_flow_multiview' if multiview else 'data_stereo_flow',
@@ -155,7 +158,7 @@ def get_average_path(index, test, multiview):
         "%06d.png" % index)
 
     return path
-    
+
 def get_ground_truth_dir(drive):
     result = os.path.join(get_drive_dir(drive), 'ground_truth', 'data')
     if not os.path.exists(result):
@@ -173,7 +176,7 @@ def calc_ground_truth(frame, n_disp, down_factor=0, iters=50):
 
 if __name__ == '__main__':
     from bp_wrapper import points_image
-    
+
 
     source = KittiMultiViewSource(20, n_frames=2)
     points = source.get_ground_truth_points(occluded=False)
@@ -181,12 +184,12 @@ if __name__ == '__main__':
     ad = source.get_average_disparity()
     plt.imshow(ad)
     plt.show()
-    
+
 #     print(len(source.frame_sequence))
 #     plt.imshow(source.frame_sequence[20][1], cmap='gray')
 #     plt.show()
-    
-    
+
+
 #     source = KittiSource(51, 50)
 
 #     fig = plt.figure(1)
@@ -195,13 +198,13 @@ if __name__ == '__main__':
 #     plot_disp = ax_disp.imshow(source.ground_truth[0], vmin=0, vmax=128)
 #     plt.show(block=True)
 
-    
+
 #     video = load_stereo_video(51, 10)
 #     frame = video[3]
-# 
+#
 #     #TODO: check params; compare coarse to coarse level of fovea; try data rather than subdata if not right
 # #     coarse_bp(video[i], down_factor=down_factor, iters=iters)
-# 
+#
 #     params = {'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425, 'data_max': 32.024780646200725, 'ksize': 3}
 #     start_time = time.time()
 #     print('starting')
