@@ -42,7 +42,7 @@ class Filter:
             average_disparity, down_factor=mem_down_factor)
         self.frame_shape = frame_shape
         self.fovea_shape = fovea_shape
-        self.memory_shape = self.average_disparity.shape 
+        self.memory_shape = self.average_disparity.shape
 
         self.values = values
 
@@ -91,9 +91,9 @@ class Filter:
             # a) Transform disparity from previous frame and calculate importance
             if self.disparity_memory.n > 0:
                 prior_disparity = self.disparity_memory.transforms[0] #in current frame coords
-            else:             
-                # we don't have GPS for multiview, so we're temporarily replacing past estimate with coarse 
-                # estimate from current frame 
+            else:
+                # we don't have GPS for multiview, so we're temporarily replacing past estimate with coarse
+                # estimate from current frame
                 params = {
                     'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
                     'data_max': 32.024780646200725, 'ksize': 3}
@@ -191,14 +191,14 @@ def _choose_fovea(cost, fovea_shape, n_disp):
 def cost(disp, ground_truth_disp, average_disp=None):
     assert disp.shape == ground_truth_disp.shape
     error = (disp.astype(float) - ground_truth_disp)**2
- 
+
     if average_disp is None:
         return np.mean(error)**0.5
     else:
         assert average_disp.shape == ground_truth_disp.shape
         pos_weights = get_position_weights(disp.shape)
         importance = get_importance(pos_weights, average_disp, ground_truth_disp)
-        
+
 #         importance = np.maximum(0, ground_truth_disp.astype(float) - average_disp)
         importance /= importance.mean()
         weighted = importance * error
@@ -209,59 +209,71 @@ def cost_on_points(disp, ground_truth_points, average_disp=None, full_shape=(375
 
     xyd = ground_truth_points
     xyd = xyd[xyd[:, 0] >= 128]  # clip left points
-#     x, y, d = ground_truth_points.T
     x, y, d = xyd.T
     x = x - 128  # shift x points
     full_shape = (full_shape[0], full_shape[1] - 128)
 
+    # rescale points
     ratio = np.asarray(disp.shape) / np.asarray(full_shape, dtype=float)
-    print(min(d))
     xr = (x * ratio[1]).astype(int)
     yr = (y * ratio[0]).astype(int)
-    disps = disp[yr, xr]
+    del x, y
 
-    im_d = np.zeros(disp.shape)
-    im_d[yr, xr] = d
-    im_disps = np.zeros(disp.shape)
-    im_disps[yr, xr] = disps
-    
-    
-#     plt.imshow(im_disps-im_d)
-#     plt.hist(im_disps.flatten()-im_d.flatten(), 100)
-#     print("------")
-#     print(np.std(disps-d))
-#     plt.scatter(disps, d)
+    # remove points too close to the edge (importance data is screwy)
+    edge = 3
+    height, width = disp.shape
+    mask = (xr >= edge) & (yr >= edge) & (xr <= width - edge - 1) & (yr <= height - edge - 1)
+    xr, yr, d = xr[mask], yr[mask], d[mask]
+
+    disps = disp[yr, xr]
 
     if average_disp is not None:
         assert average_disp.shape == disp.shape, (average_disp.shape, disp.shape)
-
-        
         pos_weights = get_position_weights(disp.shape)
         importance = get_importance(pos_weights[yr, xr], average_disp[yr, xr], d)
         importance2 = np.maximum(0, d.astype(float) - average_disp[yr, xr])
-        sys.stdout.write("importance mean %f  %f\n" % (np.mean(importance), importance2.mean()))
-        sys.stdout.flush()
 
-#         plt.subplot(3,1,1)
-#         plt.imshow(average_disp)
-#         plt.colorbar()
-#         plt.subplot(3,1,2)
-#         plt.imshow(im_d)
-#         plt.colorbar()
-#         plt.subplot(3,1,3)
-#         im_importance = np.zeros(disp.shape)
-#         im_importance[yr, xr] = importance
-#         plt.imshow(im_importance)
-#         plt.colorbar()
-#         plt.show()
+        importance /= importance.mean()
+        error = np.abs(disps - d)
 
-        importance /= importance.mean()        
+        if 0:
+            sys.stdout.write(
+                "importance mean %f  %f\n" % (
+                    np.mean(importance), importance2.mean()))
+            sys.stdout.flush()
 
-#         return np.sqrt(np.mean(importance * (disps - d)**2))
-        return np.mean(importance * np.abs(disps - d))
+            plt.figure()
+            rows, cols = 5, 1
+            plt.subplot(rows, cols, 1)
+            plt.imshow(average_disp)
+            plt.colorbar()
+            plt.subplot(rows, cols, 2)
+            im_d = np.zeros(disp.shape)
+            im_d[yr, xr] = d
+            plt.imshow(im_d)
+            plt.colorbar()
+            plt.subplot(rows, cols, 3)
+            im_importance = np.zeros(disp.shape)
+            im_importance[yr, xr] = importance
+            plt.imshow(im_importance)
+            plt.colorbar()
+            plt.subplot(rows, cols, 4)
+            im_error = np.zeros(disp.shape)
+            im_error[yr, xr] = error
+            plt.imshow(im_error)
+            plt.colorbar()
+            plt.subplot(rows, cols, 5)
+            im_werror = np.zeros(disp.shape)
+            im_werror[yr, xr] = importance * error
+            plt.imshow(im_werror)
+            plt.colorbar()
+
+            plt.show()
+
+        return np.mean(importance * error)
     else:
         return np.mean(np.abs(disps - d))
-#         return np.sqrt(np.mean((disps - d)**2))
+
 
 def expand_coarse(coarse, down_factor):
     step = 2**down_factor

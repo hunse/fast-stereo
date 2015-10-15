@@ -18,8 +18,10 @@ ext_modules = []
 ext_modules.append(Extension(
     "bp.bp",
     ["bp/bp.pyx", "bp/stereo.cpp"],
-    include_dirs=["bp", "/opt/opencv/include", np.get_include()],
-    library_dirs=["/opt/opencv/lib"],
+    include_dirs=["bp", "/usr/include", np.get_include()],
+    library_dirs=["/usr/lib/x86_64-linux-gnu"],
+    # include_dirs=["bp", "/opt/opencv/include", np.get_include()],
+    # library_dirs=["/opt/opencv/lib"],
     libraries=["opencv_core", "opencv_imgproc"],
     language="c++",
     extra_compile_args=["-w", "-O3"]))

@@ -52,7 +52,6 @@ class KittiMultiViewSource:
         #####
 
         average_path = get_average_path(self.index, self.test, True)
-        print(average_path)
 
         if os.path.exists(average_path):
             return scipy.ndimage.imread(average_path)
