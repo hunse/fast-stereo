@@ -147,7 +147,8 @@ lly-offset regions in the other image.
 Sparse
 \emph default
  stereo methods match only a minority of features, i.e.
- distinctive ones that are likely to be matched correctly [TODO: ref].
+ distinctive ones that are likely to be matched correctly [TODO: ref, perhaps
+ something that uses SIFT].
  In contrast, 
 \emph on
 dense
@@ -182,7 +183,14 @@ Neighbouring disparities are highly correlated except at object boundaries.
 a posteriori
 \emph default
  depth images can be estimated using various methods, such as loopy belief
- propagation and graph cuts [Tappen & Freeman, 2003; Szeliski et al., 2008].
+ propagation and graph cuts 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Tappen2003"
+
+\end_inset
+
+[Tappen & Freeman, 2003; Szeliski et al., 2008].
  But despite many recent advances in efficiency, these methods remain computatio
 nally intensive, limiting their practicality for robots, which require high
  frame rates with modest computational resources.
