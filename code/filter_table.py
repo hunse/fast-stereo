@@ -46,18 +46,20 @@ def append_table(key, disp, true_disp, true_points, average_disp, full_shape):
 n_frames = 0
 #for index in range(1):
 # for index in range(5,10):
-for index in range(80):
-# for index in range(30, 195):
-    if index in [31, 82]:  # bad indices (incomplete data)
-        continue
-
+# for index in range(80):
+for index in range(80, 195):
     source = KittiMultiViewSource(index, test=False, n_frames=n_frames)
     full_shape = source.frame_ten[0].shape
     frame_ten = [downsample(source.frame_ten[0], frame_down_factor),
                  downsample(source.frame_ten[1], frame_down_factor)]
     frame_shape = frame_ten[0].shape
-    average_disp = source.get_average_disparity()
-    average_disp = cv2.pyrUp(average_disp)[:frame_shape[0],:frame_shape[1]-values]
+
+    try:
+        average_disp = source.get_average_disparity()
+        average_disp = cv2.pyrUp(average_disp)[:frame_shape[0],:frame_shape[1]-values]
+    except IOError:  # likely does not have a full 20 frames
+        print("Skipping index %d (lacks frames)" % index)
+        continue
 
     #true_disp = downsample(source.ground_truth_OCC, frame_down_factor)
     true_disp = None
@@ -127,6 +129,8 @@ for index in range(80):
     #     plt.clim(0,90)
         plt.colorbar()
         plt.show()
+
+    print("Computed index %d" % index)
 
 
 for key in table:
