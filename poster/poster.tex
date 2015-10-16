@@ -1,6 +1,6 @@
-%% \documentclass[landscape,final,a0paper,fontscale=0.285]{baposter}
+\documentclass[landscape,final,a0paper,fontscale=0.285]{baposter}
 %% \documentclass[landscape,final,a0paper,fontscale=0.4]{baposter}
-\documentclass[landscape,final,a0paper,fontscale=0.35]{baposter}
+%% \documentclass[landscape,final,a0paper,fontscale=0.35]{baposter}
 
 \usepackage{calc}
 \usepackage{graphicx}
@@ -164,35 +164,34 @@
 
     \headerbox{Introduction}{name=pane00,column=0,row=0}{
       \noindent
-      TODO
+      \begin{blockitemize}
+        \item Multiscale Belief Propagation (BP) is an accurate but slow
+          stereo-matching algorithm.
+        \item Our goal is to reduce computation time while maintaining accuracy
+          by focusing computation in important regions of the image.
+        \item We also want to incorporate past data into the depth estimate
+          for the current frame.
+      \end{blockitemize}
     }
 
-    \headerbox{Methods}{name=pane01,column=0,below=pane00}{
-      TODO
-      %% \begin{description}[noitemsep, nolistsep]
-      %%   \newcommand{\dline}{\hfill\\}
-      %%   \item[Input:] An aperiodic random signal\\(amplitude = 0.1, max. frequency = 5 Hz)
-      %%   \item[Neurons:] 64 Fitzhugh-Nagumo (FHN)\\
-      %%     or leaky integrate-and-fire (LIF) model neurons
-      %%   \item[Noise:] Gaussian white noise added to neuron membrane
-      %%   \item[Heterogeneity:]
-      %%     Introduced by choosing neuron bias currents from uniform distributions
-      %%     (larger distribution radius corresponds to increased heterogeneity)
-      %%   \item[Output:] Summed and filtered spikes from all neurons
-      %%   \item[Performance metric:] Mutual information calculated between input and output signals
-      %% \end{description}
+    \headerbox{Multiscale BP}{name=pane01,column=0,below=pane00}{
+      \noindent
+      Belief Propagation (BP) poses the stereo-matching problem in terms of
+      the solution to a Markov Random Field. The ``loopy'' BP algorithm then
+      uses a message-passing scheme to perform approximate inference on this
+      field, resulting in probabilities across all possible disparity matches
+      of all the pixels in the scene.
 
-      %% %% \vspace{1em}
-      %% \begin{center}
-      %%   %% \includegraphics[width=\columnwidth]{../figures/experiment.pdf}
-      %% \end{center}
+      Multiscale BP reduces the number of iteration \cite{Felzenszwalb2006a}
+      TODO
     }
 
     \headerbox{References}{name=pane02,column=0,below=pane01,above=bottom}{
-      %% \scriptsize
-      %% \renewcommand{\refname}{\vspace{-0.8em}}
+      \scriptsize
+      \renewcommand{\refname}{\vspace{-0.8em}}
+      \bibliographystyle{ieeetr}
       %% \bibliographystyle{jabbrv_ieeetr}
-      %% \bibliography{/media/dropbox/papers/bib/Publishing-StochasticResonance}
+      \bibliography{../paper/fast-stereo-eric}
     }
 
     \headerbox{Fovea Example}{name=pane10,column=1,row=0}{
@@ -241,151 +240,13 @@
       \end{blockitemize}
     }
 
-
-    %% \headerbox{Resonance and Heterogeneity}{name=reshetero,column=1,row=0}{
-    %%   %% \noindent
-    %%   %% Both heterogeneity and noise can help populations encode signals, in the right amounts.
-    %%   %% In the figure below, we see resonance with respect to heterogeneity:
-    %%   \begin{center}
-    %%     %% \includegraphics[width=0.75\columnwidth, clip=true, trim=3mm 6mm 3mm 4mm]
-    %%     %%                 {../figures/color/infohetero.pdf}
-    %%   \end{center}
-    %% }
-    %% \headerbox{Resonance and Noise}{name=resnoise,column=1,below=reshetero}{
-    %%   \begin{center}
-    %%     %% \includegraphics[width=\columnwidth, clip=true, trim=3mm 6mm 3mm 4mm]
-    %%     %%                 {../figures/color/info.pdf}
-    %%   \end{center}
-
-    %%   \noindent
-    %%   \begin{blockitemize}
-    %%     \item LIF neurons exhibit resonance only at low levels of heterogeneity
-    %%     \item FHN neurons exhibit resonance at all levels of heterogeneity,
-    %%       since heterogeneity cannot fully desynchronize neurons
-    %%   \end{blockitemize}
-    %% }
-
-    %% \headerbox{Redundant Benefits}{name=body,column=1,span=2,below=resnoise,above=bottom}{
-    %%   \begin{multicols}{2}
-    %%     \noindent
-    %%     Since heterogeneity and noise operate through similar mechanisms,
-    %%     their benefits are not additive.
-
-    %%     \noindent
-    %%     \begin{blockitemize}
-    %%       \vspace{0.5em}
-    %%       \item For LIF neurons (right), overall information encoding is optimized for
-    %%         biases chosen from the range $b_i \in [-0.15, 0.15]$ and no noise
-    %%       \item Given optimal heterogeneity,
-    %%         adding noise ($\sigma_\eta~=~10^{-2}$) reduces encoded information
-    %%       \item But in the absence of heterogeneity,
-    %%         a moderate amount of noise ($\sigma_\eta = 10^{-2}$) optimizes encoded information
-    %%         (see \textsc{Resonance and Noise})
-    %%     \end{blockitemize}
-
-    %%     \begin{center}
-    %%       %% \includegraphics[width=0.78\columnwidth]{../figures/color/infocontour.pdf}
-    %%     \end{center}
-    %%   \end{multicols}
-    %% }
-
-    %% \headerbox{Desynchronization}{name=desynchronization,column=2,above=body}{
-    %%   \noindent
-    %%   \raggedright
-    %%   Noise~\cite{Stocks2001a} and heterogeneity~\cite{Burton2012}
-    %%   desynchronize neuronal spiking.
-    %%   %% We quantified these results %in our experiments
-    %%   %% by measuring the standard deviation of the phase across a population of neurons,
-    %%   %% and varying the level of noise and heterogeneity in the population.
-
-    %%   \noindent
-    %%   \begin{blockitemize}
-    %%     \vspace{0.5em}
-    %%     \item FHN neurons have about the same firing rate for all stimuli above the firing threshold,
-    %%       so heterogeneity in the biases is not able to fully desynchronize them
-    %%     \item In LIF neurons, heterogeneity is slightly better than noise at desynchronizing neuronal firing
-    %%   \end{blockitemize}
-
-    %%   \begin{center}
-    %%     %% \includegraphics[width=\columnwidth, clip=true, trim=3mm 6mm 3mm 4mm]
-    %%     %%                 {../figures/color/phase.pdf}
-    %%   \end{center}
-
-    %%   \noindent
-    %%   \begin{center}
-    %%   \begin{minipage}{0.33\columnwidth}
-    %%     \raggedright
-    %%     Spike rasters for LIF neurons
-    %%     with low noise (top) and high noise (bottom)
-    %%     demonstrate that noise reduces synchrony.
-    %%     %% The nois neurons fire more asynchronously.
-    %%   \end{minipage}
-    %%   \begin{minipage}{0.63\columnwidth}
-    %%     \vspace{-1em}
-    %%     \begin{center}
-    %%       %% \includegraphics[width=1.05\columnwidth, clip=true, trim=1mm 3mm 1mm 1mm]
-    %%       %%                 {../figures/color/syncraster.pdf}
-    %%     \end{center}
-    %%   \end{minipage}
-    %%   \end{center}
-    %% }
-
-    %% \headerbox{Linearization}{name=linearization,column=3}{
-    %%   \raggedright
-    %%   \noindent
-    %%   Noise can improve population encoding by linearizing neuron stimulus-response curves~\cite{Chance2002}:
-    %%   \begin{center}
-    %%     %% \includegraphics[width=\columnwidth, clip=true, trim=3mm 6mm 3mm 4mm]
-    %%     %%                 {../figures/color/tuningnoisy.pdf}
-    %%   \end{center}
-
-    %%   \noindent
-    %%   Heterogeneity linearizes the \emph{population} stimulus-response:
-    %%   %% as illustrated below.
-    %%   %% The population tuning curves (left) are averaged to form the population response (right, black line),
-    %%   %% which is more linear than a homogeneous population response (right, dashed line).
-    %%   \begin{center}
-    %%     %% \includegraphics[width=\columnwidth, clip=true, trim=3mm 4mm 3mm 4mm]
-    %%     %%                 {../figures/color/tuninghetero.pdf}
-    %%   \end{center}
-
-    %% }
-
-    %% \headerbox{Future work}{name=future,column=3,above=bottom}{
-    %%   \noindent
-    %%   \begin{blockitemize}
-    %%     \item Examine more sophisticated neuron models and other decoding methods
-    %%     \item Extend heterogeneity to other neuron parameters
-    %%       (\emph{e.g.,} maximum firing rate)
-    %%       to determine if this increases the benefits of heterogeneity in FHN neurons
-    %%     \item Quantify these effects
-    %%       in the context of a functional multi-layer model of the visual system
-    %%   \end{blockitemize}
-    %% }
-
-    %% \headerbox{Conclusions}{name=conclusions,column=3,above=future,below=linearization}{
-    %%   \noindent
-    %%   \begin{blockitemize}
-    %%     \raggedright
-    %%     \item Noise and heterogeneity both provide a neuronal population
-    %%       with a better basis for encoding signals
-    %%     \item This is done by desynchronizing neuronal firing and linearizing neuron tuning curves
-    %%     \item Both noise and heterogeneity show resonance effects,
-    %%       offering increases in information encoding only across finite ranges
-    %%     \item The benefits of noise and heterogeneity are not additive;
-    %%       only one or the other is required
-    %%   \end{blockitemize}
-
-    %% }
-
 \end{poster}
 \end{document}
 
-%%  LocalWords:  headerfade rgb colspacing bgColorOne bgColorTwo FHN
+%%  LocalWords:  headerfade rgb colspacing bgColorOne bgColorTwo TODO
 %%  LocalWords:  borderColor headerColorOne headerColorTwo textborder
 %%  LocalWords:  headerFontColor boxColorOne boxColorTwo roundedleft
-%%  LocalWords:  eyecatcher headerborder headerheight headershape LIF
+%%  LocalWords:  eyecatcher headerborder headerheight headershape
 %%  LocalWords:  roundedright headershade shadelr headerfont textfont
-%%  LocalWords:  boxshade linewidth Eliasmith ehunsber mscott Nagumo
-%%  LocalWords:  celiasmith uwaterloo Fitzhugh reshetero resnoise
-%%  LocalWords:  rasters multi
+%%  LocalWords:  boxshade linewidth uwaterloo
+%%  LocalWords:  rasters multi Tripp jeff bptripp Multiscale
