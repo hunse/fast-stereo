@@ -4,12 +4,13 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 import cPickle as pickle
+import cv2
 from data import load_stereo_video
 from bp_wrapper import foveal_bp, coarse_bp
-from data import KittiSource
+from data import KittiSource, KittiMultiViewSource
 from transform import DisparityMemory, downsample
 from importance import UnusuallyClose, get_average_disparity
-from filter import expand_coarse, cost, cost_on_points
+from filter import expand_coarse, cost, cost_on_points, Filter
 
 
 def trim(disp, vmax, edge):
@@ -74,7 +75,7 @@ def fovea_examples():
     edge = 25
 
     plt.subplot(211)
-    disp = foveal_bp(frame, 910, 200, seed, down_factor=down_factor, iters=5, **params)
+    disp = foveal_bp(frame, (910, 200), seed, down_factor=down_factor, iters=5, **params)
     plt.imshow(trim(disp, values, edge), vmin=0, vmax=values)
     plt.scatter(910-values, 200-edge, s=100, c='white', marker='+', linewidths=2)
     plt.gca().set_frame_on(False)
@@ -82,7 +83,7 @@ def fovea_examples():
     plt.gca().get_xaxis().set_visible(False)
 
     plt.subplot(212)
-    disp = foveal_bp(frame, 590, 50, seed, down_factor=down_factor, iters=5, **params)
+    disp = foveal_bp(frame, (590, 50), seed, down_factor=down_factor, iters=5, **params)
     plt.imshow(trim(disp, values, 25), vmin=0, vmax=values)
     plt.scatter(590-values, 50-edge, s=100, c='white', marker='+', linewidths=2)
     plt.gca().set_frame_on(False)
@@ -221,6 +222,55 @@ def rationale():
     plt.gca().tick_params(labelsize='18')
     plt.show()
     
+def foveation_sequence(): 
+    frame_down_factor = 1
+    mem_down_factor = 2     # relative to the frame down factor
+    coarse_down_factor = 2  # for the coarse comparison
+    
+    fs = 80
+    fovea_shape = (fs, fs)
+    full_values = 128
+    values = full_values / 2**frame_down_factor
+    
+    index = 15
+    n_frames = 10
+    source = KittiMultiViewSource(index, test=False, n_frames=n_frames)
+    full_shape = source.frame_ten[0].shape
+    frame_ten = [downsample(source.frame_ten[0], frame_down_factor),
+                 downsample(source.frame_ten[1], frame_down_factor)]
+    frame_shape = frame_ten[0].shape
+
+    average_disp = source.get_average_disparity()
+    average_disp = cv2.pyrUp(average_disp)[:frame_shape[0],:frame_shape[1]-values]
+
+    filter = Filter(average_disp, frame_down_factor, mem_down_factor,
+                    fovea_shape, frame_shape, values, verbose=False, memory_length=0)
+    
+    plt.figure()
+    import matplotlib.cm as cm
+    for i in range(0, 10, 2):
+        frame = [downsample(source.frame_sequence[i][0], frame_down_factor),
+                 downsample(source.frame_sequence[i][1], frame_down_factor)]
+        filter_disp, fovea_corner = filter.process_frame(None, frame)
+
+        edge = 5
+        
+        plt.subplot(5,1,i/2)
+#         plt.subplot(5,2,i+1)
+        plt.imshow(trim(frame[0], values, edge), cmap = cm.Greys_r)
+#         remove_axes()
+
+#         plt.subplot(5,2,i+2)
+#         plt.imshow(trim(filter_disp, values, edge), vmin=0, vmax=full_values)
+        plt.scatter(fovea_corner[1]-values+fs/2, fovea_corner[0]-edge+fs/2, s=100, c='green', marker='+', linewidths=2)
+        plt.scatter(fovea_corner[1]-values, fovea_corner[0]-edge, s=9, c='green', marker='+', linewidths=3)
+        plt.scatter(fovea_corner[1]-values+fs, fovea_corner[0]-edge+fs, s=9, c='green', marker='+', linewidths=3)
+        plt.scatter(fovea_corner[1]-values, fovea_corner[0]-edge+fs, s=9, c='green', marker='+', linewidths=3)
+        plt.scatter(fovea_corner[1]-values+fs, fovea_corner[0]-edge, s=9, c='green', marker='+', linewidths=3)
+        remove_axes()
+    plt.show()
+    
+       
     
 def _evaluate_frame(source, frame_num, frame_shape, down_factor, frame_down_factor, iters, average_disparity, params):
     values = 128/2**frame_down_factor
@@ -241,4 +291,5 @@ if __name__ == '__main__':
 #     smudge_vs_interp()
 #     seed_outside_fovea()
 #     importance()
-    rationale()
+#     rationale()
+    foveation_sequence()
