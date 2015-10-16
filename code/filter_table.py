@@ -47,7 +47,7 @@ n_frames = 0
 #for index in range(1):
 # for index in range(5,10):
 # for index in range(80):
-for index in range(80, 195):
+for index in range(194):
     source = KittiMultiViewSource(index, test=False, n_frames=n_frames)
     full_shape = source.frame_ten[0].shape
     frame_ten = [downsample(source.frame_ten[0], frame_down_factor),
