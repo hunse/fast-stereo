@@ -113,7 +113,7 @@
   }
   % Title
   {
-    \textbf{\textsc{Selective Processing for Real-time Stereo Matching}}\vspace{0.5em}
+    \textbf{\textsc{Selective Processing for\\[0.2em] Real-time Stereo Matching}}\vspace{0.5em}
   }
   % Authors
   {
@@ -150,7 +150,8 @@
 
     \newenvironment{blockitemize}
     {%
-      \begin{minipage}{\columnwidth - 2em}
+      \noindent\hspace{-1em}
+      \begin{minipage}{\columnwidth + 0em}
       \begin{itemize}
         \setlength{\itemsep}{0.3em}
 
@@ -163,9 +164,8 @@
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
     \headerbox{Introduction}{name=pane00,column=0,row=0}{
-      \noindent
       \begin{blockitemize}
-        \item Multiscale Belief Propagation (BP) is an accurate but slow
+        \item Multiscale Belief Propagation (BP) is an accurate
           stereo-matching algorithm.
         \item Our goal is to reduce computation time while maintaining accuracy
           by focusing computation in important regions of the image.
@@ -196,28 +196,41 @@
 
     \headerbox{Fovea Example}{name=pane10,column=1,row=0}{
       \begin{center}
-        %% \includegraphics[width=0.75\columnwidth, clip=true, trim=3mm 6mm 3mm 4mm]
-        \includegraphics[width=1.0\columnwidth]{fovea-examples.png}
+        %% \includegraphics[width=0.75\columnwidth,clip=true,trim=50px 55px 50px 55px]{fovea-examples.png}
+        \includegraphics[width=1.0\columnwidth]{fovea-examples-tight.png}
       \end{center}
+      %% The fovea can help remove objects
+      TODO
     }
 
-    \headerbox{Something}{name=pane11,column=1,row=0,below=pane10}{
+    \headerbox{Coarse vs Fine BP}{name=pane11,column=1,row=0,below=pane10}{
       \begin{center}
         \includegraphics[width=1.0\columnwidth]{fovea-rationale.png}
       \end{center}
+      Comparing runtimes of BP at coarse (squares) and fine (circles) resolutions
+      across different numbers of iterations,
+      we see that using more iterations to coarse BP quickly saturates in performance,
+      whereas adding iterations to fine BP quickly makes the runtime too long for real time.
+      By applying fine BP selectively to important regions,
+      we can achieve real-time BP (at 10 Hz) with better performance than coarse BP.
     }
 
     \headerbox{Importance}{name=pane20,column=2,row=0}{
       \begin{center}
         %% \includegraphics[width=1.0\columnwidth]{importance.png}
-        \includegraphics[width=1.0\columnwidth,clip=true,trim=30mm 0mm 30mm 0mm]{importance.png}
+        \includegraphics[width=0.6\columnwidth,clip=true,trim=130px 15px 130px 15px]{importance.png}
       \end{center}
+      To choose regions of interest for foveation,
+      we compare the current coarse depth estimate (middle)
+      with the average depth estimate across many frames (top).
+      The difference highlights regions that are unexpectedly close (bottom).
     }
 
     \headerbox{Foveation sequence}{name=pane21,column=2,row=0,below=pane20}{
       TODO
       \begin{center}
-        %% \includegraphics[width=1.0\columnwidth]{importance.png}
+        %% \includegraphics[width=1.0\columnwidth,clip=true,trim=220px 100px 200px 120px]{foveation-sequence.png}
+        \includegraphics[width=1.0\columnwidth]{foveation-sequence-tight.png}
       \end{center}
     }
 
@@ -225,7 +238,6 @@
     }
 
     \headerbox{Conclusions}{name=pane31,column=3,row=0,below=pane30}{
-      \noindent
       \begin{blockitemize}
         \item TODO
         %% \item Computing the fine data cost and downsampling has
@@ -233,7 +245,6 @@
     }
 
     \headerbox{Future Work}{name=pane32,column=3,row=0,below=pane31}{
-      \noindent
       \begin{blockitemize}
         \item Use coarser resolution outside fovea to further reduce computation
         \item Use multiple foveas to target multiple regions of interest
