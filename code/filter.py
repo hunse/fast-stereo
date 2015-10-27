@@ -174,6 +174,9 @@ class Filter:
 
 
 def _choose_fovea(cost, fovea_shape, n_disp):
+    if tuple(fovea_shape) == (0, 0):
+        return (0, 0)
+
     # this is copied from bryanfilter
     fm, fn = fovea_shape
     icost = cv2.integral(cost)
@@ -220,7 +223,7 @@ def cost_on_points(disp, ground_truth_points, average_disp=None, full_shape=(375
     del x, y
 
     # remove points too close to the edge (importance data is screwy)
-    edge = 3
+    edge = 10
     height, width = disp.shape
     mask = (xr >= edge) & (yr >= edge) & (xr <= width - edge - 1) & (yr <= height - edge - 1)
     xr, yr, d = xr[mask], yr[mask], d[mask]
@@ -231,38 +234,48 @@ def cost_on_points(disp, ground_truth_points, average_disp=None, full_shape=(375
         assert average_disp.shape == disp.shape, (average_disp.shape, disp.shape)
         pos_weights = get_position_weights(disp.shape)
         importance = get_importance(pos_weights[yr, xr], average_disp[yr, xr], d)
-        importance2 = np.maximum(0, d.astype(float) - average_disp[yr, xr])
 
         importance /= importance.mean()
         error = np.abs(disps - d)
 
         if 0:
+            importance2 = np.maximum(0, d.astype(float) - average_disp[yr, xr])
+
             sys.stdout.write(
                 "importance mean %f  %f\n" % (
                     np.mean(importance), importance2.mean()))
             sys.stdout.flush()
 
             plt.figure()
-            rows, cols = 5, 1
+            rows, cols = 6, 1
             plt.subplot(rows, cols, 1)
+            plt.title("average disp")
             plt.imshow(average_disp)
             plt.colorbar()
             plt.subplot(rows, cols, 2)
+            plt.title("ground truth")
             im_d = np.zeros(disp.shape)
             im_d[yr, xr] = d
             plt.imshow(im_d)
             plt.colorbar()
             plt.subplot(rows, cols, 3)
+            plt.title("disp")
+            plt.imshow(disp)
+            plt.colorbar()
+            plt.subplot(rows, cols, 4)
+            plt.title("importance")
             im_importance = np.zeros(disp.shape)
             im_importance[yr, xr] = importance
             plt.imshow(im_importance)
             plt.colorbar()
-            plt.subplot(rows, cols, 4)
+            plt.subplot(rows, cols, 5)
+            plt.title("error")
             im_error = np.zeros(disp.shape)
             im_error[yr, xr] = error
             plt.imshow(im_error)
             plt.colorbar()
-            plt.subplot(rows, cols, 5)
+            plt.subplot(rows, cols, 6)
+            plt.title("weighted error")
             im_werror = np.zeros(disp.shape)
             im_werror[yr, xr] = importance * error
             plt.imshow(im_werror)
@@ -481,7 +494,7 @@ if __name__ == "__main__":
             table['du_fovea_coarse'][-1], table['du_fovea_filter'][-1], table['du_fovea_fine'][-1]))
         print("fu fovea (coarse, filter): (%0.3f, %0.3f)" % (
             table['fu_fovea_coarse'][-1], table['fu_fovea_filter'][-1]))
-        raw_input("Pause...")
+        # raw_input("Pause...")
 
         if 0 and table['pu_coarse'][-1] < table['pu_filter'][-1]:
             diff = disp.astype(float)[:,values:] - coarse_disp[:,values:]
@@ -497,6 +510,5 @@ if __name__ == "__main__":
     for key in sorted(list(table)):
         print('%20s | %10.3f' % (key, np.mean(table[key])))
 
-    # print(np.mean(costs))
-    # print(np.mean(costs_on_points))
-    # print(np.mean(times))
+    for key in sorted(list(times)):
+        print("%s: %s" % (key, np.mean(times[key])))

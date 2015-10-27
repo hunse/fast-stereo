@@ -1,3 +1,5 @@
+# TODO: look into frames 17, 27, 83, others where filter does worse than coarse
+
 from collections import defaultdict
 
 import sys
@@ -14,11 +16,13 @@ from transform import DisparityMemory, downsample
 from filter import Filter, cost_on_points, expand_coarse
 
 
-frame_down_factor = 1
+# frame_down_factor = 1
+frame_down_factor = 2
 mem_down_factor = 2     # relative to the frame down factor
 coarse_down_factor = 2  # for the coarse comparison
 
-fovea_shape = (80, 80)
+# fovea_shape = (80, 80)
+fovea_shape = (40, 40)
 full_values = 128
 values = full_values / 2**frame_down_factor
 
@@ -46,8 +50,12 @@ def append_table(key, disp, true_disp, true_points, average_disp, full_shape):
 n_frames = 0
 #for index in range(1):
 # for index in range(5,10):
+# for index in range(17, 18):
+# for index in range(27, 28):
+for index in range(30):
 # for index in range(80):
-for index in range(194):
+# for index in range(194):
+# for index in range(2, 3):
     source = KittiMultiViewSource(index, test=False, n_frames=n_frames)
     full_shape = source.frame_ten[0].shape
     frame_ten = [downsample(source.frame_ten[0], frame_down_factor),
@@ -56,10 +64,17 @@ for index in range(194):
 
     try:
         average_disp = source.get_average_disparity()
-        average_disp = cv2.pyrUp(average_disp)[:frame_shape[0],:frame_shape[1]-values]
     except IOError:  # likely does not have a full 20 frames
         print("Skipping index %d (lacks frames)" % index)
         continue
+
+    # rescale average_disp
+    assert frame_down_factor <= 2
+    for _ in range(2 - frame_down_factor):
+        average_disp = cv2.pyrUp(average_disp)
+    assert np.abs(average_disp.shape[0] - frame_shape[0]) < 2
+    assert np.abs(average_disp.shape[1] + values - frame_shape[1]) < 2
+    average_disp = average_disp[:frame_shape[0],:frame_shape[1]]
 
     #true_disp = downsample(source.ground_truth_OCC, frame_down_factor)
     true_disp = None
@@ -72,19 +87,11 @@ for index in range(194):
     coarse_time = time.time()
     coarse_disp = coarse_bp(frame_ten, down_factor=1, iters=3, values=values, **params)
     coarse_disp = cv2.pyrUp(coarse_disp)[:frame_shape[0],:frame_shape[1]]
-    coarse_disp *= 2
+    coarse_disp *= 2**frame_down_factor
     coarse_time = time.time() - coarse_time
 
     append_table('coarse', coarse_disp[:,values:], true_disp, true_points, average_disp, full_shape)
     times['coarse'].append(coarse_time)
-
-#     plt.subplot(211)
-#     plt.imshow(points_image(true_points, frame_shape))
-#     plt.colorbar()
-#     plt.subplot(212)
-#     plt.imshow(coarse_disp)
-#     plt.colorbar()
-#     plt.show()
 
     # --- fine
     params = {
@@ -92,11 +99,17 @@ for index in range(194):
         'data_max': 32.024780646200725, 'ksize': 3}
     fine_time = time.time()
     fine_disp = coarse_bp(frame_ten, down_factor=0, iters=3, values=values, **params)
-    fine_disp *= 2
+    fine_disp *= 2**frame_down_factor
     fine_time = time.time() - fine_time
 
     append_table('fine', fine_disp[:,values:], true_disp, true_points, average_disp, full_shape)
     times['fine'].append(fine_time)
+
+    # --- filter (no fovea)
+    filter = Filter(average_disp, frame_down_factor, mem_down_factor,
+                    (0, 0), frame_shape, values, verbose=False, memory_length=0)
+    filter_disp0, _ = filter.process_frame(None, frame_ten)
+    append_table('filter0', filter_disp0[:,values:], true_disp, true_points, average_disp, full_shape)
 
     # --- filter
     filter = Filter(average_disp, frame_down_factor, mem_down_factor,
@@ -104,37 +117,196 @@ for index in range(194):
     filter_disp, fovea_corner = filter.process_frame(None, frame_ten)
     append_table('filter', filter_disp[:,values:], true_disp, true_points, average_disp, full_shape)
 
-    if 0:
-        pos_weights = get_position_weights(coarse_disp.shape)
-        print(pos_weights.shape)
-        print(average_disp.shape)
-        print(coarse_disp.shape)
-        importance = get_importance(pos_weights[:,values:], average_disp, coarse_disp[:,values:])
-        print("Importance mean again: %s (min: %s, max: %s)" % (importance.mean(), importance.min(), importance.max()))
+    # --- fovea
+    fovea0 = slice(fovea_corner[0], fovea_corner[0]+fovea_shape[0])
+    fovea1 = slice(fovea_corner[1], fovea_corner[1]+fovea_shape[1])
+    fovea1v = slice(fovea1.start - values, fovea1.stop - values)
+    fine_fovea = fine_disp[fovea0, fovea1]
+    filter_fovea0 = filter_disp0[fovea0, fovea1]
+    filter_fovea = filter_disp[fovea0, fovea1]
 
-        plt.subplot(3,1,1)
-        plt.imshow(importance)
-        plt.colorbar()
-
-        plt.subplot(3,1,2)
-        plt.imshow(np.abs(coarse_disp[:,values:]-fine_disp[:,values:])*importance)
-    #     plt.clim(0,90)
-        plt.colorbar()
-    #     plt.subplot(3,1,2)
-    #     plt.imshow(fine_disp[:,values:]*importance)
-    #     plt.clim(0,90)
-    #     plt.colorbar()
-        plt.subplot(3,1,3)
-        plt.imshow(np.abs(filter_disp[:,values:]-fine_disp[:,values:])*importance)
-    #     plt.clim(0,90)
-        plt.colorbar()
-        plt.show()
+    true_disp = points_image(true_points, frame_shape, default=-1)
+    true_fovea = true_disp[fovea0, fovea1]
 
     print("Computed index %d" % index)
 
+    if 0:
+        print(", ".join("%s: %s" % (key, table[key][-1]) for key in sorted(list(table))))
+
+        pos_weights = get_position_weights(coarse_disp.shape)
+        importance = get_importance(pos_weights[:,values:], average_disp, true_disp[:,values:])
+        # importance = get_importance(pos_weights[:,values:], average_disp, coarse_disp[:,values:])
+        # print("Importance mean again: %s (min: %s, max: %s)" % (importance.mean(), importance.min(), importance.max()))
+        importance /= importance.mean()
+
+        mask = np.zeros(importance.shape, dtype=bool)
+        edge = 5
+        mask[edge:-edge, edge:-edge] = 1
+        importance[~mask] = 0
+
+        mask = np.zeros(frame_shape, dtype=bool)
+        mask[edge:-edge, edge:-edge] = 1
+        true_disp[~mask] = -1
+        coarse_disp[~mask] = 0
+        fine_disp[~mask] = 0
+        filter_disp0[~mask] = 0
+        filter_disp[~mask] = 0
+
+        rows, cols = 6, 2
+        plot_i = np.array([0])
+        def subplot(title=None):
+            plot_i[:] += 1
+            ax = plt.subplot(rows, cols, plot_i[0])
+            if title:
+                plt.title(title)
+            return ax
+
+        imargs = dict(vmin=0, vmax=true_disp.max())
+        print(imargs)
+
+        # werror = lambda a, b: np.abs(a[:,values:] - b[:,values:])*importance
+
+        # error = lambda a: np.abs(a[:,values:].astype(float) - fine_disp[:,values:])
+        # ferror = lambda a: np.abs(a.astype(float) - fine_fovea)
+
+        # error = lambda a: np.abs(a[:,values:].astype(float) - fine_disp[:,values:])*importance
+        # ferror = lambda a: np.abs(a.astype(float) - fine_fovea)*importance[fovea0,fovea1v]
+
+        if 1:
+            # importance
+            fine_error = lambda a: np.abs(a[:,values:].astype(float) - fine_disp[:,values:])*importance
+            fine_ferror = lambda a: np.abs(a.astype(float) - fine_fovea)*importance[fovea0,fovea1v]
+
+            t_importance = importance * (true_disp[:,values:] >= 0)
+            error = lambda a: np.abs(a[:,values:].astype(float) - true_disp[:,values:])*t_importance
+            ferror = lambda a: np.abs(a.astype(float) - true_fovea)*t_importance[fovea0,fovea1v]
+        else:
+            fine_error = lambda a: np.abs(a[:,values:].astype(float) - fine_disp[:,values:])
+            fine_ferror = lambda a: np.abs(a.astype(float) - fine_fovea)
+
+            error = lambda a: np.abs(a[:,values:].astype(float) - true_disp[:,values:]) * (true_disp[:,values:] >= 0)
+            ferror = lambda a: np.abs(a.astype(float) - true_fovea) * (true_fovea >= 0)
+
+        plt.ion()
+        plt.figure(93)
+        plt.clf()
+
+        subplot('true')
+        plt.imshow(true_disp, **imargs)
+        plt.colorbar()
+
+        fovea_centre = np.array(fovea_corner) + np.array(fovea_shape)/2
+        plt.scatter(fovea_centre[1], fovea_centre[0], s=200, c='white', marker='+', linewidths=2)
+        plt.scatter(fovea_corner[1], fovea_corner[0], s=50, c='white', marker='.')
+        plt.scatter(fovea_corner[1], fovea_corner[0]+fovea_shape[0], s=50, c='white', marker='.')
+        plt.scatter(fovea_corner[1]+fovea_shape[1], fovea_corner[0], s=50, c='white', marker='.')
+        plt.scatter(fovea_corner[1]+fovea_shape[1], fovea_corner[0]+fovea_shape[0], s=50, c='white', marker='.')
+        plt.xlim([0, frame_shape[1]])
+        plt.ylim([frame_shape[0], 0])
+
+        subplot('importance')
+        plt.imshow(importance)
+        plt.colorbar()
+
+        subplot('fine')
+        plt.imshow(fine_disp[:,values:], **imargs)
+        plt.colorbar()
+
+        subplot('filter0')
+        plt.imshow(filter_disp0[:,values:], **imargs)
+        plt.colorbar()
+
+        subplot('filter')
+        plt.imshow(filter_disp[:,values:], **imargs)
+        plt.colorbar()
+
+        # subplot('fovea difference')
+        # plt.imshow(np.abs(filter_disp.astype(float) - filter_disp0))
+        # plt.colorbar()
+
+        # subplot('coarse error')
+        # plt.imshow(error(coarse_disp))
+        # plt.colorbar()
+
+        subplot('fine error')
+        plt.imshow(error(fine_disp))
+        plt.colorbar()
+
+        subplot('filt0 error')
+        plt.imshow(error(filter_disp0))
+        plt.colorbar()
+
+        subplot('filt error')
+        plt.imshow(error(filter_disp))
+        plt.colorbar()
+
+        # subplot('abs(c-f)*i')
+        # plt.imshow(werror(coarse_disp, fine_disp), **imargs)
+        # plt.colorbar()
+
+        # subplot('abs(filt0-f)*i')
+        # plt.imshow(werror(filter_disp0, fine_disp), **imargs)
+        # plt.colorbar()
+
+        # subplot('abs(filt-f)*i')
+        # plt.imshow(werror(filter_disp, fine_disp), **imargs)
+        # plt.colorbar()
+
+        subplot('filter0 fovea | fine')
+        # plt.imshow(filter_disp0[fovea0, fovea1], **imargs)
+        plt.imshow(fine_ferror(filter_fovea0))
+        plt.colorbar()
+
+        subplot('filter fovea | fine')
+        # plt.imshow(filter_disp[fovea0, fovea1], **imargs)
+        plt.imshow(fine_ferror(filter_fovea))
+        plt.colorbar()
+
+        subplot('filter0 fovea | true')
+        # plt.imshow(filter_disp0[fovea0, fovea1], **imargs)
+        plt.imshow(ferror(filter_fovea0))
+        plt.colorbar()
+
+        subplot('filter fovea | true')
+        # plt.imshow(filter_disp[fovea0, fovea1], **imargs)
+        plt.imshow(ferror(filter_fovea))
+        plt.colorbar()
+
+        plt.tight_layout()
+        plt.show()
+
+        # filter_error0 = error(filter_disp0)
+        # filter_error = error(filter_disp)
+        # # filter_error0 = filter_error0[filter
+        # tt_disp = true_disp[t
+
+        print("filter_fovea0|fine: %s" % fine_ferror(filter_fovea0).mean())
+        print("filter_fovea|fine: %s" % fine_ferror(filter_fovea).mean())
+
+        m = true_disp[:,values:] >= 0
+        print("filter_disp0: %s" % error(filter_disp0)[m].mean())
+        print("filter_disp: %s" % error(filter_disp)[m].mean())
+
+        m = true_fovea >= 0
+        print("filter_fovea0: %s" % ferror(filter_fovea0)[m].mean())
+        print("filter_fovea: %s" % ferror(filter_fovea)[m].mean())
+        print("fine_fovea: %s" % ferror(fine_fovea)[m].mean())
+
+        raw_input("Waiting...")
+        # if table['pw_filter'][-1] > table['pw_filter0'][-1]:
+        #     raw_input("Waiting...")
+
+
+# for key in table:
+#     table[key] = np.asarray(table[key])
+
+# mask = (table['pu_fine'] <= table['pu_coarse']) & (table['pw_fine'] <= table['pw_coarse'])
+# for key in table:
+#     table[key] = np.mean(table[key][mask])
 
 for key in table:
     table[key] = np.mean(table[key])
+
 for key in times:
     times[key] = np.mean(times[key])
 print(times)

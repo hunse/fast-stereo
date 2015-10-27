@@ -146,14 +146,14 @@ def error_on_points(xyd, disp, values=values_default, kind='rms'):
         raise ValueError()
 
 
-def points_image(xyd, shape):
+def points_image(xyd, shape, default=0):
     x, y, d = xyd.T
 
     ratio = np.asarray(shape) / np.asarray(full_shape, dtype=float)
     xr = (x * ratio[1]).astype(int)
     yr = (y * ratio[0]).astype(int)
 
-    img = np.zeros(shape)
+    img = default * np.ones(shape)
     for xx, yy, dd in zip(xr, yr, d):
         img[yy, xx] = dd
 
