@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 import cv2
 
-from bp_wrapper import foveal_bp, foveal_bp2, coarse_bp, points_image
+from bp_wrapper import coarse_bp, points_image
 from data import KittiSource, KittiMultiViewSource
 from importance import UnusuallyClose, get_average_disparity, get_position_weights, get_importance
 from transform import DisparityMemory, downsample

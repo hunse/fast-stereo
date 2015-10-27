@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 import cv2
 
-from bp_wrapper import foveal_bp, foveal_bp2, coarse_bp, laplacian
+from bp_wrapper import foveal_bp, coarse_bp, laplacian
 from data import KittiSource
 from importance import UnusuallyClose, get_average_disparity, get_position_weights, get_importance
 from transform import DisparityMemory, downsample
@@ -140,7 +140,7 @@ class Filter:
             print('seed time: ' + str(time.time() - start_time))
 
         # --- fovea boundaries in frame coordinates ...
-        disp = foveal_bp2(
+        disp = foveal_bp(
             frame, fovea_corner, self.fovea_shape, seed,
             values=self.values, iters=self.iters, **self.params)
 

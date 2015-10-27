@@ -1,1 +1,1 @@
-from .bp import stereo, stereo_region, stereo_fovea, stereo_fovea2
+from .bp import stereo, stereo_region, stereo_fovea

@@ -39,11 +39,6 @@ cdef extern from "stereo.h":
         float data_weight, float data_max, float data_exp,
         float seed_weight, float disc_max)
     cdef Mat stereo_ms_fovea(
-        Mat a, Mat b, Mat seed,
-        int values, int iters, int levels, float smooth,
-        float data_weight, float data_max, float seed_weight, float disc_max,
-        int fovea_x, int fovea_y)
-    cdef Mat stereo_ms_fovea2(
         Mat a, Mat b, Mat ad, Mat bd, Mat seed,
         int values, int iters, int levels, float smooth,
         float data_weight, float data_max, float seed_weight, float disc_max,
@@ -118,55 +113,8 @@ def stereo(
         del zv
         return cv
 
+
 def stereo_fovea(
-        np.ndarray[uchar, ndim=2, mode="c"] a,
-        np.ndarray[uchar, ndim=2, mode="c"] b,
-        fovea_x, fovea_y,
-        np.ndarray[uchar, ndim=2, mode="c"] seed = np.array([[]], dtype='uint8'),
-        int values=64, int iters=5, int levels=5, float smooth=0.7,
-        float data_weight=0.07, float data_max=15, float seed_weight=1,
-        float disc_max=1.7):
-
-    assert a.shape[0] == b.shape[0] and a.shape[1] == b.shape[1]
-    cdef int m = a.shape[0], n = a.shape[1]
-
-    # copy data on
-    cdef Mat x
-    x.create(m, n, CV_8U)
-    cdef Mat y
-    y.create(m, n, CV_8U)
-    (<np.uint8_t[:m, :n]> x.data)[:, :] = a
-    (<np.uint8_t[:m, :n]> y.data)[:, :] = b
-
-    cdef Mat u
-    if seed.size > 0:
-        u.create(m, n, CV_8U)
-        (<np.uint8_t[:m, :n]> u.data)[:, :] = seed
-    else:
-        u.create(0, 0, CV_8U)
-
-    # declare C variables (doesn't work inside IF block)
-    cdef Mat zi
-    cdef np.ndarray[uchar, ndim=2, mode="c"] ci
-
-    # run belief propagation
-    zi = stereo_ms_fovea(x, y, u, values, iters, levels, smooth,
-               data_weight, data_max, seed_weight, disc_max, fovea_x, fovea_y)
-#
-#     zi = stereo_ms_fovea(x, y, u, values, iters, levels, smooth,
-#                    data_weight, seed_weight, data_max, disc_max, fovea_x, fovea_y)
-
-    # copy data off
-#     ci = np.zeros_like(a)
-#     ci[:, :] = <np.uint8_t[:m, :n]> zi.data
-    ci = np.zeros((zi.rows, zi.cols), dtype='uint8')
-    ci[:, :] = <np.uint8_t[:zi.rows, :zi.cols]> zi.data
-
-    return ci
-
-
-# TODO: fovea size
-def stereo_fovea2(
         np.ndarray[uchar, ndim=2, mode="c"] a,
         np.ndarray[uchar, ndim=2, mode="c"] b,
         np.ndarray[uchar, ndim=2, mode="c"] ad,
@@ -176,6 +124,7 @@ def stereo_fovea2(
         int values=64, int iters=5, int levels=5, float smooth=0.7,
         float data_weight=0.07, float data_max=15, float seed_weight=1,
         float disc_max=1.7):
+    """BP with two levels: coarse on the outside, fine in the fovea"""
 
     assert a.shape[0] == b.shape[0] and a.shape[1] == b.shape[1]
     assert ad.shape[0] == bd.shape[0] and ad.shape[1] == bd.shape[1]
@@ -205,7 +154,7 @@ def stereo_fovea2(
         u.create(0, 0, CV_8U)
 
     # run belief propagation
-    cdef Mat zi = stereo_ms_fovea2(
+    cdef Mat zi = stereo_ms_fovea(
         x, y, xd, yd, u, values, iters, levels, smooth,
         data_weight, data_max, seed_weight, disc_max,
         fovea_x, fovea_y, fovea_width, fovea_height)

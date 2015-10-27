@@ -16,12 +16,6 @@ cv::Mat stereo_ms(
     float seed_weight, float disc_max);
 
 cv::Mat stereo_ms_fovea(
-    cv::Mat img1, cv::Mat img2, cv::Mat seed,
-    int values, int iters, int levels, float smooth,
-    float data_weight, float data_max, float seed_weight, float disc_max,
-    int fovea_x, int fovea_y);
-
-cv::Mat stereo_ms_fovea2(
     cv::Mat img1, cv::Mat img2, cv::Mat img1d, cv::Mat img2d, cv::Mat seed,
     int values, int iters, int levels, float smooth,
     float data_weight, float data_max, float seed_weight, float disc_max,
