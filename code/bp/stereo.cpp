@@ -583,9 +583,15 @@ cv::Mat stereo_ms_fovea(
     cv::Mat img1, cv::Mat img2, cv::Mat img1d, cv::Mat img2d, cv::Mat seed,
     int values, int iters, int levels, float smooth,
     float data_weight, float data_max, float seed_weight, float disc_max,
-    int fovea_x, int fovea_y, int fovea_width, int fovea_height)
+    cv::Mat fovea_corners, cv::Mat fovea_shapes)
 {
     assert(seed.empty());
+
+    int fovea_x = fovea_corners.at<int>(0, 1);
+    int fovea_y = fovea_corners.at<int>(0, 0);
+    int fovea_width = fovea_shapes.at<int>(0, 1);
+    int fovea_height = fovea_shapes.at<int>(0, 0);
+    printf("x, y, w, h: %d, %d, %d, %d\n", fovea_x, fovea_y, fovea_width, fovea_height);
 
     // create coarse and fine data volumes
     volume<float> *datad;

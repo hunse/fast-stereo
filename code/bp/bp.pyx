@@ -20,8 +20,9 @@ cdef extern from "opencv2/opencv.hpp" namespace "cv":
         int cols
 
 cdef extern from "opencv2/opencv.hpp":
-    cdef int CV_8U
-    cdef int CV_32F
+    cdef int CV_8U   # np.uint8
+    cdef int CV_32F  # np.float32
+    cdef int CV_32S  # np.int32
 
 cdef extern from "volume.h":
     cdef cppclass volume[T]:
@@ -42,7 +43,7 @@ cdef extern from "stereo.h":
         Mat a, Mat b, Mat ad, Mat bd, Mat seed,
         int values, int iters, int levels, float smooth,
         float data_weight, float data_max, float seed_weight, float disc_max,
-        int fovea_x, int fovea_y, int fovea_width, int fovea_height)
+        Mat fovea_corners, Mat fovea_shapes)
     cdef volume[float]* stereo_ms_volume(
         Mat a, Mat b, Mat seed,
         int values, int iters, int levels, float smooth,
@@ -119,7 +120,8 @@ def stereo_fovea(
         np.ndarray[uchar, ndim=2, mode="c"] b,
         np.ndarray[uchar, ndim=2, mode="c"] ad,
         np.ndarray[uchar, ndim=2, mode="c"] bd,
-        fovea_x, fovea_y, fovea_width, fovea_height,
+        np.ndarray[int, ndim=2, mode="c"] fovea_corners,
+        np.ndarray[int, ndim=2, mode="c"] fovea_shapes,
         np.ndarray[uchar, ndim=2, mode="c"] seed = np.array([[]], dtype='uint8'),
         int values=64, int iters=5, int levels=5, float smooth=0.7,
         float data_weight=0.07, float data_max=15, float seed_weight=1,
@@ -153,11 +155,19 @@ def stereo_fovea(
     else:
         u.create(0, 0, CV_8U)
 
+    assert fovea_corners.shape[0] == fovea_shapes.shape[0]
+    assert fovea_corners.shape[1] == fovea_shapes.shape[1] == 2
+    nfoveas = fovea_corners.shape[0]
+    cdef Mat fcorners, fshapes
+    fcorners.create(nfoveas, 2, CV_32S)
+    fshapes.create(nfoveas, 2, CV_32S)
+    (<np.int32_t[:nfoveas, :2]> fcorners.data)[:, :] = fovea_corners
+    (<np.int32_t[:nfoveas, :2]> fshapes.data)[:, :] = fovea_shapes
+
     # run belief propagation
     cdef Mat zi = stereo_ms_fovea(
         x, y, xd, yd, u, values, iters, levels, smooth,
-        data_weight, data_max, seed_weight, disc_max,
-        fovea_x, fovea_y, fovea_width, fovea_height)
+        data_weight, data_max, seed_weight, disc_max, fcorners, fshapes)
 
     # copy data off
     cdef np.ndarray[uchar, ndim=2, mode="c"] ci = np.zeros(

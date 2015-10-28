@@ -90,10 +90,11 @@ def foveal_bp(frame, fovea_corner, fovea_shape, seed=None, values=values_default
     img1d = np.zeros((1, 1), dtype=np.uint8)
     img2d = np.zeros((1, 1), dtype=np.uint8)
 
-    fovea_y, fovea_x = fovea_corner
-    fovea_height, fovea_width = fovea_shape
+    fovea_corners = np.array(fovea_corner, copy=False, dtype=np.int32, ndmin=2)
+    fovea_shapes = np.array(fovea_shape, copy=False, dtype=np.int32, ndmin=2)
+    print(fovea_shapes)
     disp = bp.stereo_fovea(
-        img1h, img2h, img1d, img2d, fovea_x, fovea_y, fovea_width, fovea_height,
+        img1h, img2h, img1d, img2d, fovea_corners, fovea_shapes,
         seed=seed, values=values, levels=5, seed_weight=.01, iters=iters, **params)
 
     disp = disp[:frame[0].shape[0],:frame[0].shape[1]] #upscaling and downscaling may add a row or column
