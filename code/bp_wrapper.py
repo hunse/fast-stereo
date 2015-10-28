@@ -48,6 +48,14 @@ def downsample(img, down_factor):
     return img
 
 
+def upsample(img, up_factor, target_shape):
+    for i in xrange(up_factor):
+        img = cv2.pyrUp(img)
+    assert np.abs(img.shape[0] - target_shape[0]) < 2
+    assert np.abs(img.shape[1] - target_shape[1]) < 2
+    return img[:target_shape[0],:target_shape[1]]
+
+
 def coarse_bp(frame, values=values_default, down_factor=3, ksize=1, iters=5, **params):
     img1, img2 = frame
 

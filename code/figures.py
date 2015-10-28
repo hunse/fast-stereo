@@ -6,9 +6,9 @@ import matplotlib.pyplot as plt
 import cPickle as pickle
 import cv2
 from data import load_stereo_video
-from bp_wrapper import foveal_bp, coarse_bp
+from bp_wrapper import downsample, foveal_bp, coarse_bp
 from data import KittiSource, KittiMultiViewSource
-from transform import DisparityMemory, downsample
+from transform import DisparityMemory
 from importance import UnusuallyClose, get_average_disparity
 from filter import expand_coarse, cost, cost_on_points, Filter
 
@@ -158,80 +158,80 @@ def importance():
 
 def rationale():
     """
-    Figure that illustrates rationale for fovea approach, i.e. diminishing returns 
-    with increasing runtime via further iterations at a given downfactor, but 
-    possibly too-high cost of using lower downfactor. 
+    Figure that illustrates rationale for fovea approach, i.e. diminishing returns
+    with increasing runtime via further iterations at a given downfactor, but
+    possibly too-high cost of using lower downfactor.
     """
     source = KittiSource(51, 25)
 #     source = KittiSource(51, 100)
-    
-    # TODO: is this weighted cost? 
-    
+
+    # TODO: is this weighted cost?
+
     frame_down_factor = 1
     frame_shape = downsample(source.video[0][0], frame_down_factor).shape
-    
+
     average_disparity = downsample(
         get_average_disparity(source.ground_truth), frame_down_factor)
 
     params = {'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425, 'data_max': 32.024780646200725, 'ksize': 3}
-    
+
 #     iterations = [1, 2, 3]
     iterations = [1, 2, 3, 4, 5, 7, 10, 15]
     mean_coarse_times = []
     mean_coarse_costs = []
     mean_fine_times = []
     mean_fine_costs = []
-    
+
     for j in range(len(iterations)):
         coarse_times = []
         coarse_costs = []
         fine_times = []
         fine_costs = []
-        
+
         for i in range(source.n_frames):
             print(i)
-    
+
             coarse_down_factor = 2
             fine_down_factor = 1
             frame_down_factor = 1
-            
-            coarse_time, coarse_cost = _evaluate_frame(source, i, frame_shape, 
+
+            coarse_time, coarse_cost = _evaluate_frame(source, i, frame_shape,
                     frame_down_factor+1, frame_down_factor, iterations[j], average_disparity, params)
-            fine_time, fine_cost = _evaluate_frame(source, i, frame_shape, 
+            fine_time, fine_cost = _evaluate_frame(source, i, frame_shape,
                     frame_down_factor+0, frame_down_factor, iterations[j], average_disparity, params)
 
             coarse_times.append(coarse_time)
-            coarse_costs.append(coarse_cost)            
+            coarse_costs.append(coarse_cost)
             fine_times.append(fine_time)
-            fine_costs.append(fine_cost)            
-    
+            fine_costs.append(fine_cost)
+
         mean_coarse_times.append(np.mean(coarse_times))
         mean_coarse_costs.append(np.mean(coarse_costs))
         mean_fine_times.append(np.mean(fine_times))
         mean_fine_costs.append(np.mean(fine_costs))
-    
+
     print(mean_coarse_times)
     print(mean_coarse_costs)
-    print(mean_fine_times)    
+    print(mean_fine_times)
     print(mean_fine_costs)
-    
+
     plt.plot(mean_coarse_times, mean_coarse_costs, color='k', marker='s', markersize=12)
     plt.plot(mean_fine_times, mean_fine_costs, color='k', marker='o', markersize=12)
     plt.xlabel('Runtime (s)', fontsize=18)
     plt.ylabel('Weighted RMS Disparity Error (pixels)', fontsize=18)
     plt.gca().tick_params(labelsize='18')
     plt.show()
-    
-def foveation_sequence(): 
+
+def foveation_sequence():
     frame_down_factor = 1
     mem_down_factor = 2     # relative to the frame down factor
     coarse_down_factor = 2  # for the coarse comparison
-    
+
     fs = 80
     fovea_shape = (fs, fs)
     full_values = 128
     values = full_values / 2**frame_down_factor
-    
+
     index = 15
     n_frames = 10
     source = KittiMultiViewSource(index, test=False, n_frames=n_frames)
@@ -245,7 +245,7 @@ def foveation_sequence():
 
     filter = Filter(average_disp, frame_down_factor, mem_down_factor,
                     fovea_shape, frame_shape, values, verbose=False, memory_length=0)
-    
+
     plt.figure()
     import matplotlib.cm as cm
     for i in range(0, 10, 2):
@@ -254,7 +254,7 @@ def foveation_sequence():
         filter_disp, fovea_corner = filter.process_frame(None, frame)
 
         edge = 5
-        
+
         plt.subplot(5,1,i/2)
 #         plt.subplot(5,2,i+1)
         plt.imshow(trim(frame[0], values, edge), cmap = cm.Greys_r)
@@ -269,19 +269,19 @@ def foveation_sequence():
         plt.scatter(fovea_corner[1]-values+fs, fovea_corner[0]-edge, s=9, c='green', marker='+', linewidths=3)
         remove_axes()
     plt.show()
-    
-       
-    
+
+
+
 def _evaluate_frame(source, frame_num, frame_shape, down_factor, frame_down_factor, iters, average_disparity, params):
     values = 128/2**frame_down_factor
     start_time = time.time()
     coarse_disp = coarse_bp(source.video[frame_num], down_factor=down_factor,
                             iters=iters, values=128, **params)
     disp = expand_coarse(coarse_disp, down_factor - frame_down_factor)
-    disp = disp[:frame_shape[0],:frame_shape[1]]    
+    disp = disp[:frame_shape[0],:frame_shape[1]]
     elapsed_time = time.time() - start_time
-    
-#     true_disp = downsample(source.ground_truth[frame_num], frame_down_factor)    
+
+#     true_disp = downsample(source.ground_truth[frame_num], frame_down_factor)
 #     return elapsed_time, cost(disp[:,values:], true_disp, average_disparity)
     true_points = source.true_points[frame_num]
     return elapsed_time, cost_on_points(disp[:,values:], true_points)

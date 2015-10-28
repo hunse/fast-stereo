@@ -9,17 +9,16 @@ import matplotlib.pyplot as plt
 
 import cv2
 
-from bp_wrapper import coarse_bp, points_image, plot_fovea
+from bp_wrapper import downsample, upsample, coarse_bp, points_image, plot_fovea
 from data import KittiSource, KittiMultiViewSource
 from importance import UnusuallyClose, get_average_disparity, get_position_weights, get_importance
-from transform import DisparityMemory, downsample
+from transform import DisparityMemory
 from filter import Filter, cost_on_points, expand_coarse
 
 
 # frame_down_factor = 1
 frame_down_factor = 2
 mem_down_factor = 2     # relative to the frame down factor
-coarse_down_factor = 2  # for the coarse comparison
 
 # fovea_shape = (80, 80)
 fovea_shape = (40, 40)
@@ -243,11 +242,8 @@ def eval_fine(frame_ten):
 def upsample_average_disp(average_disp, frame_down_factor, frame_shape):
     """Upsample average_disp (at a down factor of 2) to frame_down_factor"""
     assert frame_down_factor <= 2
-    for _ in range(2 - frame_down_factor):
-        average_disp = cv2.pyrUp(average_disp)
-    assert np.abs(average_disp.shape[0] - frame_shape[0]) < 2
-    assert np.abs(average_disp.shape[1] + values - frame_shape[1]) < 2
-    return average_disp[:frame_shape[0],:frame_shape[1]-values]
+    target_shape = (frame_shape[0], frame_shape[1] - values)
+    return upsample(average_disp, 2 - frame_down_factor, target_shape)
 
 
 if __name__ == '__main__':

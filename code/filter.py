@@ -11,10 +11,12 @@ import matplotlib.pyplot as plt
 
 import cv2
 
-from bp_wrapper import foveal_bp, coarse_bp, laplacian, plot_fovea
+from bp_wrapper import (
+    downsample, upsample, foveal_bp, coarse_bp, laplacian, plot_fovea)
 from data import KittiSource
-from importance import UnusuallyClose, get_average_disparity, get_position_weights, get_importance
-from transform import DisparityMemory, downsample
+from importance import (
+    UnusuallyClose, get_average_disparity, get_position_weights, get_importance)
+from transform import DisparityMemory
 
 class Filter:
     def __init__(self, average_disparity, frame_down_factor, mem_down_factor,
