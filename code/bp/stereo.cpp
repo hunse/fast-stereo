@@ -56,6 +56,14 @@ public:
         delete l;
         delete r;
     }
+
+    inline void copy_voxel(int x, int y, int z, Messages* m2, int x2, int y2, int z2) {
+        (*u)(x, y, z) = (*m2->u)(x2, y2, z2);
+        (*d)(x, y, z) = (*m2->d)(x2, y2, z2);
+        (*l)(x, y, z) = (*m2->l)(x2, y2, z2);
+        (*r)(x, y, z) = (*m2->r)(x2, y2, z2);
+    }
+
 };
 
 // dt of 1d function
@@ -287,10 +295,7 @@ void bp_cb(volume<float> &u, volume<float> &d,
 Messages* bp_ms_messages(
     volume<float> *data0, int iters, int levels, float disc_max, float data_exp=1.0)
 {
-    volume<float> *u[levels];
-    volume<float> *d[levels];
-    volume<float> *l[levels];
-    volume<float> *r[levels];
+    Messages *m[levels];
     volume<float> *data[levels];
 
     data[0] = data0;
@@ -325,40 +330,28 @@ Messages* bp_ms_messages(
         // allocate & init memory for messages
         if (i == levels-1) {
             // in the coarsest level messages are initialized to zero
-            u[i] = new volume<float>(width, height, values);
-            d[i] = new volume<float>(width, height, values);
-            l[i] = new volume<float>(width, height, values);
-            r[i] = new volume<float>(width, height, values);
+            m[i] = new Messages(width, height, values);
         } else {
             // initialize messages from values of previous level
-            u[i] = new volume<float>(width, height, values, false);
-            d[i] = new volume<float>(width, height, values, false);
-            l[i] = new volume<float>(width, height, values, false);
-            r[i] = new volume<float>(width, height, values, false);
+            m[i] = new Messages(width, height, values, false);
 
             for (int y = 0; y < height; y++) {
                 for (int x = 0; x < width; x++) {
                     for (int value = 0; value < values; value++) {
-                        (*u[i])(x, y, value) = (*u[i+1])(x/2, y/2, value);
-                        (*d[i])(x, y, value) = (*d[i+1])(x/2, y/2, value);
-                        (*l[i])(x, y, value) = (*l[i+1])(x/2, y/2, value);
-                        (*r[i])(x, y, value) = (*r[i+1])(x/2, y/2, value);
+                        m[i]->copy_voxel(x, y, value, m[i+1], x/2, y/2, value);
                     }
                 }
             }
             // delete old messages and data
-            delete u[i+1];
-            delete d[i+1];
-            delete l[i+1];
-            delete r[i+1];
+            delete m[i+1];
             delete data[i+1];
         }
 
         // BP
-        bp_cb(*u[i], *d[i], *l[i], *r[i], *data[i], iters, disc_max);
+        bp_cb(*m[i]->u, *m[i]->d, *m[i]->l, *m[i]->r, *data[i], iters, disc_max);
     }
 
-    return new Messages(u[0], d[0], l[0], r[0]);
+    return m[0];
 }
 
 void bp_ms(
