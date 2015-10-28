@@ -225,7 +225,7 @@ def debug_plots(table, coarse_disp, average_disp, true_points):
     # if table['pw_filter'][-1] > table['pw_filter0'][-1]:
     #     raw_input("Waiting...")
 
-def eval_coarse(frame_ten, frame_shape):
+def eval_coarse(frame_ten, frame_shape, values=values):
     params = {
         'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
         'data_max': 32.024780646200725, 'ksize': 3}
@@ -237,7 +237,7 @@ def eval_coarse(frame_ten, frame_shape):
     coarse_time = time.time() - coarse_time
     return coarse_disp, coarse_time
 
-def eval_fine(frame_ten):
+def eval_fine(frame_ten, values=values):
     params = {
         'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
         'data_max': 32.024780646200725, 'ksize': 3}
@@ -248,11 +248,15 @@ def eval_fine(frame_ten):
     fine_time = time.time() - fine_time
     return fine_disp, fine_time
 
-def upsample_average_disp(average_disp, frame_down_factor, frame_shape):
+def upsample_average_disp(average_disp, frame_down_factor, frame_shape, values=values):
     """Upsample average_disp (at a down factor of 2) to frame_down_factor"""
-    assert frame_down_factor <= 2
-    for _ in range(2 - frame_down_factor):
-        average_disp = cv2.pyrUp(average_disp)
+    if frame_down_factor <= 2:
+        for _ in range(2 - frame_down_factor):
+            average_disp = cv2.pyrUp(average_disp)
+    else:
+        for _ in range(frame_down_factor - 2):
+            average_disp = cv2.pyrDown(average_disp)
+    
     assert np.abs(average_disp.shape[0] - frame_shape[0]) < 2
     assert np.abs(average_disp.shape[1] + values - frame_shape[1]) < 2
     return average_disp[:frame_shape[0],:frame_shape[1]]

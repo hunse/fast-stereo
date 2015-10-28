@@ -41,7 +41,7 @@ def test_coarse(n_test_frames, full_values, frame_down_factor):
             continue
 
         # --- coarse
-        coarse_disp, coarse_time = eval_coarse(frame_ten, frame_shape)
+        coarse_disp, coarse_time = eval_coarse(frame_ten, frame_shape, values=values)
         unweighted_cost.append(cost_on_points(coarse_disp[:, values:], true_points, full_shape=full_shape))
         weighted_cost.append(cost_on_points(coarse_disp[:, values:], true_points, average_disp, full_shape=full_shape))
         times.append(coarse_time)
@@ -67,7 +67,7 @@ def test_fine(n_test_frames, full_values, frame_down_factor):
             continue
 
         # --- coarse
-        fine_disp, fine_time = eval_fine(frame_ten)
+        fine_disp, fine_time = eval_fine(frame_ten, values=values)
         unweighted_cost.append(cost_on_points(fine_disp[:, values:], true_points, full_shape=full_shape))
         weighted_cost.append(cost_on_points(fine_disp[:, values:], true_points, average_disp, full_shape=full_shape))
         times.append(fine_time)        
@@ -103,7 +103,7 @@ def test_foveal(n_test_frames, full_values, frame_down_factor, fovea_fraction):
         else:
             fovea_shape = (0, 0)
 
-        average_disp = upsample_average_disp(average_disp, frame_down_factor, frame_shape)
+        average_disp = upsample_average_disp(average_disp, frame_down_factor, frame_shape, values=values)
 
         # --- filter
         filter = Filter(average_disp, frame_down_factor, mem_down_factor,
@@ -118,7 +118,7 @@ def test_foveal(n_test_frames, full_values, frame_down_factor, fovea_fraction):
     return times, unweighted_cost, weighted_cost
 
 
-frame_down_factor = 2
+frame_down_factor = 1
 n_test_frames = 50
 full_values = 128
 
