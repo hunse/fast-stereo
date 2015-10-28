@@ -7,7 +7,7 @@
 template <class T>
 class volume {
 public:
-    /* create an volume */
+    /* create a volume */
     volume(const int width, const int height, const int depth, const bool init = true);
 
     /* delete a volume */

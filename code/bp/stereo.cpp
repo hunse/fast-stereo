@@ -40,8 +40,15 @@ public:
     volume<float> *r;
 
     Messages(volume<float> *u_, volume<float> *d_,
-             volume<float> *l_, volume<float>*r_)
+             volume<float> *l_, volume<float> *r_)
         : u(u_), d(d_), l(l_), r(r_) {}
+
+    Messages(int width, int height, int depth, bool init = true) {
+        u = new volume<float>(width, height, depth, init);
+        d = new volume<float>(width, height, depth, init);
+        l = new volume<float>(width, height, depth, init);
+        r = new volume<float>(width, height, depth, init);
+    }
 
     ~Messages() {
         delete u;
@@ -265,11 +272,11 @@ void bp_cb(volume<float> &u, volume<float> &d,
             for (int x = ((y+t) % 2) + 1; x < width-1; x+=2) {
                 msg(u(x, y+1), l(x+1, y), r(x-1, y),
                     data(x, y), u(x, y), values, threshold);
-                msg(d(x, y-1),l(x+1, y),r(x-1, y),
+                msg(d(x, y-1), l(x+1, y), r(x-1, y),
                     data(x, y), d(x, y), values, threshold);
-                msg(u(x, y+1),d(x, y-1),r(x-1, y),
+                msg(u(x, y+1), d(x, y-1), r(x-1, y),
                     data(x, y), r(x, y), values, threshold);
-                msg(u(x, y+1),d(x, y-1),l(x+1, y),
+                msg(u(x, y+1), d(x, y-1), l(x+1, y),
                     data(x, y), l(x, y), values, threshold);
             }
         }
@@ -382,78 +389,8 @@ cv::Mat stereo_ms(
 void bp_ms_fovea(
     volume<float> *data0, volume<float> *dataf, int iters, int levels, float disc_max, int fovea_x, int fovea_y)
 {
-    volume<float> *u[levels];
-    volume<float> *d[levels];
-    volume<float> *l[levels];
-    volume<float> *r[levels];
-    volume<float> *data[levels];
-
-    data[0] = data0;
-    int values = data0->depth();
-
-    // data pyramid
-    for (int i = 1; i < levels; i++) {
-        int old_width = data[i-1]->width();
-        int old_height = data[i-1]->height();
-        int new_width = (int)ceil(old_width/2.0);
-        int new_height = (int)ceil(old_height/2.0);
-
-        assert(new_width >= 1);
-        assert(new_height >= 1);
-
-        data[i] = new volume<float>(new_width, new_height, values);
-        for (int y = 0; y < old_height; y++) {
-            for (int x = 0; x < old_width; x++) {
-                for (int value = 0; value < values; value++) {
-                    (*data[i])(x/2, y/2, value) += (*data[i-1])(x, y, value);
-                }
-            }
-        }
-    }
-
-    // run bp from coarse to fine
-    for (int i = levels-1; i >= 0; i--) {
-
-        int width = data[i]->width();
-        int height = data[i]->height();
-
-        // allocate & init memory for messages
-        if (i == levels-1) {
-            // in the coarsest level messages are initialized to zero
-            u[i] = new volume<float>(width, height, values);
-            d[i] = new volume<float>(width, height, values);
-            l[i] = new volume<float>(width, height, values);
-            r[i] = new volume<float>(width, height, values);
-        } else {
-            // initialize messages from values of previous level
-            u[i] = new volume<float>(width, height, values, false);
-            d[i] = new volume<float>(width, height, values, false);
-            l[i] = new volume<float>(width, height, values, false);
-            r[i] = new volume<float>(width, height, values, false);
-
-            for (int y = 0; y < height; y++) {
-                for (int x = 0; x < width; x++) {
-                    for (int value = 0; value < values; value++) {
-                        (*u[i])(x, y, value) = (*u[i+1])(x/2, y/2, value);
-                        (*d[i])(x, y, value) = (*d[i+1])(x/2, y/2, value);
-                        (*l[i])(x, y, value) = (*l[i+1])(x/2, y/2, value);
-                        (*r[i])(x, y, value) = (*r[i+1])(x/2, y/2, value);
-                    }
-                }
-            }
-            // delete old messages and data
-            delete u[i+1];
-            delete d[i+1];
-            delete l[i+1];
-            delete r[i+1];
-            delete data[i+1];
-        }
-
-        // BP
-        bp_cb(*u[i], *d[i], *l[i], *r[i], *data[i], iters, disc_max);
-    }
-
-    collect_messages(*u[0], *d[0], *l[0], *r[0], *data[0]);
+    Messages *m = bp_ms_messages(data0, iters, levels, disc_max);
+    collect_messages(m, *data0);
 
     // one final iteration in fovea at finer resolution (using dataf) ...
     int half_values;
@@ -464,48 +401,37 @@ void bp_ms_fovea(
     else
         assert(0);
 
-    values = dataf->depth();
-    int width = dataf->width();
-    int height = dataf->height();
+    const int values = dataf->depth();
+    const int width = dataf->width();
+    const int height = dataf->height();
 
     // initialize messages from values of previous level
-    volume<float> *uf = new volume<float>(width, height, values, false);
-    volume<float> *df = new volume<float>(width, height, values, false);
-    volume<float> *lf = new volume<float>(width, height, values, false);
-    volume<float> *rf = new volume<float>(width, height, values, false);
+    Messages *mf = new Messages(width, height, values, false);
 
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
             for (int value = 0; value < values; value++) {
                 if (half_values) {
-                    (*uf)(x, y, value) = (*u[0])((fovea_x+x)/2, (fovea_y+y)/2, value/2);
-                    (*df)(x, y, value) = (*d[0])((fovea_x+x)/2, (fovea_y+y)/2, value/2);
-                    (*lf)(x, y, value) = (*l[0])((fovea_x+x)/2, (fovea_y+y)/2, value/2);
-                    (*rf)(x, y, value) = (*r[0])((fovea_x+x)/2, (fovea_y+y)/2, value/2);
+                    (*mf->u)(x, y, value) = (*m->u)((fovea_x+x)/2, (fovea_y+y)/2, value/2);
+                    (*mf->d)(x, y, value) = (*m->d)((fovea_x+x)/2, (fovea_y+y)/2, value/2);
+                    (*mf->l)(x, y, value) = (*m->l)((fovea_x+x)/2, (fovea_y+y)/2, value/2);
+                    (*mf->r)(x, y, value) = (*m->r)((fovea_x+x)/2, (fovea_y+y)/2, value/2);
                 } else {
-                    (*uf)(x, y, value) = (*u[0])((fovea_x+x)/2, (fovea_y+y)/2, value);
-                    (*df)(x, y, value) = (*d[0])((fovea_x+x)/2, (fovea_y+y)/2, value);
-                    (*lf)(x, y, value) = (*l[0])((fovea_x+x)/2, (fovea_y+y)/2, value);
-                    (*rf)(x, y, value) = (*r[0])((fovea_x+x)/2, (fovea_y+y)/2, value);
+                    (*mf->u)(x, y, value) = (*m->u)((fovea_x+x)/2, (fovea_y+y)/2, value);
+                    (*mf->d)(x, y, value) = (*m->d)((fovea_x+x)/2, (fovea_y+y)/2, value);
+                    (*mf->l)(x, y, value) = (*m->l)((fovea_x+x)/2, (fovea_y+y)/2, value);
+                    (*mf->r)(x, y, value) = (*m->r)((fovea_x+x)/2, (fovea_y+y)/2, value);
                 }
             }
         }
     }
+    delete m;
 
-    delete u[0];
-    delete d[0];
-    delete l[0];
-    delete r[0];
+    bp_cb(*mf->u, *mf->d, *mf->l, *mf->r, *dataf, iters, disc_max);
+    // bp_cb(*mf->u, *mf->d, *mf->l, *mf->r, *dataf, 10, disc_max);
 
-    bp_cb(*uf, *df, *lf, *rf, *dataf, iters, disc_max);
-    // bp_cb(*uf, *df, *lf, *rf, *dataf, 10, disc_max);
-
-    collect_messages(*uf, *df, *lf, *rf, *dataf);
-
-    delete uf;
-    delete df;
-    delete lf;
-    delete rf;
+    collect_messages(mf, *dataf);
+    delete mf;
 }
 
 void comp_data_down_fovea(
