@@ -25,6 +25,7 @@ coarse_down_factor = 2  # for the coarse comparison
 fovea_shape = (40, 40)
 full_values = 128
 values = full_values / 2**frame_down_factor
+iters = 3
 
 # ref_source = KittiSource(51, 249)
 # average_disp = downsample(
@@ -229,7 +230,8 @@ def eval_coarse(frame_ten, frame_shape):
         'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
         'data_max': 32.024780646200725, 'ksize': 3}
     coarse_time = time.time()
-    coarse_disp = coarse_bp(frame_ten, down_factor=1, iters=3, values=values, **params)
+    coarse_disp = coarse_bp(frame_ten, values=values, down_factor=1,
+                            iters=iters, **params)
     coarse_disp = cv2.pyrUp(coarse_disp)[:frame_shape[0],:frame_shape[1]]
     coarse_disp *= 2**frame_down_factor
     coarse_time = time.time() - coarse_time
@@ -240,19 +242,21 @@ def eval_fine(frame_ten):
         'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
         'data_max': 32.024780646200725, 'ksize': 3}
     fine_time = time.time()
-    fine_disp = coarse_bp(frame_ten, down_factor=0, iters=3, values=values, **params)
+    fine_disp = coarse_bp(frame_ten, values=values, down_factor=0,
+                          iters=iters, **params)
     fine_disp *= 2**frame_down_factor
     fine_time = time.time() - fine_time
     return fine_disp, fine_time
 
-def rescale_image(average_disp, frame_down_factor, frame_shape):
-    # TODO: is this very different from downsample?
+def upsample_average_disp(average_disp, frame_down_factor, frame_shape):
+    """Upsample average_disp (at a down factor of 2) to frame_down_factor"""
     assert frame_down_factor <= 2
     for _ in range(2 - frame_down_factor):
         average_disp = cv2.pyrUp(average_disp)
     assert np.abs(average_disp.shape[0] - frame_shape[0]) < 2
     assert np.abs(average_disp.shape[1] + values - frame_shape[1]) < 2
     return average_disp[:frame_shape[0],:frame_shape[1]]
+
 
 if __name__ == '__main__':
     n_frames = 0
@@ -276,7 +280,8 @@ if __name__ == '__main__':
             print("Skipping index %d (lacks frames)" % index)
             continue
 
-        average_disp = rescale_image(average_disp, frame_down_factor, frame_shape)
+        average_disp = upsample_average_disp(
+            average_disp, frame_down_factor, frame_shape)
 
         #true_disp = downsample(source.ground_truth_OCC, frame_down_factor)
         true_disp = None
@@ -294,13 +299,13 @@ if __name__ == '__main__':
 
         # --- filter (no fovea)
         filter = Filter(average_disp, frame_down_factor, mem_down_factor,
-                        (0, 0), frame_shape, values, verbose=False, memory_length=0)
+                        (0, 0), frame_shape, values, memory_length=0, iters=iters)
         filter_disp0, _ = filter.process_frame(None, frame_ten)
         append_table('filter0', filter_disp0[:,values:], true_disp, true_points, average_disp, full_shape)
 
         # --- filter
         filter = Filter(average_disp, frame_down_factor, mem_down_factor,
-                        fovea_shape, frame_shape, values, verbose=False, memory_length=0)
+                        fovea_shape, frame_shape, values, memory_length=0, iters=iters)
         filter_disp, fovea_corner = filter.process_frame(None, frame_ten)
         append_table('filter', filter_disp[:,values:], true_disp, true_points, average_disp, full_shape)
 
