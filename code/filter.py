@@ -18,7 +18,8 @@ from transform import DisparityMemory, downsample
 
 class Filter:
     def __init__(self, average_disparity, frame_down_factor, mem_down_factor,
-                 fovea_shape, frame_shape, values, verbose=False, memory_length=1):
+                 fovea_shape, frame_shape, values,
+                 verbose=False, memory_length=1, iters=3):
         """
         Arguments
         ---------
@@ -62,7 +63,7 @@ class Filter:
             'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
             'data_max': 32.024780646200725, 'ksize': 3}  # coarse
 
-        self.iters = 3
+        self.iters = iters
 
         self.disparity_memory = DisparityMemory(self.memory_shape, n=memory_length)
         self.uncertainty_memory = DisparityMemory(self.memory_shape, n=memory_length)
