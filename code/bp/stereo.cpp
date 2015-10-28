@@ -497,7 +497,7 @@ void comp_data_down_fovea(
     }
 
     // --- coarse data cost
-#if 1
+#if 0
     // fine cost (all values, every pixel)
     for (int y = 0; y < height; y++) {
         const float* sm1i = sm1.ptr<float>(y);
@@ -517,7 +517,7 @@ void comp_data_down_fovea(
         for (int x = values-1; x < width; x += 2) {
             for (int value = 0; value < values; value++) {
                 float val = abs(sm1i[x] - sm2i[x-value]);
-               datar(x/2, y/2, value) = 4 * lambda * std::min(val, threshold);
+                datad_(x/2, y/2, value) = 4 * lambda * std::min(val, threshold);
             }
         }
     }
@@ -538,7 +538,7 @@ void comp_data_down_fovea(
                     sum += dataf_(x+1, y, value);
                     sum += dataf_(x, y+1, value);
                     sum += dataf_(x+1, y+1, value);
-                    datad_(fx + x/2, fy + y/2, value) = sum;
+                    datad_((fx + x)/2, (fy + y)/2, value) = sum;
                 }
             }
         }
