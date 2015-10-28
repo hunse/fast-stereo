@@ -247,7 +247,7 @@ def upsample_average_disp(average_disp, frame_down_factor, frame_shape):
         average_disp = cv2.pyrUp(average_disp)
     assert np.abs(average_disp.shape[0] - frame_shape[0]) < 2
     assert np.abs(average_disp.shape[1] + values - frame_shape[1]) < 2
-    return average_disp[:frame_shape[0],:frame_shape[1]]
+    return average_disp[:frame_shape[0],:frame_shape[1]-values]
 
 
 if __name__ == '__main__':
