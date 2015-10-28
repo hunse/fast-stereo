@@ -11,10 +11,12 @@ import matplotlib.pyplot as plt
 
 import cv2
 
-from bp_wrapper import foveal_bp, coarse_bp, laplacian
+from bp_wrapper import (
+    downsample, upsample, foveal_bp, coarse_bp, laplacian, plot_fovea)
 from data import KittiSource
-from importance import UnusuallyClose, get_average_disparity, get_position_weights, get_importance
-from transform import DisparityMemory, downsample
+from importance import (
+    UnusuallyClose, get_average_disparity, get_position_weights, get_importance)
+from transform import DisparityMemory
 
 class Filter:
     def __init__(self, average_disparity, frame_down_factor, mem_down_factor,
@@ -466,16 +468,7 @@ if __name__ == "__main__":
 
         next_subplot('filter')
         plt.imshow(disp[:,values:], vmin=0, vmax=128, extent=extent)
-
-        fovea_centre = np.array(fovea_corner) + np.array(fovea_shape)/2
-        plt.scatter(fovea_centre[1], fovea_centre[0], s=200, c='white', marker='+', linewidths=2)
-        plt.scatter(fovea_corner[1], fovea_corner[0], s=50, c='white', marker='.')
-        plt.scatter(fovea_corner[1], fovea_corner[0]+fovea_shape[0], s=50, c='white', marker='.')
-        plt.scatter(fovea_corner[1]+fovea_shape[1], fovea_corner[0], s=50, c='white', marker='.')
-        plt.scatter(fovea_corner[1]+fovea_shape[1], fovea_corner[0]+fovea_shape[0], s=50, c='white', marker='.')
-
-        plt.xlim(extent[:2])
-        plt.ylim(extent[2:])
+        plot_fovea(fovea_corner, fovea_shape)
 
         next_subplot('fovea_filter|coarse')
         if run_coarse:

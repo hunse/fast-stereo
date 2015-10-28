@@ -10,9 +10,9 @@ from kitti.data import Calib
 from kitti.raw import load_stereo_video, load_video_odometry
 from kitti.velodyne import load_disparity_points
 
+from bp_wrapper import downsample
 from data import KittiSource
 from importance import get_average_disparity
-from transform import downsample
 from filter import Filter, cost
 
 drive = 51

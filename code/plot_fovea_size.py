@@ -6,10 +6,11 @@ performance with a giant fovea.
 """
 import time
 import numpy as np
+from bp_wrapper import downsample
 from filter_table import upsample_average_disp, eval_coarse, eval_fine
 from data import KittiSource, KittiMultiViewSource
 from importance import UnusuallyClose, get_average_disparity, get_position_weights, get_importance
-from transform import DisparityMemory, downsample
+from transform import DisparityMemory
 from filter import Filter, cost_on_points, expand_coarse
 
 # We'll want to run this with multiple foveas, also with central vs. optimal fovea
@@ -45,7 +46,7 @@ def test_coarse(n_test_frames, full_values, frame_down_factor):
         unweighted_cost.append(cost_on_points(coarse_disp[:, values:], true_points, full_shape=full_shape))
         weighted_cost.append(cost_on_points(coarse_disp[:, values:], true_points, average_disp, full_shape=full_shape))
         times.append(coarse_time)
-    
+
     return times, unweighted_cost, weighted_cost
 
 def test_fine(n_test_frames, full_values, frame_down_factor):
@@ -70,8 +71,8 @@ def test_fine(n_test_frames, full_values, frame_down_factor):
         fine_disp, fine_time = eval_fine(frame_ten, values=values)
         unweighted_cost.append(cost_on_points(fine_disp[:, values:], true_points, full_shape=full_shape))
         weighted_cost.append(cost_on_points(fine_disp[:, values:], true_points, average_disp, full_shape=full_shape))
-        times.append(fine_time)        
-    
+        times.append(fine_time)
+
     return times, unweighted_cost, weighted_cost
 
 
@@ -118,7 +119,7 @@ def test_foveal(n_test_frames, full_values, frame_down_factor, fovea_fraction):
     return times, unweighted_cost, weighted_cost
 
 
-frame_down_factor = 1
+frame_down_factor = 2
 n_test_frames = 50
 full_values = 128
 
@@ -148,4 +149,3 @@ print('fine')
 print(np.mean(fine_times))
 print(np.mean(fine_unweighted_cost))
 print(np.mean(fine_weighted_cost))
-

@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from kitti.data import Calib
 
 from data import KittiSource
-from bp_wrapper import get_shifted_points, points2disp_max
+from bp_wrapper import downsample, get_shifted_points, points2disp_max
 
 
 class DisparityMemory():
@@ -51,10 +51,10 @@ class DisparityMemory():
         disp - Disparity image from this position
         fovea_centre - Centre coords of fovea (None=image centre)
         """
-        
-        if self.n == 0: 
-            return 
-        
+
+        if self.n == 0:
+            return
+
         assert disp.shape == self.shape
 
         if len(self.past_position) == self.n:
@@ -105,18 +105,6 @@ class DisparityMemory():
             result.append(transformed)
 
         return result
-
-def downsample(img, down_factor=2):
-    if 0:
-        # Bryan's downsample
-        step = 2**down_factor
-        return img[step/2::step,step/2::step]
-    else:
-        # Eric's downsample
-        import cv2
-        for i in xrange(down_factor):
-            img = cv2.pyrDown(img)
-        return img
 
 def smudge(disp):
     disp[:,1:] = np.maximum(disp[:,1:], disp[:,0:-1])
