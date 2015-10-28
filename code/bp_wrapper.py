@@ -92,7 +92,6 @@ def foveal_bp(frame, fovea_corner, fovea_shape, seed=None, values=values_default
 
     fovea_corners = np.array(fovea_corner, copy=False, dtype=np.int32, ndmin=2)
     fovea_shapes = np.array(fovea_shape, copy=False, dtype=np.int32, ndmin=2)
-    print(fovea_shapes)
     disp = bp.stereo_fovea(
         img1h, img2h, img1d, img2d, fovea_corners, fovea_shapes,
         seed=seed, values=values, levels=5, seed_weight=.01, iters=iters, **params)

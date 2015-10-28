@@ -380,78 +380,76 @@ cv::Mat stereo_ms(
 // multiscale belief propagation with an extra level in the fovea
 // fovea_x and fovea_y are in fine coordinates
 void bp_ms_fovea(
-    volume<float> *data0, volume<float> *dataf, int iters, int levels, float disc_max, int fovea_x, int fovea_y)
+    volume<float> *data0, volume<float> **datafs, int iters, int levels,
+    float disc_max, cv::Mat fovea_corners)
 {
     Messages *m = bp_ms_messages(data0, iters, levels, disc_max);
     collect_messages(m, *data0);
 
-    // one final iteration in fovea at finer resolution (using dataf) ...
-    int half_values;
-    if (dataf->depth() == data0->depth())
-        half_values = 0;
-    else if (dataf->depth()/2 == data0->depth())
-        half_values = 1;
-    else
-        assert(0);
+    // one final iteration in foveas at finer resolution (using datafs) ...
+    for (int k = 0; k < fovea_corners.rows; k++) {
 
-    const int values = dataf->depth();
-    const int width = dataf->width();
-    const int height = dataf->height();
+        int half_values;
+        if (datafs[k]->depth() == data0->depth())
+            half_values = 0;
+        else if (datafs[k]->depth()/2 == data0->depth())
+            half_values = 1;
+        else
+            assert(0);
 
-    // initialize messages from values of previous level
-    Messages *mf = new Messages(width, height, values, false);
+        const int values = datafs[k]->depth();
+        const int width = datafs[k]->width();
+        const int height = datafs[k]->height();
 
-    for (int y = 0; y < height; y++) {
-        for (int x = 0; x < width; x++) {
-            for (int value = 0; value < values; value++) {
-                if (half_values) {
-                    mf->copy_voxel(x, y, value, m, (fovea_x+x)/2, (fovea_y+y)/2, value/2);
-                } else {
-                    mf->copy_voxel(x, y, value, m, (fovea_x+x)/2, (fovea_y+y)/2, value);
+        // initialize messages from values of previous level
+        Messages *mf = new Messages(width, height, values, false);
+
+        const int fovea_y = fovea_corners.at<int>(k, 0);
+        const int fovea_x = fovea_corners.at<int>(k, 1);
+
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                for (int value = 0; value < values; value++) {
+                    if (half_values) {
+                        mf->copy_voxel(x, y, value, m, (fovea_x+x)/2, (fovea_y+y)/2, value/2);
+                    } else {
+                        mf->copy_voxel(x, y, value, m, (fovea_x+x)/2, (fovea_y+y)/2, value);
+                    }
                 }
             }
         }
+
+        bp_cb(*mf->u, *mf->d, *mf->l, *mf->r, *datafs[k], iters, disc_max);
+        // bp_cb(*mf->u, *mf->d, *mf->l, *mf->r, *datafs[k], 10, disc_max);
+
+        collect_messages(mf, *datafs[k]);
+        delete mf;
     }
+
     delete m;
-
-    bp_cb(*mf->u, *mf->d, *mf->l, *mf->r, *dataf, iters, disc_max);
-    // bp_cb(*mf->u, *mf->d, *mf->l, *mf->r, *dataf, 10, disc_max);
-
-    collect_messages(mf, *dataf);
-    delete mf;
 }
 
 void comp_data_down_fovea(
-    volume<float> **datad, volume<float> **dataf, cv::Mat img1, cv::Mat img2,
-    const int values, const int fx, const int fy, const int fwidth, const int fheight,
+    volume<float> **datad, volume<float> **datafs, cv::Mat img1, cv::Mat img2,
+    const int values, cv::Mat fovea_corners, cv::Mat fovea_shapes,
     const float lambda, const float threshold, const float sigma)
 {
+    assert(values >= 0);
+
     assert(img1.rows == img2.rows);
     assert(img1.cols == img2.cols);
-    assert(values >= 0);
-    assert(fx >= values);
-
-    us_t t;
-
-    t = now();
     const int width = img1.cols;
     const int height = img1.rows;
-    assert(fx + fwidth <= width);
-    assert(fy + fheight <= height);
 
-    (*datad) = new volume<float>((width+1)/2, (height+1)/2, values);
-    (*dataf) = new volume<float>(fwidth, fheight, values);
-    if (lambda == 0) {
-        return;
-    }
-    // printElapsedMilliseconds(t);
+    // us_t t;
 
-    t = now();
+    // --- convert and smooth images
+    // t = now();
     img1.convertTo(img1, CV_32F);
     img2.convertTo(img2, CV_32F);
 
     cv::Mat sm1, sm2;
-    if (sigma >= 0.1) {
+    if (sigma > 0.0) {
         cv::Size size(9, 9);
         cv::GaussianBlur(img1, sm1, size, sigma);
         cv::GaussianBlur(img2, sm2, size, sigma);
@@ -461,28 +459,46 @@ void comp_data_down_fovea(
     }
     // printElapsedMilliseconds(t);
 
+    // --- allocate space for data cost and fovea data costs
+    (*datad) = new volume<float>((width+1)/2, (height+1)/2, values);
     volume<float> &datad_ = **datad;
-    volume<float> &dataf_ = **dataf;
-    const int fx1 = fx + fwidth;
-    const int fy1 = fy + fheight;
 
-    t = now();
-#if 1
+    for (int k = 0; k < fovea_corners.rows; k++) {
+        const int fheight = fovea_shapes.at<int>(k, 0);
+        const int fwidth = fovea_shapes.at<int>(k, 1);
+        const int fy = fovea_corners.at<int>(k, 0);
+        const int fx = fovea_corners.at<int>(k, 1);
 
-    // fovea
-    for (int y = 0; y < fheight; y++) {
-        const float* sm1i = sm1.ptr<float>(fy+y);
-        const float* sm2i = sm2.ptr<float>(fy+y);
+        assert(fx >= values);
+        assert(fy >= 0);
+        assert(fx + fwidth <= width);
+        assert(fy + fheight <= height);
+        assert(fwidth % 2 == 0);
+        assert(fheight % 2 == 0);
 
-        for (int x = 0; x < fwidth; x++) {
-            for (int value = 0; value < values; value++) {
-                float val = abs(sm1i[fx+x] - sm2i[fx+x-value]);
-                dataf_(x, y, value) = lambda * std::min(val, threshold);
+        datafs[k] = new volume<float>(fwidth, fheight, values);
+
+        volume<float> &dataf_ = *datafs[k];
+        const int fx1 = fx + fwidth;
+        const int fy1 = fy + fheight;
+
+        // --- fovea data costs
+        for (int y = 0; y < fheight; y++) {
+            const float* sm1i = sm1.ptr<float>(fy+y);
+            const float* sm2i = sm2.ptr<float>(fy+y);
+
+            for (int x = 0; x < fwidth; x++) {
+                for (int value = 0; value < values; value++) {
+                    float val = abs(sm1i[fx+x] - sm2i[fx+x-value]);
+                    dataf_(x, y, value) = lambda * std::min(val, threshold);
+                }
             }
         }
     }
 
-    // coarse
+    // --- coarse data cost
+#if 1
+    // fine cost (all values, every pixel)
     for (int y = 0; y < height; y++) {
         const float* sm1i = sm1.ptr<float>(y);
         const float* sm2i = sm2.ptr<float>(y);
@@ -493,90 +509,42 @@ void comp_data_down_fovea(
             }
         }
     }
-
-    // for (int y = 0; y < height; y += 2) {
-    //     const float* sm1i = sm1.ptr<float>(y);
-    //     const float* sm2i = sm2.ptr<float>(y);
-    //     for (int x = values-1; x < width; x += 2) {
-    //         for (int value = 0; value < values; value++) {
-    //             float val = abs(sm1i[x] - sm2i[x-value]);
-    //            datar(x/2, y/2, value) = 4 * lambda * std::min(val, threshold);
-    //         }
-    //     }
-    // }
-
-    // for (int y = 0; y < height; y += 2) {
-    //     const float* sm1i = sm1.ptr<float>(y);
-    //     const float* sm2i = sm2.ptr<float>(y);
-
-    //     for (int x = 0; x < values-1; x += 2)
-    //         for (int value = 0; value < values; value++)
-    //             datad_(x/2, y/2, value) = 0;
-
-    //     for (int x = values-1; x < width; x += 2) {
-    //         if (x < fx || x >= fx1 || y < fy || y >= fy1) {
-    //             for (int value = 0; value < values; value++) {
-    //                 float val = abs(sm1i[x] - sm2i[x-value]);
-    //                 datad_(x/2, y/2, value) = 4 * lambda * std::min(val, threshold);
-    //             }
-    //         }
-    //         // else {
-    //         //     for (int value = 0; value < values; value++)
-    //         //         datad_(x/2, y/2, value) = 0;
-    //         // }
-    //     }
-    // }
-    // for (int y = 0; y < fheight; y++)
-    //     for (int x = 0; x < fwidth; x++)
-    //         for (int value = 0; value < values; value++)
-    //             datad_((fx+x)/2, (fy+y)/2, value) += dataf_(x, y, value);
-
 #else
-
-    // single pixel differencing
-    for (int y = 0; y < height; y++) {
-        if (y % 2 == 1 && (y+1 < fy || y > fy1))
-            continue;
-
-        const bool yshort = (y+1 == fy);
+    // subsampled cost (all values, every second pixel in both dimensions)
+    for (int y = 0; y < height; y += 2) {
         const float* sm1i = sm1.ptr<float>(y);
         const float* sm2i = sm2.ptr<float>(y);
-
-        // for (int x = 0; x < values-1; x += 2)
-        //     for (int value = 0; value < values; value++)
-        //         datad_(x/2, y/2, value) = 0;
-
-        for (int x = values-1; x < width; x++) {
-            if (x % 2 == 1 && (x+1 < fx || x > fx1))
-                continue;
-
-            const bool xshort = (x+1 == fx);
-            const float px1 = sm1i[x];
-            if (x == fx1 || y == fy1) {
-                for (int value = 0; value < values; value++) {
-                    datad_(x/2, y/2, value) +=
-                        lambda * std::min(abs(px1 - sm2i[x-value]), threshold);
-                }
-            } else if (x >= fx && x < fx1 && y >= fy && y < fy1) {
-                for (int value = 0; value < values; value++) {
-                    const float val =
-                        lambda * std::min(abs(px1 - sm2i[x-value]), threshold);
-                    datad_(x/2, y/2, value) += val;
-                    dataf_(x-fx, y-fy, value) = val;
-                }
-            } else {
-                const float mul = lambda * (
-                    (yshort && xshort) ? 3 : (yshort || xshort) ? 2 : 4);
-                for (int value = 0; value < values; value++) {
-                    datad_(x/2, y/2, value) =
-                        mul * std::min(abs(px1 - sm2i[x-value]), threshold);
-                }
+        for (int x = values-1; x < width; x += 2) {
+            for (int value = 0; value < values; value++) {
+                float val = abs(sm1i[x] - sm2i[x-value]);
+               datar(x/2, y/2, value) = 4 * lambda * std::min(val, threshold);
             }
         }
     }
 
+#if 1
+    // use fovea costs to make fovea areas fine
+    for (int k = 0; k < fovea_corners.rows; k++) {
+        const int fheight = fovea_shapes.at<int>(k, 0);
+        const int fwidth = fovea_shapes.at<int>(k, 1);
+        const int fy = fovea_corners.at<int>(k, 0);
+        const int fx = fovea_corners.at<int>(k, 1);
+        volume<float> &dataf_ = *datafs[k];
+
+        for (int y = 0; y < fheight; y += 2) {
+            for (int x = 0; x < fwidth; x += 2) {
+                for (int value = 0; value < values; value++) {
+                    float sum = dataf_(x, y, value);
+                    sum += dataf_(x+1, y, value);
+                    sum += dataf_(x, y+1, value);
+                    sum += dataf_(x+1, y+1, value);
+                    datad_(fx + x/2, fy + y/2, value) = sum;
+                }
+            }
+        }
+    }
 #endif
-    // printElapsedMilliseconds(t);
+#endif
 }
 
 cv::Mat stereo_ms_fovea(
@@ -585,21 +553,17 @@ cv::Mat stereo_ms_fovea(
     float data_weight, float data_max, float seed_weight, float disc_max,
     cv::Mat fovea_corners, cv::Mat fovea_shapes)
 {
-    assert(seed.empty());
-
-    int fovea_x = fovea_corners.at<int>(0, 1);
-    int fovea_y = fovea_corners.at<int>(0, 0);
-    int fovea_width = fovea_shapes.at<int>(0, 1);
-    int fovea_height = fovea_shapes.at<int>(0, 0);
-    printf("x, y, w, h: %d, %d, %d, %d\n", fovea_x, fovea_y, fovea_width, fovea_height);
+    assert(fovea_corners.rows == fovea_shapes.rows);
+    assert(fovea_corners.rows <= 5);  // not too many foveas
+    assert(seed.empty());  // seed needs to be tested again
 
     // create coarse and fine data volumes
     volume<float> *datad;
-    volume<float> *dataf;
+    volume<float> **datafs = new volume<float>*[fovea_corners.rows];
     // us_t start = now();
-    comp_data_down_fovea(&datad, &dataf, img1, img2, values,
-                         fovea_x, fovea_y, fovea_width, fovea_height,
-                         data_weight, data_max, smooth);
+    comp_data_down_fovea(
+        &datad, datafs, img1, img2, values, fovea_corners, fovea_shapes,
+        data_weight, data_max, smooth);
     // printElapsedMilliseconds(start);
 
     if (!seed.empty()) {
@@ -608,26 +572,36 @@ cv::Mat stereo_ms_fovea(
         add_seed_cost(*datad, seedd, seed_weight*2);
     }
 
-    bp_ms_fovea(datad, dataf, iters, levels, disc_max, fovea_x, fovea_y);
+    bp_ms_fovea(datad, datafs, iters, levels, disc_max, fovea_corners);
 
+    // --- copy coarse results to output image
     cv::Mat outd = max_value(*datad);
     if (datad->depth() == values/2)
         outd *= 2;
     else
         assert(datad->depth() == values);
-    cv::Mat outf = max_value(*dataf);
     delete datad;
-    delete dataf;
 
+    // output image
     cv::Mat out(outd.rows*2, outd.cols*2, CV_8U, cv::Scalar(0));
     cv::pyrUp(outd, out);
 
-    for (int y = 1; y < fovea_height-1; y++) {
-        uchar* outi = out.ptr<uchar>(y+fovea_y);
-        uchar* outfi = outf.ptr<uchar>(y);
+    // --- copy fovea results onto image
+    for (int k = 0; k < fovea_corners.rows; k++) {
+        const int fovea_height = fovea_shapes.at<int>(k, 0);
+        const int fovea_width = fovea_shapes.at<int>(k, 1);
+        const int fovea_y = fovea_corners.at<int>(k, 0);
+        const int fovea_x = fovea_corners.at<int>(k, 1);
 
-        for (int x = 1; x < fovea_width-1; x++) {
-            outi[x+fovea_x] = outfi[x];
+        cv::Mat outf = max_value(*datafs[k]);
+
+        for (int y = 1; y < fovea_height - 1; y++) {
+            uchar* outi = out.ptr<uchar>(y + fovea_y);
+            uchar* outfi = outf.ptr<uchar>(y);
+
+            for (int x = 1; x < fovea_width - 1; x++) {
+                outi[x + fovea_x] = outfi[x];
+            }
         }
     }
 
