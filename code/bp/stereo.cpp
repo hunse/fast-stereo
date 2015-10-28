@@ -32,6 +32,25 @@
 template <class T>
 inline T abs(const T &x) { return (x > 0 ? x : -x); };
 
+class Messages {
+public:
+    volume<float> *u;
+    volume<float> *d;
+    volume<float> *l;
+    volume<float> *r;
+
+    Messages(volume<float> *u_, volume<float> *d_,
+             volume<float> *l_, volume<float>*r_)
+        : u(u_), d(d_), l(l_), r(r_) {}
+
+    ~Messages() {
+        delete u;
+        delete d;
+        delete l;
+        delete r;
+    }
+};
+
 // dt of 1d function
 static void dt(float* f, int values) {
     for (int q = 1; q < values; q++) {
@@ -197,6 +216,10 @@ void collect_messages(
                     r(x-1, y, value);
 }
 
+void collect_messages(Messages *m, volume<float> &data) {
+    collect_messages(*m->u, *m->d, *m->l, *m->r, data);
+}
+
 cv::Mat max_value(volume<float>& data)
 {
     int width = data.width();
@@ -254,7 +277,7 @@ void bp_cb(volume<float> &u, volume<float> &d,
 }
 
 // multiscale belief propagation
-void bp_ms(
+Messages* bp_ms_messages(
     volume<float> *data0, int iters, int levels, float disc_max, float data_exp=1.0)
 {
     volume<float> *u[levels];
@@ -328,12 +351,15 @@ void bp_ms(
         bp_cb(*u[i], *d[i], *l[i], *r[i], *data[i], iters, disc_max);
     }
 
-    collect_messages(*u[0], *d[0], *l[0], *r[0], *data[0]);
+    return new Messages(u[0], d[0], l[0], r[0]);
+}
 
-    delete u[0];
-    delete d[0];
-    delete l[0];
-    delete r[0];
+void bp_ms(
+    volume<float> *data0, int iters, int levels, float disc_max, float data_exp=1.0)
+{
+    Messages* m = bp_ms_messages(data0, iters, levels, disc_max, data_exp);
+    collect_messages(m, *data0);
+    delete m;
 }
 
 cv::Mat stereo_ms(
