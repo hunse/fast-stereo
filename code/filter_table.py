@@ -10,18 +10,23 @@ import matplotlib.pyplot as plt
 import cv2
 
 from bp_wrapper import downsample, upsample, coarse_bp, points_image, plot_fovea
-from data import KittiSource, KittiMultiViewSource
-from importance import UnusuallyClose, get_average_disparity, get_position_weights, get_importance
+from data import KittiMultiViewSource
+from importance import get_position_weights, get_importance
 from transform import DisparityMemory
 from filter import Filter, cost_on_points, expand_coarse
 
 
-# frame_down_factor = 1
-frame_down_factor = 2
-mem_down_factor = 2     # relative to the frame down factor
+if 0:
+    # larger resolution
+    frame_down_factor = 1
+    mem_down_factor = 2     # relative to the frame down factor
+    fovea_shape = (80, 80)
+else:
+    # smaller resolution
+    frame_down_factor = 2
+    mem_down_factor = 1     # relative to the frame down factor
+    fovea_shape = (40, 40)
 
-# fovea_shape = (80, 80)
-fovea_shape = (40, 40)
 full_values = 128
 values = full_values / 2**frame_down_factor
 iters = 3
