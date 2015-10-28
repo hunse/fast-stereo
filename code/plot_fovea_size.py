@@ -6,7 +6,7 @@ performance with a giant fovea.
 """
 import time
 import numpy as np
-from filter_table import rescale_image, eval_coarse, eval_fine
+from filter_table import upsample_average_disp, eval_coarse, eval_fine
 from data import KittiSource, KittiMultiViewSource
 from importance import UnusuallyClose, get_average_disparity, get_position_weights, get_importance
 from transform import DisparityMemory, downsample
@@ -103,7 +103,7 @@ def test_foveal(n_test_frames, full_values, frame_down_factor, fovea_fraction):
         else:
             fovea_shape = (0, 0)
 
-        average_disp = rescale_image(average_disp, frame_down_factor, frame_shape)
+        average_disp = upsample_average_disp(average_disp, frame_down_factor, frame_shape)
 
         # --- filter
         filter = Filter(average_disp, frame_down_factor, mem_down_factor,
