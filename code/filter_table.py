@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 import cv2
 
-from bp_wrapper import coarse_bp, points_image
+from bp_wrapper import coarse_bp, points_image, plot_fovea
 from data import KittiSource, KittiMultiViewSource
 from importance import UnusuallyClose, get_average_disparity, get_position_weights, get_importance
 from transform import DisparityMemory, downsample
@@ -123,15 +123,7 @@ def debug_plots(table, coarse_disp, average_disp, true_points):
     subplot('true')
     plt.imshow(true_disp, **imargs)
     plt.colorbar()
-
-    fovea_centre = np.array(fovea_corner) + np.array(fovea_shape)/2
-    plt.scatter(fovea_centre[1], fovea_centre[0], s=200, c='white', marker='+', linewidths=2)
-    plt.scatter(fovea_corner[1], fovea_corner[0], s=50, c='white', marker='.')
-    plt.scatter(fovea_corner[1], fovea_corner[0]+fovea_shape[0], s=50, c='white', marker='.')
-    plt.scatter(fovea_corner[1]+fovea_shape[1], fovea_corner[0], s=50, c='white', marker='.')
-    plt.scatter(fovea_corner[1]+fovea_shape[1], fovea_corner[0]+fovea_shape[0], s=50, c='white', marker='.')
-    plt.xlim([0, frame_shape[1]])
-    plt.ylim([frame_shape[0], 0])
+    plot_fovea(fovea_corner, fovea_shape)
 
     subplot('importance')
     plt.imshow(importance)

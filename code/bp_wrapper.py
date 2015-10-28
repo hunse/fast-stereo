@@ -63,8 +63,11 @@ def coarse_bp(frame, values=values_default, down_factor=3, ksize=1, iters=5, **p
     return disp
 
 
-def foveal_bp(frame, fovea_corner, fovea_shape, seed, values=values_default, ksize=1, iters=5, **params):
+def foveal_bp(frame, fovea_corner, fovea_shape, seed=None, values=values_default, ksize=1, iters=5, **params):
     """BP with two levels: coarse on the outside, fine in the fovea"""
+    if seed is None:
+        seed = np.array([[]], dtype=np.uint8)
+
     img1, img2 = frame
 
     # high resolution (used in fovea; maybe some downsampling)
@@ -216,3 +219,20 @@ def get_shifted_points(disp, pos0, pos1, disp2imu, imu2disp, out_shape=None):
     xyd[:, 1] *= float(out_shape[0]) / full_shape[0]
     # xyd[:, 2] *= float(out_shape[1]) / full_shape[1]
     return xyd
+
+
+def plot_fovea(fovea_corner, fovea_shape, ax=None):
+    if ax is None:
+        ax = plt.gca()
+
+    xlim = ax.get_xlim()
+    ylim = ax.get_ylim()
+
+    fovea_centre = np.array(fovea_corner) + 0.5 * np.array(fovea_shape)
+    ax.scatter(fovea_centre[1], fovea_centre[0], s=200, c='white', marker='+', linewidths=2)
+    ax.scatter(fovea_corner[1], fovea_corner[0], s=50, c='white', marker='.')
+    ax.scatter(fovea_corner[1], fovea_corner[0]+fovea_shape[0], s=50, c='white', marker='.')
+    ax.scatter(fovea_corner[1]+fovea_shape[1], fovea_corner[0], s=50, c='white', marker='.')
+    ax.scatter(fovea_corner[1]+fovea_shape[1], fovea_corner[0]+fovea_shape[0], s=50, c='white', marker='.')
+    ax.set_xlim(xlim)
+    ax.set_ylim(ylim)
