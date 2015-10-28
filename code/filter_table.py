@@ -47,90 +47,18 @@ def append_table(key, disp, true_disp, true_points, average_disp, full_shape):
     table['pu_' + key].append(cost_on_points(disp, true_points, full_shape=full_shape))
     table['pw_' + key].append(cost_on_points(disp, true_points, average_disp, full_shape=full_shape))
 
-n_frames = 0
-#for index in range(1):
-# for index in range(5,10):
-# for index in range(17, 18):
-# for index in range(27, 28):
-for index in range(30):
-# for index in range(80):
-# for index in range(194):
-# for index in range(2, 3):
-    source = KittiMultiViewSource(index, test=False, n_frames=n_frames)
-    full_shape = source.frame_ten[0].shape
-    frame_ten = [downsample(source.frame_ten[0], frame_down_factor),
-                 downsample(source.frame_ten[1], frame_down_factor)]
-    frame_shape = frame_ten[0].shape
-
-    try:
-        average_disp = source.get_average_disparity()
-    except IOError:  # likely does not have a full 20 frames
-        print("Skipping index %d (lacks frames)" % index)
-        continue
-
-    # rescale average_disp
-    assert frame_down_factor <= 2
-    for _ in range(2 - frame_down_factor):
-        average_disp = cv2.pyrUp(average_disp)
-    assert np.abs(average_disp.shape[0] - frame_shape[0]) < 2
-    assert np.abs(average_disp.shape[1] + values - frame_shape[1]) < 2
-    average_disp = average_disp[:frame_shape[0],:frame_shape[1]]
-
-    #true_disp = downsample(source.ground_truth_OCC, frame_down_factor)
-    true_disp = None
-    true_points = source.get_ground_truth_points(occluded=False)
-
-    # --- coarse
-    params = {
-        'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
-        'data_max': 32.024780646200725, 'ksize': 3}
-    coarse_time = time.time()
-    coarse_disp = coarse_bp(frame_ten, down_factor=1, iters=3, values=values, **params)
-    coarse_disp = cv2.pyrUp(coarse_disp)[:frame_shape[0],:frame_shape[1]]
-    coarse_disp *= 2**frame_down_factor
-    coarse_time = time.time() - coarse_time
-
-    append_table('coarse', coarse_disp[:,values:], true_disp, true_points, average_disp, full_shape)
-    times['coarse'].append(coarse_time)
-
-    # --- fine
-    params = {
-        'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
-        'data_max': 32.024780646200725, 'ksize': 3}
-    fine_time = time.time()
-    fine_disp = coarse_bp(frame_ten, down_factor=0, iters=3, values=values, **params)
-    fine_disp *= 2**frame_down_factor
-    fine_time = time.time() - fine_time
-
-    append_table('fine', fine_disp[:,values:], true_disp, true_points, average_disp, full_shape)
-    times['fine'].append(fine_time)
-
-    # --- filter (no fovea)
-    filter = Filter(average_disp, frame_down_factor, mem_down_factor,
-                    (0, 0), frame_shape, values, verbose=False, memory_length=0)
-    filter_disp0, _ = filter.process_frame(None, frame_ten)
-    append_table('filter0', filter_disp0[:,values:], true_disp, true_points, average_disp, full_shape)
-
-    # --- filter
-    filter = Filter(average_disp, frame_down_factor, mem_down_factor,
-                    fovea_shape, frame_shape, values, verbose=False, memory_length=0)
-    filter_disp, fovea_corner = filter.process_frame(None, frame_ten)
-    append_table('filter', filter_disp[:,values:], true_disp, true_points, average_disp, full_shape)
-
-    # --- fovea
-    fovea0 = slice(fovea_corner[0], fovea_corner[0]+fovea_shape[0])
-    fovea1 = slice(fovea_corner[1], fovea_corner[1]+fovea_shape[1])
-    fovea1v = slice(fovea1.start - values, fovea1.stop - values)
-    fine_fovea = fine_disp[fovea0, fovea1]
-    filter_fovea0 = filter_disp0[fovea0, fovea1]
-    filter_fovea = filter_disp[fovea0, fovea1]
-
-    true_disp = points_image(true_points, frame_shape, default=-1)
-    true_fovea = true_disp[fovea0, fovea1]
-
-    print("Computed index %d" % index)
-
-    if 0:
+def debug_plots(table, coarse_disp, average_disp, true_points):
+        # --- fovea
+        fovea0 = slice(fovea_corner[0], fovea_corner[0]+fovea_shape[0])
+        fovea1 = slice(fovea_corner[1], fovea_corner[1]+fovea_shape[1])
+        fovea1v = slice(fovea1.start - values, fovea1.stop - values)
+        fine_fovea = fine_disp[fovea0, fovea1]
+        filter_fovea0 = filter_disp0[fovea0, fovea1]
+        filter_fovea = filter_disp[fovea0, fovea1]
+    
+        true_disp = points_image(true_points, frame_shape, default=-1)
+        true_fovea = true_disp[fovea0, fovea1]
+    
         print(", ".join("%s: %s" % (key, table[key][-1]) for key in sorted(list(table))))
 
         pos_weights = get_position_weights(coarse_disp.shape)
@@ -272,7 +200,7 @@ for index in range(30):
         plt.imshow(ferror(filter_fovea))
         plt.colorbar()
 
-        plt.tight_layout()
+ 
         plt.show()
 
         # filter_error0 = error(filter_disp0)
@@ -295,24 +223,108 @@ for index in range(30):
         raw_input("Waiting...")
         # if table['pw_filter'][-1] > table['pw_filter0'][-1]:
         #     raw_input("Waiting...")
+    
+def eval_coarse(frame_ten, frame_shape):
+    params = {
+        'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
+        'data_max': 32.024780646200725, 'ksize': 3}
+    coarse_time = time.time()
+    coarse_disp = coarse_bp(frame_ten, down_factor=1, iters=3, values=values, **params)
+    coarse_disp = cv2.pyrUp(coarse_disp)[:frame_shape[0],:frame_shape[1]]
+    coarse_disp *= 2**frame_down_factor
+    coarse_time = time.time() - coarse_time
+    return coarse_disp, coarse_time
 
+def eval_fine(frame_ten):
+    params = {
+        'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
+        'data_max': 32.024780646200725, 'ksize': 3}
+    fine_time = time.time()
+    fine_disp = coarse_bp(frame_ten, down_factor=0, iters=3, values=values, **params)
+    fine_disp *= 2**frame_down_factor
+    fine_time = time.time() - fine_time
+    return fine_disp, fine_time
 
-# for key in table:
-#     table[key] = np.asarray(table[key])
-
-# mask = (table['pu_fine'] <= table['pu_coarse']) & (table['pw_fine'] <= table['pw_coarse'])
-# for key in table:
-#     table[key] = np.mean(table[key][mask])
-
-for key in table:
-    table[key] = np.mean(table[key])
-
-for key in times:
-    times[key] = np.mean(times[key])
-print(times)
-
-drives = dict(stereo=table)
-print('%20s |' % 'drive' + ' |'.join("%10s" % v for v in drives))
-print('-' * 79)
-for key in sorted(list(table)):
-    print('%20s |' % key + ' |'.join('%10.3f' % table[key] for _ in [0]))
+def rescale_image(average_disp, frame_down_factor, frame_shape):
+    # TODO: is this very different from downsample?
+    assert frame_down_factor <= 2
+    for _ in range(2 - frame_down_factor):
+        average_disp = cv2.pyrUp(average_disp)
+    assert np.abs(average_disp.shape[0] - frame_shape[0]) < 2
+    assert np.abs(average_disp.shape[1] + values - frame_shape[1]) < 2
+    return average_disp[:frame_shape[0],:frame_shape[1]]
+    
+if __name__ == '__main__': 
+    n_frames = 0
+    #for index in range(1):
+    # for index in range(5,10):
+    # for index in range(17, 18):
+    # for index in range(27, 28):
+    for index in range(30):
+    # for index in range(80):
+    # for index in range(194):
+    # for index in range(2, 3):
+        source = KittiMultiViewSource(index, test=False, n_frames=n_frames)
+        full_shape = source.frame_ten[0].shape
+        frame_ten = [downsample(source.frame_ten[0], frame_down_factor),
+                     downsample(source.frame_ten[1], frame_down_factor)]
+        frame_shape = frame_ten[0].shape
+    
+        try:
+            average_disp = source.get_average_disparity()
+        except IOError:  # likely does not have a full 20 frames
+            print("Skipping index %d (lacks frames)" % index)
+            continue
+    
+        average_disp = rescale_image(average_disp, frame_down_factor, frame_shape)
+    
+        #true_disp = downsample(source.ground_truth_OCC, frame_down_factor)
+        true_disp = None
+        true_points = source.get_ground_truth_points(occluded=False)
+    
+        # --- coarse
+        coarse_disp, coarse_time = eval_coarse(frame_ten, frame_shape)
+        append_table('coarse', coarse_disp[:,values:], true_disp, true_points, average_disp, full_shape)
+        times['coarse'].append(coarse_time)
+    
+        # --- fine
+        fine_disp, fine_time = eval_fine(frame_ten)
+        append_table('fine', fine_disp[:,values:], true_disp, true_points, average_disp, full_shape)
+        times['fine'].append(fine_time)
+        
+        # --- filter (no fovea)
+        filter = Filter(average_disp, frame_down_factor, mem_down_factor,
+                        (0, 0), frame_shape, values, verbose=False, memory_length=0)
+        filter_disp0, _ = filter.process_frame(None, frame_ten)
+        append_table('filter0', filter_disp0[:,values:], true_disp, true_points, average_disp, full_shape)
+    
+        # --- filter
+        filter = Filter(average_disp, frame_down_factor, mem_down_factor,
+                        fovea_shape, frame_shape, values, verbose=False, memory_length=0)
+        filter_disp, fovea_corner = filter.process_frame(None, frame_ten)
+        append_table('filter', filter_disp[:,values:], true_disp, true_points, average_disp, full_shape)
+    
+        print("Computed index %d" % index)
+    
+        if 0:
+            debug_plots(table, coarse_disp, average_disp, true_points)
+    
+    # for key in table:
+    #     table[key] = np.asarray(table[key])
+    
+    # mask = (table['pu_fine'] <= table['pu_coarse']) & (table['pw_fine'] <= table['pw_coarse'])
+    # for key in table:
+    #     table[key] = np.mean(table[key][mask])
+    
+    for key in table:
+        table[key] = np.mean(table[key])
+    
+    for key in times:
+        times[key] = np.mean(times[key])
+    print(times)
+    
+    drives = dict(stereo=table)
+    print('%20s |' % 'drive' + ' |'.join("%10s" % v for v in drives))
+    print('-' * 79)
+    for key in sorted(list(table)):
+        print('%20s |' % key + ' |'.join('%10.3f' % table[key] for _ in [0]))
