@@ -405,15 +405,9 @@ void bp_ms_fovea(
         for (int x = 0; x < width; x++) {
             for (int value = 0; value < values; value++) {
                 if (half_values) {
-                    (*mf->u)(x, y, value) = (*m->u)((fovea_x+x)/2, (fovea_y+y)/2, value/2);
-                    (*mf->d)(x, y, value) = (*m->d)((fovea_x+x)/2, (fovea_y+y)/2, value/2);
-                    (*mf->l)(x, y, value) = (*m->l)((fovea_x+x)/2, (fovea_y+y)/2, value/2);
-                    (*mf->r)(x, y, value) = (*m->r)((fovea_x+x)/2, (fovea_y+y)/2, value/2);
+                    mf->copy_voxel(x, y, value, m, (fovea_x+x)/2, (fovea_y+y)/2, value/2);
                 } else {
-                    (*mf->u)(x, y, value) = (*m->u)((fovea_x+x)/2, (fovea_y+y)/2, value);
-                    (*mf->d)(x, y, value) = (*m->d)((fovea_x+x)/2, (fovea_y+y)/2, value);
-                    (*mf->l)(x, y, value) = (*m->l)((fovea_x+x)/2, (fovea_y+y)/2, value);
-                    (*mf->r)(x, y, value) = (*m->r)((fovea_x+x)/2, (fovea_y+y)/2, value);
+                    mf->copy_voxel(x, y, value, m, (fovea_x+x)/2, (fovea_y+y)/2, value);
                 }
             }
         }
