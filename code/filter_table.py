@@ -251,7 +251,7 @@ def upsample_average_disp(average_disp, frame_down_factor, frame_shape, values=v
         return upsample(average_disp, 2 - frame_down_factor, target_shape)
     else:
         for _ in range(frame_down_factor - 2):
-            average_disp = cv2.pyrDown(average_disp)    
+            average_disp = cv2.pyrDown(average_disp)
         assert np.abs(average_disp.shape[0] - frame_shape[0]) < 2
         assert np.abs(average_disp.shape[1] + values - frame_shape[1]) < 2
         return average_disp[:frame_shape[0],:frame_shape[1]]

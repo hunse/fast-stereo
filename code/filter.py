@@ -251,6 +251,7 @@ def cost_on_points(disp, ground_truth_points, average_disp=None, full_shape=(375
 
     # rescale points
     ratio = np.asarray(disp.shape) / np.asarray(full_shape, dtype=float)
+    assert np.allclose(ratio[0], ratio[1], rtol=1e-2), (ratio[0], ratio[1])
     xr = (x * ratio[1]).astype(int)
     yr = (y * ratio[0]).astype(int)
     del x, y
