@@ -194,6 +194,36 @@ def _choose_fovea(cost, fovea_shape, n_disp):
     fovea_ij = np.unravel_index(np.argmax(fcost), fcost.shape)
     return fovea_ij
 
+def _fovea_part_shape(fovea_shape, n):
+    fm = np.floor(fovea_shape[0] / n**.5)
+    fn = np.round(fovea_shape[0] * fovea_shape[1] / fm / n)
+    return fm, fn
+    
+def _choose_n_foveas(cost, fovea_shape, n_disp, n):    
+    c = np.copy(cost)
+    
+    result = []
+    for i in range(n):
+        fovea_ij = _choose_fovea(c, fovea_shape, n_disp)
+        result.append(fovea_ij)
+        c[fovea_ij[0]:fovea_ij[0]+fovea_shape[0],fovea_ij[1]:fovea_ij[1]+fovea_shape[1]] = 0
+    
+    return tuple(result), np.sum(c)
+
+def _choose_foveas(cost, fovea_shape, n_disp, max_n):
+    foveas_ij, residual_cost = _choose_n_foveas(cost, fovea_shape, n_disp, 1)
+    
+    for n in range(2, max_n): 
+        fovea_shape_n = _fovea_part_shape(fovea_shape, n)
+        fovea_ij_n, residual_cost_n = _choose_n_foveas(cost, fovea_shape_n, n_disp, n)
+        
+        if residual_cost_n < residual_cost: 
+            fovea_shape = fovea_shape_n
+            fovea_ij = fovea_ij_n
+            residual_cost = residual_cost_n
+    
+    return fovea_ij, fovea_shape
+
 def cost(disp, ground_truth_disp, average_disp=None):
     assert disp.shape == ground_truth_disp.shape
     error = (disp.astype(float) - ground_truth_disp)**2
