@@ -41,9 +41,10 @@ cdef extern from "stereo.h":
         float seed_weight, float disc_max)
     cdef Mat stereo_ms_fovea(
         Mat a, Mat b, Mat ad, Mat bd, Mat seed,
+        Mat fovea_corners, Mat fovea_shapes,
         int values, int iters, int levels, float smooth,
-        float data_weight, float data_max, float seed_weight, float disc_max,
-        Mat fovea_corners, Mat fovea_shapes)
+        float data_weight, float data_max, float data_exp,
+        float seed_weight, float disc_max)
     cdef volume[float]* stereo_ms_volume(
         Mat a, Mat b, Mat seed,
         int values, int iters, int levels, float smooth,
@@ -63,7 +64,7 @@ def stereo(
         np.ndarray[uchar, ndim=2, mode="c"] b,
         np.ndarray[uchar, ndim=2, mode="c"] seed = np.array([[]], dtype='uint8'),
         int values=64, int iters=5, int levels=5, float smooth=0.7,
-        float data_weight=0.07, float data_max=15, float data_exp=1.0,
+        float data_weight=0.07, float data_max=15, float data_exp=1,
         float seed_weight=1, float disc_max=1.7, bool return_volume=False):
 
     assert a.shape[0] == b.shape[0] and a.shape[1] == b.shape[1]
@@ -124,8 +125,8 @@ def stereo_fovea(
         np.ndarray[int, ndim=2, mode="c"] fovea_shapes,
         np.ndarray[uchar, ndim=2, mode="c"] seed = np.array([[]], dtype='uint8'),
         int values=64, int iters=5, int levels=5, float smooth=0.7,
-        float data_weight=0.07, float data_max=15, float seed_weight=1,
-        float disc_max=1.7):
+        float data_weight=0.07, float data_max=15, float data_exp=1,
+        float seed_weight=1, float disc_max=1.7):
     """BP with two levels: coarse on the outside, fine in the fovea"""
 
     assert a.shape[0] == b.shape[0] and a.shape[1] == b.shape[1]
@@ -166,8 +167,8 @@ def stereo_fovea(
 
     # run belief propagation
     cdef Mat zi = stereo_ms_fovea(
-        x, y, xd, yd, u, values, iters, levels, smooth,
-        data_weight, data_max, seed_weight, disc_max, fcorners, fshapes)
+        x, y, xd, yd, u, fcorners, fshapes, values, iters, levels, smooth,
+        data_weight, data_max, data_exp, seed_weight, disc_max)
 
     # copy data off
     cdef np.ndarray[uchar, ndim=2, mode="c"] ci = np.zeros(

@@ -380,10 +380,10 @@ cv::Mat stereo_ms(
 // multiscale belief propagation with an extra level in the fovea
 // fovea_x and fovea_y are in fine coordinates
 void bp_ms_fovea(
-    volume<float> *data0, volume<float> **datafs, int iters, int levels,
-    float disc_max, cv::Mat fovea_corners)
+    volume<float> *data0, volume<float> **datafs, cv::Mat fovea_corners,
+    int iters, int levels, float disc_max, float data_exp=1.0)
 {
-    Messages *m = bp_ms_messages(data0, iters, levels, disc_max);
+    Messages *m = bp_ms_messages(data0, iters, levels, disc_max, data_exp);
     collect_messages(m, *data0);
 
     // one final iteration in foveas at finer resolution (using datafs) ...
@@ -549,9 +549,10 @@ void comp_data_down_fovea(
 
 cv::Mat stereo_ms_fovea(
     cv::Mat img1, cv::Mat img2, cv::Mat img1d, cv::Mat img2d, cv::Mat seed,
+    cv::Mat fovea_corners, cv::Mat fovea_shapes,
     int values, int iters, int levels, float smooth,
-    float data_weight, float data_max, float seed_weight, float disc_max,
-    cv::Mat fovea_corners, cv::Mat fovea_shapes)
+    float data_weight, float data_max, float data_exp,
+    float seed_weight, float disc_max)
 {
     assert(fovea_corners.rows == fovea_shapes.rows);
     assert(fovea_corners.rows <= 5);  // not too many foveas
@@ -572,7 +573,7 @@ cv::Mat stereo_ms_fovea(
         add_seed_cost(*datad, seedd, seed_weight*2);
     }
 
-    bp_ms_fovea(datad, datafs, iters, levels, disc_max, fovea_corners);
+    bp_ms_fovea(datad, datafs, fovea_corners, iters, levels, disc_max, data_exp);
 
     // --- copy coarse results to output image
     cv::Mat outd = max_value(*datad);
