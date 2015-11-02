@@ -201,7 +201,7 @@ def _fovea_part_shape(fovea_shape, n):
     
 def _choose_n_foveas(cost, fovea_shape, n_disp, n):    
     c = np.copy(cost)
-    
+
     result = []
     for i in range(n):
         fovea_ij = _choose_fovea(c, fovea_shape, n_disp)
@@ -211,9 +211,9 @@ def _choose_n_foveas(cost, fovea_shape, n_disp, n):
     return tuple(result), np.sum(c)
 
 def _choose_foveas(cost, fovea_shape, n_disp, max_n):
-    foveas_ij, residual_cost = _choose_n_foveas(cost, fovea_shape, n_disp, 1)
+    fovea_ij, residual_cost = _choose_n_foveas(cost, fovea_shape, n_disp, 1)
     
-    for n in range(2, max_n): 
+    for n in range(2, max_n+1): 
         fovea_shape_n = _fovea_part_shape(fovea_shape, n)
         fovea_ij_n, residual_cost_n = _choose_n_foveas(cost, fovea_shape_n, n_disp, n)
         
