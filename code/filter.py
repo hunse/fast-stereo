@@ -21,7 +21,7 @@ from transform import DisparityMemory
 class Filter:
     def __init__(self, average_disparity, frame_down_factor, mem_down_factor,
                  fovea_shape, frame_shape, values,
-                 verbose=False, memory_length=1, iters=3):
+                 verbose=False, memory_length=1, iters=3, fovea_levels=1):
         """
         Arguments
         ---------
@@ -48,6 +48,7 @@ class Filter:
         self.memory_shape = self.average_disparity.shape
 
         self.values = values
+        self.fovea_levels = fovea_levels
 
         # self.params = {
         #     'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
@@ -171,7 +172,7 @@ class Filter:
         # --- fovea boundaries in frame coordinates ...
         disp = foveal_bp(
             frame, fovea_corners, fovea_shape, seed,
-            values=self.values, iters=self.iters, **self.params)
+            values=self.values, iters=self.iters, fovea_levels=self.fovea_levels, **self.params)
 
         # disp = coarse_bp(frame, down_factor=1, iters=3, values=self.values, **self.params)
         # disp = cv2.pyrUp(disp)[:self.frame_shape[0], :self.frame_shape[1]]
@@ -225,8 +226,8 @@ def _fovea_part_shape(fovea_shape, n):
     fm = np.floor(fovea_shape[0] / n**.5)
     fn = np.round(fovea_shape[0] * fovea_shape[1] / fm / n)
     return fm, fn
-    
-def _choose_n_foveas(cost, fovea_shape, n_disp, n):    
+
+def _choose_n_foveas(cost, fovea_shape, n_disp, n):
     c = np.copy(cost)
 
     result = []
@@ -234,22 +235,22 @@ def _choose_n_foveas(cost, fovea_shape, n_disp, n):
         fovea_ij = _choose_fovea(c, fovea_shape, n_disp)
         result.append(fovea_ij)
         c[fovea_ij[0]:fovea_ij[0]+fovea_shape[0],fovea_ij[1]:fovea_ij[1]+fovea_shape[1]] = 0
-    
+
     return tuple(result), np.sum(c)
 
 def _choose_foveas(cost, fovea_shape, n_disp, max_n):
     fovea_ij, residual_cost = _choose_n_foveas(cost, fovea_shape, n_disp, 1)
-    
+
     if fovea_shape[0]*fovea_shape[1] > 0:
-        for n in range(2, max_n+1): 
+        for n in range(2, max_n+1):
             fovea_shape_n = _fovea_part_shape(fovea_shape, n)
             fovea_ij_n, residual_cost_n = _choose_n_foveas(cost, fovea_shape_n, n_disp, n)
-            
-            if residual_cost_n < residual_cost: 
+    
+            if residual_cost_n < residual_cost:
                 fovea_shape = fovea_shape_n
                 fovea_ij = fovea_ij_n
                 residual_cost = residual_cost_n
-    
+
     return fovea_ij, fovea_shape
 
 def cost(disp, ground_truth_disp, average_disp=None):

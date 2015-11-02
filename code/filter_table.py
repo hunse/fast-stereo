@@ -21,11 +21,13 @@ if 1:
     frame_down_factor = 1
     mem_down_factor = 2     # relative to the frame down factor
     fovea_shape = (80, 80)
+    fovea_levels = 2  # down factor outside the fovea
 else:
     # smaller resolution
     frame_down_factor = 2
     mem_down_factor = 1     # relative to the frame down factor
     fovea_shape = (40, 40)
+    fovea_levels = 1  # down factor outside the fovea
 
 full_values = 128
 values = full_values / 2**frame_down_factor
@@ -272,10 +274,10 @@ if __name__ == '__main__':
     # for index in range(5,10):
     # for index in range(17, 18):
     # for index in range(27, 28):
-    # for index in range(30):
+    for index in range(30):
     # for index in range(30, 60):
     # for index in range(80):
-    for index in range(194):
+    # for index in range(194):
     # for index in range(2, 3):
         source = KittiMultiViewSource(index, test=False, n_frames=n_frames)
         full_shape = source.frame_ten[0].shape
@@ -309,17 +311,19 @@ if __name__ == '__main__':
 
         # --- filter (no fovea)
         filter = Filter(average_disp, frame_down_factor, mem_down_factor,
-                        (0, 0), frame_shape, values, memory_length=0, iters=iters)
+                        (0, 0), frame_shape, values, memory_length=0,
+                        iters=iters, fovea_levels=fovea_levels)
         filter_disp0, _ = filter.process_frame(None, frame_ten)
         append_table('filter0', filter_disp0[:,values:], true_disp, true_points, average_disp, full_shape)
 
         # --- filter
         filter = Filter(average_disp, frame_down_factor, mem_down_factor,
-                        fovea_shape, frame_shape, values, memory_length=0, iters=iters)
+                        fovea_shape, frame_shape, values, memory_length=0,
+                        iters=iters, fovea_levels=fovea_levels)
         filter_disp, fovea_corner = filter.process_frame(None, frame_ten)
         append_table('filter', filter_disp[:,values:], true_disp, true_points, average_disp, full_shape)
 
-        print("Computed index %d" % index)
+        # print("Computed index %d" % index)
 
         if 0:
             debug_plots(table, coarse_disp, average_disp, true_points)
