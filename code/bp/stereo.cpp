@@ -634,8 +634,8 @@ cv::Mat stereo_ms_fovea(
     // --- scale up coarse results
     assert(datac->depth() == values);
 
-    cv::Mat outs[fovea_levels+1];  // temporary, for scaling up
-    outs[fovea_levels] = max_value(*datac);
+    cv::Mat *outs[fovea_levels+1];  // temporary, for scaling up
+    outs[fovea_levels] = new cv::Mat(max_value(*datac));
     delete datac;
 
     const int width = img1.cols;
@@ -644,11 +644,14 @@ cv::Mat stereo_ms_fovea(
         const int ratio = 1 << i;
         const int widthi = (int)ceil((float)width / ratio);
         const int heighti = (int)ceil((float)height / ratio);
-        cv::pyrUp(outs[i+1], outs[i], cv::Size(widthi, heighti));
+        outs[i] = new cv::Mat();
+        cv::pyrUp(*outs[i+1], *outs[i], cv::Size(widthi, heighti));
+        delete outs[i+1];
     }
 
     // output image
-    cv::Mat out = outs[0];
+    cv::Mat out(*outs[0]);
+    delete outs[0];
 
     // --- copy fovea results onto image
     for (int k = 0; k < fovea_corners.rows; k++) {
