@@ -77,33 +77,23 @@ def coarse_bp(frame, values=values_default, down_factor=0, iters=5,
 
 
 def foveal_bp(frame, fovea_corner, fovea_shape, seed=None,
-              values=values_default, levels=5, laplacian_ksize=1, laplacian_scale=0.5, iters=5, **params):
+              values=values_default, iters=5, levels=5, fovea_levels=1,
+              laplacian_ksize=1, laplacian_scale=0.5, **params):
     """BP with two levels: coarse on the outside, fine in the fovea"""
-    assert levels >= 2
+    assert levels > fovea_levels
     if seed is None:
         seed = np.array([[]], dtype=np.uint8)
 
-    img1, img2 = frame
-
-    # high resolution (used in fovea; maybe some downsampling)
-    img1h, img2h = laplacians(
-        img1, img2, ksize=laplacian_ksize, scale=laplacian_scale)
-
-    # downsampled one more time (used in periphery) (NOTE: no longer used)
-    # img1d = downsample(img1, 1)
-    # img2d = downsample(img2, 1)
-    # img1d = laplacian(img1d, ksize=ksize)
-    # img2d = laplacian(img2d, ksize=ksize)
-    img1d = np.zeros((1, 1), dtype=np.uint8)
-    img2d = np.zeros((1, 1), dtype=np.uint8)
+    img1, img2 = laplacians(
+        frame[0], frame[1], ksize=laplacian_ksize, scale=laplacian_scale)
 
     fovea_corners = np.array(fovea_corner, copy=False, dtype=np.int32, ndmin=2)
     fovea_shapes = np.array(fovea_shape, copy=False, dtype=np.int32, ndmin=2)
     disp = bp.stereo_fovea(
-        img1h, img2h, img1d, img2d, fovea_corners, fovea_shapes,
-        seed=seed, values=values, levels=levels-1, seed_weight=.01, iters=iters, **params)
+        img1, img2, fovea_corners, fovea_shapes,
+        seed=seed, seed_weight=.01, values=values, iters=iters,
+        levels=levels, fovea_levels=fovea_levels, **params)
 
-    disp = disp[:frame[0].shape[0],:frame[0].shape[1]] #upscaling and downscaling may add a row or column
     return disp
 
 
