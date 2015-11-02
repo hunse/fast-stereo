@@ -96,9 +96,14 @@ def foveal_bp(frame, fovea_corner, fovea_shape, seed=None,
     # img2d = laplacian(img2d, ksize=ksize)
     img1d = np.zeros((1, 1), dtype=np.uint8)
     img2d = np.zeros((1, 1), dtype=np.uint8)
-
-    fovea_corners = np.array(fovea_corner, copy=False, dtype=np.int32, ndmin=2)
-    fovea_shapes = np.array(fovea_shape, copy=False, dtype=np.int32, ndmin=2)
+    
+    if len(fovea_corner.shape) == 1: #we're given a single fovea
+        fovea_corners = np.array(fovea_corner, copy=False, dtype=np.int32, ndmin=2)
+        fovea_shapes = np.array(fovea_shape, copy=False, dtype=np.int32, ndmin=2)
+    else: #we're given multiple foveas
+        fovea_corners = fovea_corner
+        fovea_shapes = np.tile(fovea_shape, (len(fovea_corners), 1)).astype(np.int32)
+    
     disp = bp.stereo_fovea(
         img1h, img2h, img1d, img2d, fovea_corners, fovea_shapes,
         seed=seed, values=values, levels=levels-1, seed_weight=.01, iters=iters, **params)
