@@ -152,17 +152,9 @@ volume<float> *comp_data(
             for (int value = 0; value < values; value++) {
                 float val = abs(sm1i[x] - sm2i[x-value]);
                 datar(x, y, value) = lambda * std::min(val, threshold);
-                // float val = imRef(sm1, x, y) - imRef(sm2, x-value, y);
-                // imRef(data, x, y)[value] = lambda * std::min(val * val, threshold);
             }
         }
     }
-
-//     std::cout << threshold << std::endl;
-//     for (int value = 0; value < data->depth(); value++) {
-//         std::cout << datar(800, 0, value) << " ";
-//     }
-//     std::cout << std::endl;
 
     return data;
 }
@@ -432,7 +424,7 @@ void bp_ms_fovea(
 void comp_data_down_fovea(
     volume<float> **datad, volume<float> **datafs, cv::Mat img1, cv::Mat img2,
     const int values, cv::Mat fovea_corners, cv::Mat fovea_shapes,
-    const float lambda, const float threshold, const float sigma)
+    const float lambda, const float threshold, const float exp, const float sigma)
 {
     assert(values >= 0);
 
@@ -497,15 +489,16 @@ void comp_data_down_fovea(
     }
 
     // --- coarse data cost
-#if 0
+#if 1
     // fine cost (all values, every pixel)
+    const float weight = exp * lambda;
     for (int y = 0; y < height; y++) {
         const float* sm1i = sm1.ptr<float>(y);
         const float* sm2i = sm2.ptr<float>(y);
         for (int x = values-1; x < width; x++) {
             for (int value = 0; value < values; value++) {
                 float val = abs(sm1i[x] - sm2i[x-value]);
-                datad_(x/2, y/2, value) += lambda * std::min(val, threshold);
+                datad_(x/2, y/2, value) += weight * std::min(val, threshold);
             }
         }
     }
@@ -564,8 +557,41 @@ cv::Mat stereo_ms_fovea(
     // us_t start = now();
     comp_data_down_fovea(
         &datad, datafs, img1, img2, values, fovea_corners, fovea_shapes,
-        data_weight, data_max, smooth);
+        data_weight, data_max, data_exp, smooth);
     // printElapsedMilliseconds(start);
+
+#if 0
+    // exactly copy from fine cost to ensure data cost is the same as fine
+
+    volume<float> *data = comp_data(
+        img1, img2, values, data_weight, data_max, smooth);
+
+    for (int y = 0; y < datad->height(); y++)
+        for (int x = 0; x < datad->width(); x++)
+            for (int value = 0; value < datad->depth(); value++)
+                (*datad)(x, y, value) = 0;
+
+    for (int y = 0; y < data->height(); y++) {
+        for (int x = 0; x < data->width(); x++) {
+            for (int value = 0; value < data->depth(); value++) {
+                (*datad)(x/2, y/2, value) += data_exp * (*data)(x, y, value);
+            }
+        }
+    }
+
+    for (int k = 0; k < fovea_corners.rows; k++) {
+        const int fovea_y = fovea_corners.at<int>(k, 0);
+        const int fovea_x = fovea_corners.at<int>(k, 1);
+        volume<float> *dataf = datafs[k];
+
+        for (int y = 0; y < dataf->height(); y++)
+            for (int x = 0; x < dataf->width(); x++)
+                for (int value = 0; value < dataf->depth(); value++)
+                    (*dataf)(x, y, value) = (*data)(fovea_x+x, fovea_y+y, value);
+    }
+
+    delete data;
+#endif
 
     if (!seed.empty()) {
         cv::Mat seedd((seed.rows+1)/2, (seed.cols+1)/2, CV_8U, cv::Scalar(0));

@@ -16,7 +16,7 @@ from transform import DisparityMemory
 from filter import Filter, cost_on_points, expand_coarse
 
 
-if 0:
+if 1:
     # larger resolution
     frame_down_factor = 1
     mem_down_factor = 2     # relative to the frame down factor
@@ -222,24 +222,32 @@ def debug_plots(table, coarse_disp, average_disp, true_points):
     #     raw_input("Waiting...")
 
 def eval_coarse(frame_ten, frame_shape, values=values):
-    params = {
+    args = {
         'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
-        'data_max': 32.024780646200725, 'ksize': 3}
+        'data_max': 32.024780646200725, 'laplacian_ksize': 3}
     coarse_time = time.time()
     coarse_disp = coarse_bp(frame_ten, values=values, down_factor=1,
-                            iters=iters, **params)
+                            iters=iters, **args)
     coarse_disp = cv2.pyrUp(coarse_disp)[:frame_shape[0],:frame_shape[1]]
     coarse_disp *= 2**frame_down_factor
     coarse_time = time.time() - coarse_time
     return coarse_disp, coarse_time
 
 def eval_fine(frame_ten, values=values):
-    params = {
-        'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
-        'data_max': 32.024780646200725, 'ksize': 3}
+    # args = {
+    #     'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
+    #     'data_max': 32.024780646200725, 'laplacian_ksize': 3}
+    args = {'data_exp': 1.09821084614, 'data_max': 112.191597317,
+            'data_weight': 0.0139569211273, 'disc_max': 12.1301410452,
+            'laplacian_ksize': 3, 'smooth': 1.84510833504e-07}
+    # args = {
+    #     'data_exp': 0.697331027724, 'data_max': 49046.1429149,
+    #     'data_weight': 0.015291472002, 'disc_max': 599730.981833,
+    #     'laplacian_ksize': 5, 'laplacian_scale': 0.103881528095,
+    #     'post_smooth': 2.31047577912, 'smooth': 1.30343003387e-05}
     fine_time = time.time()
     fine_disp = coarse_bp(frame_ten, values=values, down_factor=0,
-                          iters=iters, **params)
+                          iters=iters, **args)
     fine_disp *= 2**frame_down_factor
     fine_time = time.time() - fine_time
     return fine_disp, fine_time
@@ -259,19 +267,22 @@ def upsample_average_disp(average_disp, frame_down_factor, frame_shape, values=v
 
 if __name__ == '__main__':
     n_frames = 0
-    #for index in range(1):
+    # for index in range(1):
+    # for index in [2]:
     # for index in range(5,10):
     # for index in range(17, 18):
     # for index in range(27, 28):
-    for index in range(30):
+    # for index in range(30):
+    # for index in range(30, 60):
     # for index in range(80):
-    # for index in range(194):
+    for index in range(194):
     # for index in range(2, 3):
         source = KittiMultiViewSource(index, test=False, n_frames=n_frames)
         full_shape = source.frame_ten[0].shape
         frame_ten = [downsample(source.frame_ten[0], frame_down_factor),
                      downsample(source.frame_ten[1], frame_down_factor)]
         frame_shape = frame_ten[0].shape
+        # fovea_shape = (frame_shape[0], frame_shape[1] - values)
 
         try:
             average_disp = source.get_average_disparity()

@@ -20,24 +20,24 @@ values_default = 128
 full_shape = (375, 1242)
 
 
-def laplacian(img, ksize=9):
-    img = cv2.Laplacian(img, cv2.CV_64F, ksize=ksize)
+def laplacian(img, ksize=9, scale=0.5):
+    img = cv2.Laplacian(img, cv2.CV_32F, ksize=ksize)
     img -= img.mean()
-    img *= 128 / (0.5 * img.std())
-    return (128 + img).clip(0, 255).astype('uint8')
+    img *= 128 / (scale * img.std())
+    return np.round(128 + img).clip(0, 255).astype('uint8')
 
 
-def laplacians(img1, img2, ksize=9):
-    img1 = cv2.Laplacian(img1, cv2.CV_64F, ksize=ksize)
-    img2 = cv2.Laplacian(img2, cv2.CV_64F, ksize=ksize)
+def laplacians(img1, img2, ksize=9, scale=0.5):
+    img1 = cv2.Laplacian(img1, cv2.CV_32F, ksize=ksize)
+    img2 = cv2.Laplacian(img2, cv2.CV_32F, ksize=ksize)
     mean = 0.5 * (img1.mean() + img2.mean())
     std = 0.5 * (img1.std() + img2.std())
     img1 -= mean
     img2 -= mean
-    img1 *= 128 / (0.5 * std)
-    img2 *= 128 / (0.5 * std)
-    img1 = (128 + img1).clip(0, 255).astype('uint8')
-    img2 = (128 + img2).clip(0, 255).astype('uint8')
+    img1 *= 128 / (scale * std)
+    img2 *= 128 / (scale * std)
+    img1 = np.round(128 + img1).clip(0, 255).astype('uint8')
+    img2 = np.round(128 + img2).clip(0, 255).astype('uint8')
     return img1, img2
 
 
@@ -56,31 +56,38 @@ def upsample(img, up_factor, target_shape):
     return img[:target_shape[0],:target_shape[1]]
 
 
-def coarse_bp(frame, values=values_default, down_factor=3, ksize=1, iters=5, **params):
+def coarse_bp(frame, values=values_default, down_factor=0, iters=5,
+              laplacian_ksize=1, laplacian_scale=0.5, post_smooth=None, **params):
     img1, img2 = frame
 
     values_coarse = values / 2**down_factor
     img1d = downsample(img1, down_factor)
     img2d = downsample(img2, down_factor)
-    img1d = laplacian(img1d, ksize=ksize)
-    img2d = laplacian(img2d, ksize=ksize)
+    img1d, img2d = laplacians(
+        img1d, img2d, ksize=laplacian_ksize, scale=laplacian_scale)
 
     disp = bp.stereo(img1d, img2d, values=values_coarse, levels=5, iters=iters, **params)
     disp *= 2**down_factor
 
+    if post_smooth is not None:
+        disp = cv2.GaussianBlur(disp.astype(np.float32), (9, 9), post_smooth)
+        disp = np.round(disp).astype(np.uint8)
+
     return disp
 
 
-def foveal_bp(frame, fovea_corner, fovea_shape, seed=None, values=values_default, ksize=1, iters=5, **params):
+def foveal_bp(frame, fovea_corner, fovea_shape, seed=None,
+              values=values_default, levels=5, laplacian_ksize=1, laplacian_scale=0.5, iters=5, **params):
     """BP with two levels: coarse on the outside, fine in the fovea"""
+    assert levels >= 2
     if seed is None:
         seed = np.array([[]], dtype=np.uint8)
 
     img1, img2 = frame
 
     # high resolution (used in fovea; maybe some downsampling)
-    img1h = laplacian(img1, ksize=ksize)
-    img2h = laplacian(img2, ksize=ksize)
+    img1h, img2h = laplacians(
+        img1, img2, ksize=laplacian_ksize, scale=laplacian_scale)
 
     # downsampled one more time (used in periphery) (NOTE: no longer used)
     # img1d = downsample(img1, 1)
@@ -94,7 +101,7 @@ def foveal_bp(frame, fovea_corner, fovea_shape, seed=None, values=values_default
     fovea_shapes = np.array(fovea_shape, copy=False, dtype=np.int32, ndmin=2)
     disp = bp.stereo_fovea(
         img1h, img2h, img1d, img2d, fovea_corners, fovea_shapes,
-        seed=seed, values=values, levels=5, seed_weight=.01, iters=iters, **params)
+        seed=seed, values=values, levels=levels-1, seed_weight=.01, iters=iters, **params)
 
     disp = disp[:frame[0].shape[0],:frame[0].shape[1]] #upscaling and downscaling may add a row or column
     return disp

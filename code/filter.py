@@ -51,19 +51,24 @@ class Filter:
 
         # self.params = {
         #     'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
-        #     'data_max': 32.024780646200725, 'ksize': 3}  # original hyperopt
+        #     'data_max': 32.024780646200725, 'laplacian_ksize': 3}  # original hyperopt
         # self.params = {
         #     'data_weight': 0.15109941436798274, 'disc_max': 44.43671813879002,
-        #     'data_max': 68.407170602610137, 'ksize': 5}  # hyperopt on 100 images
+        #     'data_max': 68.407170602610137, 'laplacian_ksize': 5}  # hyperopt on 100 images
         # self.params = {
         #     'data_weight': 0.2715404479972163, 'disc_max': 2.603682635476145,
-        #     'data_max': 156312.43116792402, 'ksize': 3}  # Bryan's hyperopt on 250 images
+        #     'data_max': 156312.43116792402, 'laplacian_ksize': 3}  # Bryan's hyperopt on 250 images
         # self.params = {
         #     'data_weight': 1.2, 'disc_max': 924.0,
-        #     'data_max': 189.0, 'ksize': 5}  # random
+        #     'data_max': 189.0, 'laplacian_ksize': 5}  # random
+        # self.params = {
+        #     'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
+        #     'data_max': 32.024780646200725, 'laplacian_ksize': 3}  # coarse
+
         self.params = {
-            'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
-            'data_max': 32.024780646200725, 'ksize': 3}  # coarse
+            'data_exp': 1.09821084614, 'data_max': 112.191597317,
+            'data_weight': 0.0139569211273, 'disc_max': 12.1301410452,
+            'laplacian_ksize': 3, 'smooth': 1.84510833504e-07}
 
         self.iters = iters
 
@@ -99,7 +104,7 @@ class Filter:
                 # estimate from current frame
                 params = {
                     'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
-                    'data_max': 32.024780646200725, 'ksize': 3}
+                    'data_max': 32.024780646200725, 'laplacian_ksize': 3}
                 prior_disparity = coarse_bp(frame, down_factor=self.mem_down_factor, iters=5, values=self.values, **params)
                 prior_disparity *= self.frame_step
                 prior_disparity = prior_disparity[:,self.values/self.mem_step:]
@@ -394,7 +399,7 @@ if __name__ == "__main__":
         if run_coarse:
             coarse_params = {
                 'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
-                'data_max': 32.024780646200725, 'ksize': 3}
+                'data_max': 32.024780646200725, 'laplacian_ksize': 3}
             coarse_time = time.time()
             coarse_disp = coarse_bp(frame, down_factor=1, iters=3, values=values, **coarse_params)
             coarse_disp = cv2.pyrUp(coarse_disp)[:frame_shape[0],:frame_shape[1]]
@@ -408,23 +413,23 @@ if __name__ == "__main__":
         if run_fine:
             fine_params = {
                 'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
-                'data_max': 32.024780646200725, 'ksize': 3, 'data_exp': 1.}
-            # fine_params = {'iters': 3, 'ksize': 5, 'data_weight': 0.0002005996175, 'data_max': 109.330237051, 'data_exp': 6.79481234475, 'disc_max': 78.4595739304}
+                'data_max': 32.024780646200725, 'laplacian_ksize': 3, 'data_exp': 1.}
+            # fine_params = {'iters': 3, 'laplacian_ksize': 5, 'data_weight': 0.0002005996175, 'data_max': 109.330237051, 'data_exp': 6.79481234475, 'disc_max': 78.4595739304}
 
 
             # fine_params = {
             #     'data_exp': 78.405691668008387,
             #     'data_weight': 0.12971562499581216, 'data_max': 0.012708212809027446,
-            #     'ksize': 3, 'disc_max': 172501.67276668231}
+            #     'laplacian_ksize': 3, 'disc_max': 172501.67276668231}
 
             # fine_params = {'data_weight': 0.07, 'disc_max': 1.7,
-            #                'data_max': 15, 'ksize': 3}
+            #                'data_max': 15, 'laplacian_ksize': 3}
             # fine_params = {'data_weight': 0.07, 'disc_max': 15,
-            #                'data_max': 90, 'ksize': 3}
+            #                'data_max': 90, 'laplacian_ksize': 3}
 
             # fine_params = {
             #     'data_weight': 0.16145115747533928, 'disc_max': 2,
-            #     'data_max': 32.024780646200725, 'ksize': 3}
+            #     'data_max': 32.024780646200725, 'laplacian_ksize': 3}
             fine_time = time.time()
             fine_disp = coarse_bp(frame, down_factor=0, iters=3, values=values, **fine_params)
             fine_disp *= 2
@@ -481,7 +486,7 @@ if __name__ == "__main__":
 
         next_subplot('fine input')
         if run_fine:
-            lap = laplacian(frame[0], ksize=fine_params['ksize'])
+            lap = laplacian(frame[0], ksize=fine_params['laplacian_ksize'])
             plt.imshow(lap[:, values:], cmap='gray')
 
         next_subplot('coarse')
