@@ -44,7 +44,7 @@ cdef extern from "stereo.h":
         Mat fovea_corners, Mat fovea_shapes,
         int values, int iters, int levels, int fovea_levels,
         float smooth, float data_weight, float data_max, float data_exp,
-        float seed_weight, float disc_max, bool fine_periphery)
+        float seed_weight, float disc_max, bool fine_periphery, int min_level)
     cdef volume[float]* stereo_ms_volume(
         Mat a, Mat b, Mat seed,
         int values, int iters, int levels, float smooth,
@@ -124,11 +124,16 @@ def stereo_fovea(
         np.ndarray[uchar, ndim=2, mode="c"] seed = np.array([[]], dtype='uint8'),
         int values=64, int iters=5, int levels=5, int fovea_levels=1,
         float smooth=0.7, float data_weight=0.07, float data_max=15, float data_exp=1,
-        float seed_weight=1, float disc_max=1.7, bool fine_periphery=1):
+        float seed_weight=1, float disc_max=1.7, bool fine_periphery=1,
+        int min_level=0):
     """BP with two levels: coarse on the outside, fine in the fovea"""
 
     assert a.shape[0] == b.shape[0] and a.shape[1] == b.shape[1]
     cdef int m = a.shape[0], n = a.shape[1]
+
+    assert(levels > 0)
+    assert(fovea_levels < levels)
+    assert(min_level <= fovea_levels)
 
     # copy data on
     cdef Mat x
@@ -151,14 +156,17 @@ def stereo_fovea(
     cdef Mat fcorners, fshapes
     fcorners.create(nfoveas, 2, CV_32S)
     fshapes.create(nfoveas, 2, CV_32S)
-    (<np.int32_t[:nfoveas, :2]> fcorners.data)[:, :] = fovea_corners
-    (<np.int32_t[:nfoveas, :2]> fshapes.data)[:, :] = fovea_shapes
+    if nfoveas > 0:
+        (<np.int32_t[:nfoveas, :2]> fcorners.data)[:, :] = fovea_corners
+        (<np.int32_t[:nfoveas, :2]> fshapes.data)[:, :] = fovea_shapes
+
+    assert(nfoveas == 0 or min_level < fovea_levels)
 
     # run belief propagation
     cdef Mat zi = stereo_ms_fovea(
         x, y, u, fcorners, fshapes, values, iters, levels, fovea_levels,
         smooth, data_weight, data_max, data_exp, seed_weight, disc_max,
-        fine_periphery)
+        fine_periphery, min_level)
 
     # copy data off
     cdef np.ndarray[uchar, ndim=2, mode="c"] ci = np.zeros(

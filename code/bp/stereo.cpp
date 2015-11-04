@@ -379,11 +379,9 @@ cv::Mat stereo_ms(
 // fovea_x and fovea_y are in fine coordinates
 void bp_ms_fovea(
     volume<float> *datac, volume<float> **datafs, cv::Mat fovea_corners,
-    int iters, int levels, int fovea_levels, float disc_max, float data_exp=1.0)
+    int iters, int levels, int fovea_levels, float disc_max, float data_exp=1.0,
+    int min_level=0)
 {
-    assert(fovea_levels > 0);
-    assert(levels > fovea_levels);
-
     Messages *mc = bp_ms_messages(datac, iters, levels - fovea_levels, disc_max, data_exp);
     collect_messages(mc, *datac);
 
@@ -397,7 +395,7 @@ void bp_ms_fovea(
         const int values = data[0]->depth();
 
         Messages *m[levels];
-        for (int i = fovea_levels-1; i >= 0; i--) {
+        for (int i = fovea_levels-1; i >= min_level; i--) {
             const int width = data[i]->width();
             const int height = data[i]->height();
 
@@ -434,8 +432,13 @@ void bp_ms_fovea(
             bp_cb(*m[i]->u, *m[i]->d, *m[i]->l, *m[i]->r, *data[i], iters, disc_max);
         }
 
-        collect_messages(m[0], *data[0]);
-        delete m[0];
+        collect_messages(m[min_level], *data[min_level]);
+        delete m[min_level];
+
+        for (int i = min_level-1; i >= 0; i--)
+            delete data[i];
+
+        datafs[k] = data[min_level];
     }
 
     delete mc;
@@ -568,12 +571,37 @@ void comp_data_down_fovea(
   }
 }
 
+inline int ceil_divide(int x, int y) {
+    return (int)ceil((float)x / y);
+}
+
+cv::Mat upsample(cv::Mat input, int levels, cv::Size size) {
+    if (levels == 0)
+        return input;
+
+    cv::Mat *outs[levels+1];  // temporary, for scaling up
+    outs[levels] = new cv::Mat(input);
+
+    for (int i = levels-1; i >= 0; i--) {
+        const int ratio = 1 << i;
+        // const int widthi = (int)ceil((float)size.width / ratio);
+        // const int heighti = (int)ceil((float)size.height / ratio);
+        const int widthi = ceil_divide(size.width, ratio);
+        const int heighti = ceil_divide(size.height, ratio);
+        outs[i] = new cv::Mat();
+        cv::pyrUp(*outs[i+1], *outs[i], cv::Size(widthi, heighti));
+        delete outs[i+1];
+    }
+
+    return *outs[0];
+}
+
 cv::Mat stereo_ms_fovea(
     cv::Mat img1, cv::Mat img2, cv::Mat seed,
     cv::Mat fovea_corners, cv::Mat fovea_shapes,
     int values, int iters, int levels, int fovea_levels,
     float smooth, float data_weight, float data_max, float data_exp,
-    float seed_weight, float disc_max, bool fine_periphery)
+    float seed_weight, float disc_max, bool fine_periphery, int min_level)
 {
     assert(fovea_corners.rows == fovea_shapes.rows);
     assert(fovea_corners.rows <= 5);  // not too many foveas
@@ -589,39 +617,6 @@ cv::Mat stereo_ms_fovea(
         data_weight, data_max, data_exp, smooth, fine_periphery);
     // printElapsedMilliseconds(start);
 
-#if 0
-    // exactly copy from fine cost to ensure data cost is the same as fine
-
-    volume<float> *data = comp_data(
-        img1, img2, values, data_weight, data_max, smooth);
-
-    for (int y = 0; y < datac->height(); y++)
-        for (int x = 0; x < datac->width(); x++)
-            for (int value = 0; value < datac->depth(); value++)
-                (*datac)(x, y, value) = 0;
-
-    for (int y = 0; y < data->height(); y++) {
-        for (int x = 0; x < data->width(); x++) {
-            for (int value = 0; value < data->depth(); value++) {
-                (*datac)(x/2, y/2, value) += data_exp * (*data)(x, y, value);
-            }
-        }
-    }
-
-    for (int k = 0; k < fovea_corners.rows; k++) {
-        const int fovea_y = fovea_corners.at<int>(k, 0);
-        const int fovea_x = fovea_corners.at<int>(k, 1);
-        volume<float> *dataf = datafs[k];
-
-        for (int y = 0; y < dataf->height(); y++)
-            for (int x = 0; x < dataf->width(); x++)
-                for (int value = 0; value < dataf->depth(); value++)
-                    (*dataf)(x, y, value) = (*data)(fovea_x+x, fovea_y+y, value);
-    }
-
-    delete data;
-#endif
-
     if (!seed.empty()) {
         cv::Mat seedd((seed.rows+1)/2, (seed.cols+1)/2, CV_8U, cv::Scalar(0));
         cv::pyrDown(seed, seedd);
@@ -629,52 +624,39 @@ cv::Mat stereo_ms_fovea(
     }
 
     bp_ms_fovea(datac, datafs, fovea_corners, iters, levels, fovea_levels,
-                disc_max, data_exp);
+                disc_max, data_exp, min_level);
 
-    // --- scale up coarse results
+    // --- scale up coarse and add in foveas
     assert(datac->depth() == values);
-
-    cv::Mat *outs[fovea_levels+1];  // temporary, for scaling up
-    outs[fovea_levels] = new cv::Mat(max_value(*datac));
+    int out_width = ceil_divide(img1.cols, 1 << min_level);
+    int out_height = ceil_divide(img1.rows, 1 << min_level);
+    cv::Mat out = upsample(
+        max_value(*datac), fovea_levels - min_level, cv::Size(out_width, out_height));
     delete datac;
-
-    const int width = img1.cols;
-    const int height = img1.rows;
-    for (int i = fovea_levels-1; i >= 0; i--) {
-        const int ratio = 1 << i;
-        const int widthi = (int)ceil((float)width / ratio);
-        const int heighti = (int)ceil((float)height / ratio);
-        outs[i] = new cv::Mat();
-        cv::pyrUp(*outs[i+1], *outs[i], cv::Size(widthi, heighti));
-        delete outs[i+1];
-    }
-
-    // output image
-    cv::Mat out(*outs[0]);
-    delete outs[0];
 
     // --- copy fovea results onto image
     for (int k = 0; k < fovea_corners.rows; k++) {
-        const int fovea_height = fovea_shapes.at<int>(k, 0);
-        const int fovea_width = fovea_shapes.at<int>(k, 1);
-        const int fovea_y = fovea_corners.at<int>(k, 0);
-        const int fovea_x = fovea_corners.at<int>(k, 1);
+        // TODO: fovea corners are no longer exact at this scale (if ratio > 1)
+        const int ratio = 1 << min_level;
+        const int fovea_y = ceil_divide(fovea_corners.at<int>(k, 0), ratio);
+        const int fovea_x = ceil_divide(fovea_corners.at<int>(k, 1), ratio);
 
         cv::Mat outf = max_value(*datafs[k]);
         delete datafs[k];
 
-        for (int y = 1; y < fovea_height - 1; y++) {
+        for (int y = 1; y < outf.rows - 1; y++) {
             uchar* outi = out.ptr<uchar>(y + fovea_y);
             uchar* outfi = outf.ptr<uchar>(y);
 
-            for (int x = 1; x < fovea_width - 1; x++) {
+            for (int x = 1; x < outf.cols - 1; x++) {
                 outi[x + fovea_x] = outfi[x];
             }
         }
     }
     delete [] datafs;
 
-    return out;
+    // --- upsample again by min_level
+    return upsample(out, min_level, cv::Size(img1.cols, img1.rows));
 }
 
 volume<float> *stereo_ms_volume(

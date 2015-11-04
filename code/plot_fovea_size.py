@@ -78,7 +78,7 @@ def test_fine(n_test_frames, full_values, frame_down_factor):
     return times, unweighted_cost, weighted_cost
 
 
-def test_foveal(n_test_frames, full_values, frame_down_factor, fovea_fraction):
+def test_foveal(n_test_frames, full_values, frame_down_factor, fovea_fraction, **kwargs):
     values = full_values / 2**frame_down_factor
 
     mem_down_factor = 2     # relative to the frame down factor
@@ -110,7 +110,7 @@ def test_foveal(n_test_frames, full_values, frame_down_factor, fovea_fraction):
 
         # --- filter
         filter = Filter(average_disp, frame_down_factor, mem_down_factor,
-                        fovea_shape, frame_shape, values, verbose=False, memory_length=0)
+                        fovea_shape, frame_shape, values, verbose=False, memory_length=0, **kwargs)
         filter_time = time.time()
         filter_disp, fovea_corner = filter.process_frame(None, frame_ten)
         filter_time = time.time() - filter_time
@@ -124,16 +124,19 @@ def test_foveal(n_test_frames, full_values, frame_down_factor, fovea_fraction):
 frame_down_factor = 1
 # frame_down_factor = 2
 # fovea_levels = 1
-fovea_levels = 2
+# fovea_levels = 2
+fovea_levels = 3
 fine_periphery = 1
+# min_level = 0
+min_level = 1
 
 # n_test_frames = 1
 # n_test_frames = 20
 n_test_frames = 50
 full_values = 128
 
-print("Running %d (frame_down_factor=%d, fovea_levels=%d, fine_periphery=%d)" %
-      (n_test_frames, frame_down_factor, fovea_levels, fine_periphery))
+print("Running %d (frame_down_factor=%d, fovea_levels=%d, fine_periphery=%d, min_level=%d)" %
+      (n_test_frames, frame_down_factor, fovea_levels, fine_periphery, min_level))
 
 fovea_fractions = np.linspace(0, 1, 6)
 foveal_times = []
@@ -141,7 +144,7 @@ foveal_unweighted_cost = []
 foveal_weighted_cost = []
 for i in range(len(fovea_fractions)):
     ft, fu, fw = test_foveal(n_test_frames, full_values, frame_down_factor, fovea_fractions[i],
-                             fovea_levels=fovea_levels, fine_periphery=fine_periphery)
+                             fovea_levels=fovea_levels, fine_periphery=fine_periphery, min_level=min_level)
     foveal_times.append(ft)
     foveal_unweighted_cost.append(fu)
     foveal_weighted_cost.append(fw)

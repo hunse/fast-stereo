@@ -91,7 +91,7 @@ def foveal_bp(frame, fovea_corner, fovea_shape, seed=None,
         fovea_corners = np.array(fovea_corner, copy=False, dtype=np.int32, ndmin=2)
         fovea_shapes = np.array(fovea_shape, copy=False, dtype=np.int32, ndmin=2)
     else: #we're given multiple foveas
-        fovea_corners = fovea_corner
+        fovea_corners = fovea_corner.astype(np.int32)
         fovea_shapes = np.tile(fovea_shape, (len(fovea_corners), 1)).astype(np.int32)
 
     disp = bp.stereo_fovea(
