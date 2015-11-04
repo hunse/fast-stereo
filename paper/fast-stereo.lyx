@@ -147,8 +147,14 @@ lly-offset regions in the other image.
 Sparse
 \emph default
  stereo methods match only a minority of features, i.e.
- distinctive ones that are likely to be matched correctly [TODO: ref, perhaps
- something that uses SIFT].
+ distinctive ones that are likely to be matched correctly 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Dhond1989"
+
+\end_inset
+
+.
  In contrast, 
 \emph on
 dense
@@ -177,7 +183,7 @@ Neighbouring disparities are highly correlated except at object boundaries.
  narrow probability densities), then accounting for spatial correlations
  can profoundly improve estimates in the ambiguous region.
  An effective approach is to model the disparity map as a Markov random
- field [TODO: ref].
+ field.
  Then, maximum 
 \emph on
 a posteriori
@@ -186,11 +192,11 @@ a posteriori
  propagation and graph cuts 
 \begin_inset CommandInset citation
 LatexCommand cite
-key "Tappen2003"
+key "Tappen2003,Szeliski2008"
 
 \end_inset
 
-[Tappen & Freeman, 2003; Szeliski et al., 2008].
+.
  But despite many recent advances in efficiency, these methods remain computatio
 nally intensive, limiting their practicality for robots, which require high
  frame rates with modest computational resources.
@@ -267,8 +273,14 @@ key "Rayner2010"
 
 \end_inset
 
-, the edge of an obstacle while walking (Rothkopf & Ballard, 2007), an object
- a person wants to pick up 
+, the edge of an obstacle while navigating 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Rothkopf2007"
+
+\end_inset
+
+, an object a person wants to pick up 
 \begin_inset CommandInset citation
 LatexCommand cite
 key "Johansson2001"
@@ -277,9 +289,15 @@ key "Johansson2001"
 
 , etc.
  The visual target can even be a completely featureless region.
- For example people often glance at a spot on a table where they intend
- to put something, even though this spot may be visually indistinct [TODO:
- ref].
+ For example people often glance at a spot where they intend to put something,
+ even though the spot may be visually indistinct 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Tatler2011"
+
+\end_inset
+
+.
  However, eye movements are very often determined by a combination of bottom-up
  and top-down factors.
  
@@ -318,8 +336,14 @@ importance map
 \end_inset
 
  as the half-rectified difference between expected disparity and a time-average
- disparity (see Maki et al., 2000, for another use of depth as an attention
- cue).
+ disparity (see 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Maki2000"
+
+\end_inset
+
+ for another use of depth as an attention cue).
  This allows us to direct the fovea to regions in which surfaces seem to
  be closer than normal for their part of the visual field, which often correspon
 d to obstacles.
@@ -351,8 +375,14 @@ Pixel-by-pixel stereo correspondances are frequently ambiguous, so disparity
  estimation is improved by considering spatial correlations.
  The full correlation matrix is unmanageable, becaused disparity images
  of practical interest have tens of thousands of pixels or more.
- A successful approach (e.g.
- Sun et al., 2003) has been to model disparity images as Markov random fields.
+ A successful approach 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Sun2003"
+
+\end_inset
+
+ has been to model disparity images as Markov random fields.
  In a Markov random field (MRF), each region is independent of the rest
  of the field, conditional on values in the region's boundary.
  That is, 
@@ -371,7 +401,14 @@ Pixel-by-pixel stereo correspondances are frequently ambiguous, so disparity
 \begin_inset Formula $x_{o}$
 \end_inset
 
- is the part outside the boundary [TODO: ref Fieguth].
+ is the part outside the boundary 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Fieguth2010"
+
+\end_inset
+
+.
  There are various ways to estimate the maximum 
 \emph on
 a posteriori
@@ -394,14 +431,27 @@ loopy
 \end_inset
 
  BP typically produces good approximations after running for a few iterations
- [TODO: ref Murphy et al., 1999].
+ 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Murphy1999"
+
+\end_inset
+
+.
  
 \end_layout
 
 \begin_layout Standard
-The starting point for our work is a BP implementation (Felzenszwalb & Huttenloc
-her, 2006) that has several optimizations, which together accelerate the
- algorithm by several orders of magnitude.
+The starting point for our work is a BP implementation 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Felzenszwalb2006"
+
+\end_inset
+
+ that has several optimizations, which together accelerate the algorithm
+ by several orders of magnitude.
  One of these optimizations is a multiscale method that reduces the numbers
  of iterations needed to propagate information to distant parts of the image.
  Our modification consists simply of executing finer scales (which take
@@ -411,8 +461,14 @@ her, 2006) that has several optimizations, which together accelerate the
 \end_layout
 
 \begin_layout Standard
-The BP implementation of (Felzenszwalb & Huttenlocher, 2006) results in
- a labelling 
+The BP implementation of 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Felzenszwalb2006"
+
+\end_inset
+
+ results in a labelling 
 \begin_inset Formula $f$
 \end_inset
 
@@ -496,7 +552,14 @@ discontinuity cost
 \emph on
 a posteriori
 \emph default
- estimation in a probabilistic context (Felzenszwalb & Huttenlocher, 2006).
+ estimation in a probabilistic context 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Felzenszwalb2006"
+
+\end_inset
+
+.
  
 \end_layout
 
@@ -518,7 +581,14 @@ BP involves iterative computation and exhange of messages between pixels.
 \begin_inset Formula $q$
 \end_inset
 
- is (Felzenszwalb & Huttenlocher, 2006)
+ is 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Felzenszwalb2006"
+
+\end_inset
+
+
 \begin_inset Formula 
 \[
 m_{p\to q}^{t}=min_{f_{p}}\left(V(f_{p}-f_{q})+D_{p}(f_{p})+\sum_{s\in\mathcal{N}(p)\backslash q}m_{s\to p}^{t-1}\right)
@@ -701,9 +771,15 @@ Performance of multiscale belief propagation on example data, illustrating
  However, if certain areas in the images were of greater practical interest,
  then results that are nearly as useful might be achieved by processing
  just those areas at high resolution.
- The data are 25 frames taken from the KITTI dataset [TODO: ref], downsampled
- by a factor of two (high resolution) and four (low resolution) in each
- dimension.
+ The data are 25 frames taken from the KITTI dataset 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Geiger2012"
+
+\end_inset
+
+, downsampled by a factor of two (high resolution) and four (low resolution)
+ in each dimension.
  
 \end_layout
 
@@ -980,7 +1056,14 @@ Using Information from Past Frames in Disparity Estimates
 \begin_layout Standard
 Disparity has temporal as well as spatial correlations, and further improvements
  in accuracy beyond spatial BP can be obtained by also propagating information
- over time (Zhu et al., 2010).
+ over time 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Zhu2010"
+
+\end_inset
+
+.
  However, this process is expensive in terms of runtime and memory.
  We sought to inexpensively approximate this approach by adding the cost
  term,
@@ -1116,8 +1199,14 @@ reference "fig:weighting-example"
 
 \end_inset
 
- shows an example frame from the KITTI dataset (XX) in which a cyclist (a
- nearby obstacle) is strongly emphasized by this method.
+ shows an example frame from the KITTI dataset 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Geiger2012"
+
+\end_inset
+
+ in which a cyclist (a nearby obstacle) is strongly emphasized by this method.
  
 \end_layout
 
@@ -1843,8 +1932,7 @@ Acknowledgements
 
 \begin_layout Standard
 This work was supported in part by a Mitacs and CrossWing Inc.
- The authors thank John-Paul Gignac of CrossWing Inc.
- for helpful discussions.
+ The authors thank Hamid Tizhoosh and John-Paul Gignac for helpful discussions.
  
 \end_layout
 
