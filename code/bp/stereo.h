@@ -20,7 +20,7 @@ cv::Mat stereo_ms_fovea(
     cv::Mat fovea_corners, cv::Mat fovea_shapes,
     int values, int iters, int levels, int fovea_levels,
     float smooth, float data_weight, float data_max, float data_exp,
-    float seed_weight, float disc_max);
+    float seed_weight, float disc_max, bool fine_periphery);
 
 volume<float> *stereo_ms_volume(
     cv::Mat img1, cv::Mat img2, cv::Mat seed,

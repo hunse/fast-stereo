@@ -6,6 +6,8 @@ performance with a giant fovea.
 """
 import time
 import numpy as np
+import matplotlib.pyplot as plt
+
 from bp_wrapper import downsample
 from filter_table import upsample_average_disp, eval_coarse, eval_fine
 from data import KittiSource, KittiMultiViewSource
@@ -119,16 +121,27 @@ def test_foveal(n_test_frames, full_values, frame_down_factor, fovea_fraction):
     return times, unweighted_cost, weighted_cost
 
 
-frame_down_factor = 2
+frame_down_factor = 1
+# frame_down_factor = 2
+# fovea_levels = 1
+fovea_levels = 2
+fine_periphery = 1
+
+# n_test_frames = 1
+# n_test_frames = 20
 n_test_frames = 50
 full_values = 128
+
+print("Running %d (frame_down_factor=%d, fovea_levels=%d, fine_periphery=%d)" %
+      (n_test_frames, frame_down_factor, fovea_levels, fine_periphery))
 
 fovea_fractions = np.linspace(0, 1, 6)
 foveal_times = []
 foveal_unweighted_cost = []
 foveal_weighted_cost = []
 for i in range(len(fovea_fractions)):
-    ft, fu, fw = test_foveal(n_test_frames, full_values, frame_down_factor, fovea_fractions[i])
+    ft, fu, fw = test_foveal(n_test_frames, full_values, frame_down_factor, fovea_fractions[i],
+                             fovea_levels=fovea_levels, fine_periphery=fine_periphery)
     foveal_times.append(ft)
     foveal_unweighted_cost.append(fu)
     foveal_weighted_cost.append(fw)
@@ -138,14 +151,20 @@ print(np.mean(foveal_times, 1))
 print(np.mean(foveal_unweighted_cost, 1))
 print(np.mean(foveal_weighted_cost, 1))
 
-coarse_times, coarse_unweighted_cost, coarse_weighted_cost = test_coarse(n_test_frames, full_values, frame_down_factor)
-print('coarse')
-print(np.mean(coarse_times))
-print(np.mean(coarse_unweighted_cost))
-print(np.mean(coarse_weighted_cost))
+# coarse_times, coarse_unweighted_cost, coarse_weighted_cost = test_coarse(n_test_frames, frame_down_factor)
+# print('coarse')
+# print(np.mean(coarse_times))
+# print(np.mean(coarse_unweighted_cost))
+# print(np.mean(coarse_weighted_cost))
 
-fine_times, fine_unweighted_cost, fine_weighted_cost = test_fine(n_test_frames, full_values, frame_down_factor)
-print('fine')
-print(np.mean(fine_times))
-print(np.mean(fine_unweighted_cost))
-print(np.mean(fine_weighted_cost))
+# fine_times, fine_unweighted_cost, fine_weighted_cost = test_fine(n_test_frames, frame_down_factor)
+# print('fine')
+# print(np.mean(fine_times))
+# print(np.mean(fine_unweighted_cost))
+# print(np.mean(fine_weighted_cost))
+
+plt.figure()
+plt.plot(np.mean(foveal_unweighted_cost, 1), label='foveal unweighted')
+plt.plot(np.mean(foveal_weighted_cost, 1), label='foveal weighted')
+plt.legend(loc='best')
+plt.show()

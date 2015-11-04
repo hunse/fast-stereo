@@ -250,7 +250,6 @@ cv::Mat max_value(volume<float>& data)
                 }
             }
             outi[x] = best;
-//             std::cout << best << std::endl;
         }
     }
 
@@ -445,7 +444,8 @@ void bp_ms_fovea(
 void comp_data_down_fovea(
     volume<float> **datac, volume<float> **datafs, cv::Mat img1, cv::Mat img2,
     const int values, cv::Mat fovea_corners, cv::Mat fovea_shapes, const int fovea_levels,
-    const float lambda, const float threshold, const float exp, const float sigma)
+    const float lambda, const float threshold, const float exp, const float sigma,
+    const bool fine_periphery)
 {
     assert(values >= 0);
 
@@ -513,7 +513,7 @@ void comp_data_down_fovea(
     (*datac) = new volume<float>(widthc, heightc, values);
     volume<float> &datac_ = **datac;
 
-#if 0
+  if (fine_periphery) {
     // fine cost (all values, every pixel)
     const float weight = pow(exp, fovea_levels) * lambda;
     for (int y = 0; y < height; y++) {
@@ -527,7 +527,7 @@ void comp_data_down_fovea(
             }
         }
     }
-#else
+  } else {
     // subsampled cost (all values, every second pixel in both dimensions)
     const float weight = fshift * fshift * pow(exp, fovea_levels) * lambda;
     for (int y = 0; y < height; y += fshift) {
@@ -565,7 +565,7 @@ void comp_data_down_fovea(
         }
     }
 #endif
-#endif
+  }
 }
 
 cv::Mat stereo_ms_fovea(
@@ -573,7 +573,7 @@ cv::Mat stereo_ms_fovea(
     cv::Mat fovea_corners, cv::Mat fovea_shapes,
     int values, int iters, int levels, int fovea_levels,
     float smooth, float data_weight, float data_max, float data_exp,
-    float seed_weight, float disc_max)
+    float seed_weight, float disc_max, bool fine_periphery)
 {
     assert(fovea_corners.rows == fovea_shapes.rows);
     assert(fovea_corners.rows <= 5);  // not too many foveas
@@ -586,7 +586,7 @@ cv::Mat stereo_ms_fovea(
     comp_data_down_fovea(
         &datac, datafs, img1, img2, values,
         fovea_corners, fovea_shapes, fovea_levels,
-        data_weight, data_max, data_exp, smooth);
+        data_weight, data_max, data_exp, smooth, fine_periphery);
     // printElapsedMilliseconds(start);
 
 #if 0

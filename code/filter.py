@@ -21,7 +21,7 @@ from transform import DisparityMemory
 class Filter:
     def __init__(self, average_disparity, frame_down_factor, mem_down_factor,
                  fovea_shape, frame_shape, values,
-                 verbose=False, memory_length=1, iters=3, fovea_levels=1):
+                 verbose=False, memory_length=1, **bp_args):
         """
         Arguments
         ---------
@@ -48,7 +48,6 @@ class Filter:
         self.memory_shape = self.average_disparity.shape
 
         self.values = values
-        self.fovea_levels = fovea_levels
 
         # self.params = {
         #     'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
@@ -65,13 +64,12 @@ class Filter:
         # self.params = {
         #     'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
         #     'data_max': 32.024780646200725, 'laplacian_ksize': 3}  # coarse
-
         self.params = {
             'data_exp': 1.09821084614, 'data_max': 112.191597317,
             'data_weight': 0.0139569211273, 'disc_max': 12.1301410452,
             'laplacian_ksize': 3, 'smooth': 1.84510833504e-07}
 
-        self.iters = iters
+        self.params.update(bp_args)
 
         self.disparity_memory = DisparityMemory(self.memory_shape, n=memory_length)
         self.uncertainty_memory = DisparityMemory(self.memory_shape, n=memory_length)
@@ -134,15 +132,15 @@ class Filter:
 #            ### debug plot
 #            print(fovea_corners)
 #            print(mem_fovea_shape)
-#            plt.imshow(cost, vmin=0, vmax=128/self.mem_step) 
+#            plt.imshow(cost, vmin=0, vmax=128/self.mem_step)
 #            for (fi, fj) in fovea_corners:
 #                fm, fn = mem_fovea_shape
 #                plt.plot([fj, fj+fn, fj+fn, fj, fj], [fi, fi, fi+fm, fi+fm, fi], 'white')
 #            plt.colorbar()
 #            plt.show()
-#            ###                        
+#            ###
 
-            # rescale shape and corners and trim fovea to image ...                 
+            # rescale shape and corners and trim fovea to image ...
             fovea_shape = np.array(mem_fovea_shape) * self.mem_step # this isn't redundant because _choose_foveas chooses the multifovea shape
             fovea_corners = np.array(fovea_corners, dtype='int32')
             for i in range(len(fovea_corners)):
@@ -153,7 +151,7 @@ class Filter:
                 fovea_corners[i] = np.minimum(fovea_corners[i], fovea_max)
                 assert fovea_corners[i][0] >= 0 and fovea_corners[i][1] >= self.values
                 assert all(fovea_corners[i] + fovea_shape <= self.frame_shape)
-                
+
 
         if self.verbose:
             print('choose time: ' + str(time.time() - start_time))
@@ -172,7 +170,7 @@ class Filter:
         # --- fovea boundaries in frame coordinates ...
         disp = foveal_bp(
             frame, fovea_corners, fovea_shape, seed,
-            values=self.values, iters=self.iters, fovea_levels=self.fovea_levels, **self.params)
+            values=self.values, **self.params)
 
         # disp = coarse_bp(frame, down_factor=1, iters=3, values=self.values, **self.params)
         # disp = cv2.pyrUp(disp)[:self.frame_shape[0], :self.frame_shape[1]]
@@ -245,7 +243,7 @@ def _choose_foveas(cost, fovea_shape, n_disp, max_n):
         for n in range(2, max_n+1):
             fovea_shape_n = _fovea_part_shape(fovea_shape, n)
             fovea_ij_n, residual_cost_n = _choose_n_foveas(cost, fovea_shape_n, n_disp, n)
-    
+
             if residual_cost_n < residual_cost:
                 fovea_shape = fovea_shape_n
                 fovea_ij = fovea_ij_n

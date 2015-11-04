@@ -44,7 +44,7 @@ cdef extern from "stereo.h":
         Mat fovea_corners, Mat fovea_shapes,
         int values, int iters, int levels, int fovea_levels,
         float smooth, float data_weight, float data_max, float data_exp,
-        float seed_weight, float disc_max)
+        float seed_weight, float disc_max, bool fine_periphery)
     cdef volume[float]* stereo_ms_volume(
         Mat a, Mat b, Mat seed,
         int values, int iters, int levels, float smooth,
@@ -124,7 +124,7 @@ def stereo_fovea(
         np.ndarray[uchar, ndim=2, mode="c"] seed = np.array([[]], dtype='uint8'),
         int values=64, int iters=5, int levels=5, int fovea_levels=1,
         float smooth=0.7, float data_weight=0.07, float data_max=15, float data_exp=1,
-        float seed_weight=1, float disc_max=1.7):
+        float seed_weight=1, float disc_max=1.7, bool fine_periphery=1):
     """BP with two levels: coarse on the outside, fine in the fovea"""
 
     assert a.shape[0] == b.shape[0] and a.shape[1] == b.shape[1]
@@ -157,7 +157,8 @@ def stereo_fovea(
     # run belief propagation
     cdef Mat zi = stereo_ms_fovea(
         x, y, u, fcorners, fshapes, values, iters, levels, fovea_levels,
-        smooth, data_weight, data_max, data_exp, seed_weight, disc_max)
+        smooth, data_weight, data_max, data_exp, seed_weight, disc_max,
+        fine_periphery)
 
     # copy data off
     cdef np.ndarray[uchar, ndim=2, mode="c"] ci = np.zeros(
