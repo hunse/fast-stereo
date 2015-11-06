@@ -21,7 +21,7 @@ from transform import DisparityMemory
 class Filter:
     def __init__(self, average_disparity, frame_down_factor, mem_down_factor,
                  fovea_shape, frame_shape, values,
-                 verbose=False, memory_length=1, **bp_args):
+                 verbose=False, memory_length=1, max_n_foveas=1, **bp_args):
         """
         Arguments
         ---------
@@ -48,6 +48,7 @@ class Filter:
         self.memory_shape = self.average_disparity.shape
 
         self.values = values
+        self.max_n_foveas = max_n_foveas
 
         # self.params = {
         #     'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
@@ -127,7 +128,8 @@ class Filter:
 #            fovea_corner = np.array(fovea_corner) * self.mem_step + np.array([0, self.values])
 
             mem_fovea_shape = np.array(self.fovea_shape) / self.mem_step
-            fovea_corners, mem_fovea_shape = _choose_foveas(cost, mem_fovea_shape, self.values/self.mem_step, 5) #TODO: make max_n a property
+            fovea_corners, mem_fovea_shape = _choose_foveas(
+                cost, mem_fovea_shape, self.values/self.mem_step, self.max_n_foveas)
 
 #            ### debug plot
 #            print(fovea_corners)
@@ -168,9 +170,11 @@ class Filter:
             print('seed time: ' + str(time.time() - start_time))
 
         # --- fovea boundaries in frame coordinates ...
+        bp_time = time.time()
         disp = foveal_bp(
             frame, fovea_corners, fovea_shape, seed,
             values=self.values, **self.params)
+        self.bp_time = time.time() - bp_time
 
         # disp = coarse_bp(frame, down_factor=1, iters=3, values=self.values, **self.params)
         # disp = cv2.pyrUp(disp)[:self.frame_shape[0], :self.frame_shape[1]]
