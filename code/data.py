@@ -165,7 +165,7 @@ def get_ground_truth_dir(drive):
     return result
 
 def calc_ground_truth(frame, n_disp, down_factor=0, iters=50):
-    params = {'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425, 'data_max': 32.024780646200725, 'ksize': 1}
+    params = {'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425, 'data_max': 32.024780646200725, 'laplacian_ksize': 1}
     gt = coarse_bp(frame, down_factor=down_factor, iters=iters, values=n_disp, **params)
     n_coarse_disp = n_disp / 2**down_factor
     gt = gt[:,n_coarse_disp:]

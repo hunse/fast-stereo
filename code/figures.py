@@ -5,13 +5,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cPickle as pickle
 import cv2
-from data import load_stereo_video
+from data import load_stereo_video, calc_ground_truth
 from bp_wrapper import downsample, foveal_bp, coarse_bp
 from data import KittiSource, KittiMultiViewSource
 from transform import DisparityMemory
 from importance import UnusuallyClose, get_average_disparity
 from filter import expand_coarse, cost, cost_on_points, Filter
-
+from kitti.stereo import load_pair
+from astropy.units import bar
 
 def trim(disp, vmax, edge):
     return disp[edge-1:-edge,vmax:-edge]
@@ -286,10 +287,45 @@ def _evaluate_frame(source, frame_num, frame_shape, down_factor, frame_down_fact
     true_points = source.true_points[frame_num]
     return elapsed_time, cost_on_points(disp[:,values:], true_points)
 
+def disparity_minus_mean():
+    down_factor = 2
+#    index = 1
+    test=False
+    n_disp = 128
+        
+    differences = []
+    border = 10
+    for index in range(2):
+        print(index)
+        source = KittiMultiViewSource(index, test=test, n_frames=0)
+        average_disparity = source.get_average_disparity()
+        
+#        frame = load_pair(index, test, frame=i, multiview=True)
+        frame = source.frame_ten
+        gt_frame = calc_ground_truth(frame, n_disp, down_factor=down_factor, iters=50)
+        d = gt_frame.astype('int') - average_disparity.astype('int')
+        d = d[border:-border,border:-border]
+        differences.append(d.flatten())
+                
+#        plt.subplot(211)
+#        plt.imshow(gt_frame)
+#        plt.colorbar()
+#        plt.subplot(212)
+#        plt.imshow(average_disparity)
+#        plt.colorbar()
+#        plt.show()        
+    
+    foo = np.array(differences)
+    print()
+    print(np.array(differences).shape)
+#    plt.hist(np.array(differences).flatten(), 50)
+#    plt.show()
+
 if __name__ == '__main__':
 #     fovea_examples()
 #     smudge_vs_interp()
 #     seed_outside_fovea()
 #     importance()
 #     rationale()
-    foveation_sequence()
+#    foveation_sequence()
+    disparity_minus_mean()
