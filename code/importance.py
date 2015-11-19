@@ -12,7 +12,7 @@ from data import KittiSource
 
 def get_position_weights(shape):
     #TODO: ignore top of image more fully?
-    
+
     h = shape[0]/3 #height of blended region
     vweight = np.ones(shape[0])
     vweight[:h+1] = np.linspace(0, 1, h+1)
@@ -25,8 +25,10 @@ def get_position_weights(shape):
     return np.outer(vweight, hweight)
 
 def get_importance(position_weights, average_disp, disp):
-    above_average = np.maximum(0, disp.astype(float) - average_disp.astype(float))
-    return above_average * position_weights
+    diff = disp.astype(float) - average_disp.astype(float)
+    disp_cost = np.maximum(0, diff)
+    # disp_cost = (diff - 4).clip(0, 15)
+    return disp_cost * position_weights
 
 
 class UnusuallyClose:

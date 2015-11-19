@@ -63,6 +63,10 @@ class Foveal(object):
 
             cost = self._uc.get_importance(prior_disparity)
 
+            if self.lidar_clip_top_percent is not None:
+                clip = int(self.lidar_clip_top_percent * cost.shape[0])
+                cost[:clip] = 0
+
         assert cost.shape == self.average_disparity.shape
 
         # c) Find region of highest cost and put fovea there

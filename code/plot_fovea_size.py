@@ -20,6 +20,7 @@ from filter import cost_on_points, expand_coarse
 
 # n_test_frames = 1
 # n_test_frames = 2
+# n_test_frames = 10
 # n_test_frames = 20
 n_test_frames = 50
 full_values = 128
@@ -86,17 +87,19 @@ def test_fine(frame_down_factor):
     return times, unweighted_cost, weighted_cost
 
 
-def test_foveal(frame_down_factor, fovea_fraction, fovea_n, **kwargs):
+def test_foveal(frame_down_factor, fovea_fraction, fovea_n, debug=False, **kwargs):
     values = full_values / 2**frame_down_factor
 
     mem_down_factor = 2     # relative to the frame down factor
 
     shape = (len(fovea_n)+1, n_test_frames)
     times = np.zeros(shape)
-    unweighted_cost = np.zeros(shape)
-    weighted_cost = np.zeros(shape)
+    unweighted_cost = np.nan * np.ones(shape)
+    weighted_cost = np.nan * np.ones(shape)
 
     for i_frame, index in enumerate(range(n_test_frames)):
+        disps = []  # collection of disps for debugging
+
         n_history_frames = 0
         source = KittiMultiViewSource(index, test=False, n_frames=n_history_frames)
         full_shape = source.frame_ten[0].shape
@@ -141,12 +144,16 @@ def test_foveal(frame_down_factor, fovea_fraction, fovea_n, **kwargs):
             foveal_disp[:, values:], true_points, full_shape=full_shape)
         weighted_cost[0, i_frame] = cost_on_points(
             foveal_disp[:, values:], true_points, average_disp, full_shape=full_shape)
+        disps.append(foveal_disp)
 
         # --- moving foveas
         for i_fovea, fovea_n_i in enumerate(fovea_n):
             foveal = Foveal(average_disp, frame_down_factor, mem_down_factor,
                             fovea_shape, frame_shape, values,
                             max_n_foveas=fovea_n_i, **kwargs)
+            # foveal.lidar_clip_top_percent = None
+            foveal.lidar_clip_top_percent = 0.20
+            # foveal.lidar_clip_top_percent = 0.25
 
             if 0:
                 # use ground truth importance
@@ -180,6 +187,26 @@ def test_foveal(frame_down_factor, fovea_fraction, fovea_n, **kwargs):
             weighted_cost[i_fovea+1, i_frame] = cost_on_points(
                 foveal_disp[:, values:], true_points, average_disp, full_shape=full_shape)
             times[i_fovea+1, i_frame] = foveal_time
+            disps.append(foveal_disp)
+
+        if debug:
+            plt.ion()
+            plt.figure(101)
+            plt.clf()
+            r = len(disps) + 1
+            plt.subplot(r, 1, 1)
+            plt.imshow(true_disp)
+            plt.colorbar()
+            for i, disp in enumerate(disps):
+                plt.subplot(r, 1, i+2)
+                error = disp - true_disp
+                error[true_disp <= 1] = 0
+                plt.imshow(error)
+                # plt.imshow(disp)
+                plt.colorbar()
+
+            raw_input("Viewing frame %d (%s)" % (i_frame, weighted_cost[:, i_frame]))
+
 
     return times, unweighted_cost, weighted_cost
 
@@ -194,51 +221,57 @@ fine_periphery = 1
 min_level = 1
 # min_level = 2
 
-print("Running %d (frame_down_factor=%d, fovea_levels=%d, fine_periphery=%d, min_level=%d)" %
-      (n_test_frames, frame_down_factor, fovea_levels, fine_periphery, min_level))
+if __name__ == '__main__':
+    print("Running %d (frame_down_factor=%d, fovea_levels=%d, fine_periphery=%d, min_level=%d)" %
+          (n_test_frames, frame_down_factor, fovea_levels, fine_periphery, min_level))
 
-fovea_fractions = np.linspace(0, 1, 6)
-fovea_n = [1, 5]
+    fovea_fractions = np.linspace(0, 1, 6)
+    fovea_n = [1, 5]
 
-foveal_times = []
-foveal_unweighted_cost = []
-foveal_weighted_cost = []
-for i in range(len(fovea_fractions)):
-    ft, fu, fw = test_foveal(frame_down_factor, fovea_fractions[i], fovea_n,
-                             fovea_levels=fovea_levels, fine_periphery=fine_periphery, min_level=min_level)
-    foveal_times.append(ft)
-    foveal_unweighted_cost.append(fu)
-    foveal_weighted_cost.append(fw)
+    foveal_times = []
+    foveal_unweighted_cost = []
+    foveal_weighted_cost = []
+    for i in range(len(fovea_fractions)):
+        ft, fu, fw = test_foveal(frame_down_factor, fovea_fractions[i], fovea_n,
+                                 fovea_levels=fovea_levels, fine_periphery=fine_periphery, min_level=min_level)
 
-foveal_times = np.array(foveal_times)
-foveal_unweighted_cost = np.array(foveal_unweighted_cost)
-foveal_weighted_cost = np.array(foveal_weighted_cost)
+        print(fu[[0], :])
+        fu /= fu[[0], :]
+        fw /= fw[[0], :]
 
-print('foveal')
-print(np.mean(foveal_times, -1))
-print(np.mean(foveal_unweighted_cost, -1))
-print(np.mean(foveal_weighted_cost, -1))
+        foveal_times.append(ft)
+        foveal_unweighted_cost.append(fu)
+        foveal_weighted_cost.append(fw)
 
-# coarse_times, coarse_unweighted_cost, coarse_weighted_cost = test_coarse(frame_down_factor)
-# print('coarse')
-# print(np.mean(coarse_times))
-# print(np.mean(coarse_unweighted_cost))
-# print(np.mean(coarse_weighted_cost))
+    foveal_times = np.array(foveal_times)
+    foveal_unweighted_cost = np.array(foveal_unweighted_cost)
+    foveal_weighted_cost = np.array(foveal_weighted_cost)
 
-# fine_times, fine_unweighted_cost, fine_weighted_cost = test_fine(frame_down_factor)
-# print('fine')
-# print(np.mean(fine_times))
-# print(np.mean(fine_unweighted_cost))
-# print(np.mean(fine_weighted_cost))
+    print('foveal')
+    print(np.nanmean(foveal_times, -1))
+    print(np.nanmean(foveal_unweighted_cost, -1))
+    print(np.nanmean(foveal_weighted_cost, -1))
 
-plt.figure()
-plt.subplot(211)
-plt.plot(fovea_fractions, foveal_unweighted_cost.mean(-1), '--')
-plt.legend(['centred'] + ['%d foveas' % i for i in fovea_n], loc='best')
-plt.title('unweighted')
+    # coarse_times, coarse_unweighted_cost, coarse_weighted_cost = test_coarse(frame_down_factor)
+    # print('coarse')
+    # print(np.mean(coarse_times))
+    # print(np.mean(coarse_unweighted_cost))
+    # print(np.mean(coarse_weighted_cost))
 
-plt.subplot(212)
-plt.plot(fovea_fractions, foveal_weighted_cost.mean(-1), '-')
-plt.legend(['centred'] + ['%d foveas' % i for i in fovea_n], loc='best')
-plt.title('weighted')
-plt.show()
+    # fine_times, fine_unweighted_cost, fine_weighted_cost = test_fine(frame_down_factor)
+    # print('fine')
+    # print(np.mean(fine_times))
+    # print(np.mean(fine_unweighted_cost))
+    # print(np.mean(fine_weighted_cost))
+
+    plt.figure()
+    plt.subplot(211)
+    plt.plot(fovea_fractions, np.nanmean(foveal_unweighted_cost, -1), '--')
+    plt.legend(['centred'] + ['%d foveas' % i for i in fovea_n], loc='best')
+    plt.title('unweighted')
+
+    plt.subplot(212)
+    plt.plot(fovea_fractions, np.nanmean(foveal_weighted_cost, -1), '-')
+    plt.legend(['centred'] + ['%d foveas' % i for i in fovea_n], loc='best')
+    plt.title('weighted')
+    plt.show()

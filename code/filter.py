@@ -294,16 +294,14 @@ def cost_on_points(disp, ground_truth_points, average_disp=None, full_shape=(375
     xr, yr, d = xr[mask], yr[mask], d[mask]
 
     disps = disp[yr, xr]
-#    error = np.abs(disps - d)
-    error = np.minimum(10, np.abs(disps - d))
+    error = np.abs(disps - d)
+    # error = np.minimum(10, np.abs(disps - d))
 
     if average_disp is not None:
         assert average_disp.shape == disp.shape, (average_disp.shape, disp.shape)
         pos_weights = get_position_weights(disp.shape)
         importance = get_importance(pos_weights[yr, xr], average_disp[yr, xr], d)
-
         importance /= importance.mean()
-#        error = np.abs(disps - d)
 
         if 0:
             importance2 = np.maximum(0, d.astype(float) - average_disp[yr, xr])
