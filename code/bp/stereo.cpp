@@ -266,7 +266,6 @@ void bp_cb(volume<float> &u, volume<float> &d,
     int values = data.depth();
 
     for (int t = 0; t < iters; t++) {
-        // std::cout << "iter " << t << "\n";
         for (int y = 1; y < height-1; y++) {
             for (int x = ((y+t) % 2) + 1; x < width-1; x+=2) {
                 msg(u(x, y+1), l(x+1, y), r(x-1, y),
@@ -475,6 +474,7 @@ void comp_data_down_fovea(
     }
     // printElapsedMilliseconds(t);
 
+    
     // --- fovea data costs
     for (int k = 0; k < fovea_corners.rows; k++) {
         const int fheight = fovea_shapes.at<int>(k, 0);
@@ -502,7 +502,7 @@ void comp_data_down_fovea(
 
             for (int x = 0; x < fwidth; x++) {
                 for (int value = 0; value < values; value++) {
-                    float val = abs(sm1i[fx+x] - sm2i[fx+x-value]);
+                    float val = abs(sm1i[fx+x] - sm2i[fx+x-value]); //note: this line seg faults if fovea extends outside image  
                     dataf_(x, y, value) = lambda * std::min(val, threshold);
                 }
             }
@@ -634,6 +634,7 @@ cv::Mat stereo_ms_fovea(
         max_value(*datac), fovea_levels - min_level, cv::Size(out_width, out_height));
     delete datac;
 
+    
     // --- copy fovea results onto image
     for (int k = 0; k < fovea_corners.rows; k++) {
         // TODO: fovea corners are no longer exact at this scale (if ratio > 1)
@@ -654,7 +655,7 @@ cv::Mat stereo_ms_fovea(
         }
     }
     delete [] datafs;
-
+    
     // --- upsample again by min_level
     return upsample(out, min_level, cv::Size(img1.cols, img1.rows));
 }

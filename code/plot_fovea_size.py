@@ -21,7 +21,7 @@ from filter import cost_on_points, expand_coarse
 # n_test_frames = 1
 # n_test_frames = 2
 # n_test_frames = 20
-n_test_frames = 50
+n_test_frames = 120
 full_values = 128
 
 
@@ -95,7 +95,7 @@ def test_foveal(frame_down_factor, fovea_fraction, fovea_n, **kwargs):
     times = np.zeros(shape)
     unweighted_cost = np.zeros(shape)
     weighted_cost = np.zeros(shape)
-
+    
     for i_frame, index in enumerate(range(n_test_frames)):
         n_history_frames = 0
         source = KittiMultiViewSource(index, test=False, n_frames=n_history_frames)
@@ -130,7 +130,7 @@ def test_foveal(frame_down_factor, fovea_fraction, fovea_n, **kwargs):
         params.update(kwargs)
 
         fovea_corner = ((frame_shape[0] - fovea_shape[0]) / 2,
-                        (frame_shape[1] - fovea_shape[1]) / 2)
+                        (frame_shape[1] - fovea_shape[1]))
 
         t = time.time()
         foveal_disp = foveal_bp(
@@ -141,6 +141,7 @@ def test_foveal(frame_down_factor, fovea_fraction, fovea_n, **kwargs):
             foveal_disp[:, values:], true_points, full_shape=full_shape)
         weighted_cost[0, i_frame] = cost_on_points(
             foveal_disp[:, values:], true_points, average_disp, full_shape=full_shape)
+
 
         # --- moving foveas
         for i_fovea, fovea_n_i in enumerate(fovea_n):
@@ -204,11 +205,13 @@ foveal_times = []
 foveal_unweighted_cost = []
 foveal_weighted_cost = []
 for i in range(len(fovea_fractions)):
+    print(i)
     ft, fu, fw = test_foveal(frame_down_factor, fovea_fractions[i], fovea_n,
                              fovea_levels=fovea_levels, fine_periphery=fine_periphery, min_level=min_level)
     foveal_times.append(ft)
     foveal_unweighted_cost.append(fu)
     foveal_weighted_cost.append(fw)
+
 
 foveal_times = np.array(foveal_times)
 foveal_unweighted_cost = np.array(foveal_unweighted_cost)
@@ -233,6 +236,8 @@ print(np.mean(foveal_weighted_cost, -1))
 
 plt.figure()
 plt.subplot(211)
+#plt.imshow(foveal_unweighted_cost);
+#plt.colorbar()
 plt.plot(fovea_fractions, foveal_unweighted_cost.mean(-1), '--')
 plt.legend(['centred'] + ['%d foveas' % i for i in fovea_n], loc='best')
 plt.title('unweighted')
@@ -241,4 +246,6 @@ plt.subplot(212)
 plt.plot(fovea_fractions, foveal_weighted_cost.mean(-1), '-')
 plt.legend(['centred'] + ['%d foveas' % i for i in fovea_n], loc='best')
 plt.title('weighted')
-plt.show()
+plt.show(block=True)
+
+
