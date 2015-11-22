@@ -1,12 +1,7 @@
-import collections
-
-import time
 import numpy as np
 import cv2
 
 import matplotlib.pyplot as plt
-
-import gridfill
 
 from kitti.data import Calib, homogeneous_transform, filter_disps
 from kitti.raw import load_stereo_video, load_video_odometry, get_position_transform
