@@ -106,8 +106,8 @@ fovea
  We evaluate this approach on stereo videos from the KITTI Vision Benchmark
  Suite, using a simple cost function that emphasizes pixels with higher-than-nor
 mal disparity for their image location.
- We show that our approach improves depth estimates within a real-time performan
-ce constraint.
+ We show that this approach can improve depth estimates within a real-time
+ performance constraint.
  We discuss analogies with task-dependent control of human eye movements.
  
 \end_layout
@@ -167,13 +167,6 @@ dense
  However, in the absence of distinctive features (e.g.
  in an image of a textureless wall), a wide range of regions may match equally
  well.
-\end_layout
-
-\begin_layout Standard
-This is where Jeff can briefly mention some of the recent stereo foveation
- methods.
- However, none of them seem to mix both foveation and peripheral data.
- And many of them use specialized hardware to speed them up.
 \end_layout
 
 \begin_layout Standard
@@ -261,7 +254,7 @@ key "Borji2013,Frintrop2010,Kimura2013"
 
 \end_inset
 
-[also Tsotsos (2011)].
+[TODO: also Tsotsos (2011)].
  As discussed in these reviews, human eye movements are occasionally directed
  to salient visual features (such as the onset of motion) but in most situations
  are overwhelmingly determined by task demands.
@@ -347,8 +340,8 @@ key "Maki2000"
  This allows us to direct the fovea to regions in which surfaces seem to
  be closer than normal for their part of the visual field, which often correspon
 d to obstacles.
- We show that this approach leads to improved estimation of obstacle surfaces
- at practical frame rates.
+ This approach leads to improved estimation of obstacle surfaces at practical
+ frame rates.
  
 \end_layout
 
@@ -671,7 +664,7 @@ where
  is a saturation value that limits the cost of large discontinuities.
  The saturation value is used because while most discontinuities are expected
  to be small, some (at object boundaries) are expected to be larger, with
- weak expectations about how much larger.
+ no particular expectation about how much larger.
  
 \end_layout
 
@@ -780,7 +773,7 @@ key "Geiger2012"
 
 , downsampled by a factor of two (high resolution) and four (low resolution)
  in each dimension.
- 
+ [TODO: rerun with ground truth and MAD cost]
 \end_layout
 
 \end_inset
@@ -820,24 +813,21 @@ The system performs multiscale belief propagation (BP) with different numbers
  The majority of the computational cost is incurred at the finest scale,
  which has four times as many pixels as the next-finest scale.
  Our system only processes the finest one or two scales in the foveal region.
- The resulting depth estimate is similar to that of full BP in the fovea,
- with nearly the same speedup one would get by omitting the finest scale(s).
+ The resulting depth estimate is similar to that of full multiscale BP in
+ the fovea, with nearly the same speedup one would get by omitting the finest
+ scale(s).
  
 \end_layout
 
 \begin_layout Standard
 Importantly, messages from coarser scales are used to initialize messages
  in fine foveal scales.
- This makes depth estimates in the fovea continuous with those in the surroundin
-g areas, and also makes them similar to those of full belief propagation.
- (They differ somewhat around the fovea border, due to propagation across
- the border in the fine scale of full BP.) We also experimented with running
- multiscale BP independently in the fovea, and promoting continuity with
- the surround in other ways, such as copying message messages from the surround
- into adjacent outer pixels of the fovea.
- However, these approaches were less effective because they did not allow
- information from coarse scales to propagate from other image regions across
- the fovea.
+ This allows information from coarse scales to propagate from other image
+ regions across the fovea, makes depth estimates in the fovea continuous
+ with those in the surrounding areas, and also makes them similar to those
+ of full belief propagation.
+ They differ somewhat around the fovea border, due to propagation across
+ the border in the fine scale of full BP.
  
 \end_layout
 
@@ -846,8 +836,8 @@ Figure 1 illustrates our general approach.
  The inputs to the system in each frame are 1) a rectified stereo pair of
  luminance images, 2) the position of the fovea, and 3) parameters of the
  cost function (described in the next section).
- The latter would normally be static throughout a task, but this is not
- a requirement.
+ The latter would normally be static throughout a task, although this is
+ not essential.
  The outputs after processing each frame are 1) a disparity map, and 2)
  the position of the fovea for the next frame.
 \end_layout
@@ -923,16 +913,16 @@ As mentioned in the Introduction, the fovea was placed in each frame so
  that it covered the part of the image that seemed to be the most important
  for the task, specifically the part in which a preliminary estimate of
  disparity most greatly exceeded the time-averaged disparity per pixel.
- The preliminary disparity estimate in frame 
+ If odometry is available, the preliminary estimate in frame 
 \begin_inset Formula $k$
 \end_inset
 
- was obtained by mapping the estimate 
+ can be obtained by mapping the estimate 
 \begin_inset Formula $d_{k-1}^{*}$
 \end_inset
 
  from the previous frame into the coordinates of the new frame.
- This mapping consisted of converting frame 
+ This mapping consists of converting frame 
 \begin_inset Formula $k-1$
 \end_inset
 
@@ -954,7 +944,7 @@ As mentioned in the Introduction, the fovea was placed in each frame so
 \end_layout
 
 \begin_layout Standard
-Due to changes in perspective, there was not a one-to-one map between pixels
+Due to changes in perspective, there is not a one-to-one map between pixels
  in the frame 
 \begin_inset Formula $k-1$
 \end_inset
@@ -963,7 +953,7 @@ Due to changes in perspective, there was not a one-to-one map between pixels
 \begin_inset Formula $k$
 \end_inset
 
- disparity images, so the remapped disparity images contained blank pixels.
+ disparity images, so remapped disparity images contain blank pixels.
  We experimented with two ways of filling in the blank pixels.
  The first was linear interpolation, and the second was setting blank pixels
  to zero and taking the maximum over small neighbourhoods.
@@ -975,8 +965,8 @@ reference "fig:interp"
 \end_inset
 
  compares these two methods.
- Taking the maximum was about XX times faster than bilinear interpolation,
- with comparable results, so we used the maximum.
+ Taking the maximum was much faster than bilinear interpolation, with comparable
+ results, so we used the maximum.
  
 \end_layout
 
@@ -985,7 +975,29 @@ Some pixels also corresponded to multiple previous disparities per frame
  rather than zero or one.
  For these pixels, the largest disparity was chosen, corresponding to the
  nearest surface.
- [TODO: is this true?] 
+ [TODO: is this true?]
+\end_layout
+
+\begin_layout Standard
+We also experimented with using remapped disparity estimates from previous
+ frames to improve current-frame estimates.
+ Specifically, we augmented the data cost to penalize changes over time.
+ In some cases this method removed artefacts.
+ However, we were unable to clearly evaluate whether this improved performance
+ on average, because the KITTI dataset does not provide odometry and ground
+ truth for the same image sequences.
+ Therefore we simply note that this is another potential use for remapped
+ disparity.
+ Relatedly, belief propagation can also be performed over time as well as
+ image dimensions 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Zhu2010"
+
+\end_inset
+
+ although this is more computationally intensive.
+ 
 \end_layout
 
 \begin_layout Standard
@@ -1050,71 +1062,7 @@ name "fig:interp"
 \end_layout
 
 \begin_layout Subsection
-Using Information from Past Frames in Disparity Estimates
-\end_layout
-
-\begin_layout Standard
-Disparity has temporal as well as spatial correlations, and further improvements
- in accuracy beyond spatial BP can be obtained by also propagating information
- over time 
-\begin_inset CommandInset citation
-LatexCommand cite
-key "Zhu2010"
-
-\end_inset
-
-.
- However, this process is expensive in terms of runtime and memory.
- We sought to inexpensively approximate this approach by adding the cost
- term,
-\begin_inset Formula 
-\[
-S_{x,y,d,k}=\min\left\{ \sum_{i-1}^{n}\left|d-P_{k}(d_{x,y,k-i}^{*})\right|,S_{\mathrm{max}}\right\} ,
-\]
-
-\end_inset
-
-where 
-\begin_inset Formula $P_{k}$
-\end_inset
-
- indicates mapping into the frame-
-\begin_inset Formula $k$
-\end_inset
-
- perspective and 
-\begin_inset Formula $S_{max}$
-\end_inset
-
- is the level at which this cost term saturates.
- Saturation prevents excessive penalization of legitimate large differences
- between frames, for example when something in the environment moves.
- This approach has modest runtime and storage costs, for example messages
- from previous frames need not be stored.
- To further reduce the cost of storing and remapping past disparities, we
- stored only the foveal regions of previous disparity images (as these were
- expected to be the most accurate), and we downsampled them.
- 
-\end_layout
-
-\begin_layout Standard
-This method also allows the algorithm to ignore information from past frames
- where the disparity is unambiguous in the current frame.
- This is important, because predictions from past frames can be less accurate
- than current estimates, e.g.
- due to extrinsic motion in the scene.
- Other inexpensive ways of using information from past frames, such as low-pass
- filtering the depth, do not have this advantage.
- 
-\end_layout
-
-\begin_layout Subsection
 Fovea Placement
-\end_layout
-
-\begin_layout Standard
-[TODO: describe a hypothetical alternative importance calculation for grasping
- based on Platt's method with low-res stereo first (discussion)]
 \end_layout
 
 \begin_layout Standard
@@ -1142,10 +1090,11 @@ where
 \end_inset
 
  depended on the task and also on a preliminary disparity estimate 
-\begin_inset Formula $d_{x,y,k}^{0}=P_{k}(d_{x,y,k-1}^{*})$
+\begin_inset Formula $d_{x,y,k}^{0}$
 \end_inset
 
-.
+, which was either obtained by remapping past frames, when odometry was
+ available, or by running BP only at coarse scales.
  
 \end_layout
 
@@ -1161,7 +1110,7 @@ One possible weighting scheme for navigation would be to emphasize regions
  Instead, we defined 
 \begin_inset Formula 
 \[
-w_{x,y}^{d}=\max(d_{x,y}^{0}-\bar{d}_{x,y},0),
+w_{x,y}^{d}=\max(d_{x,y}^{0}-\bar{d}_{x,y}-d_{th},0),
 \]
 
 \end_inset
@@ -1178,7 +1127,11 @@ where
 \begin_inset Formula $k$
 \end_inset
 
-.
+, and 
+\begin_inset Formula $d_{th}$
+\end_inset
+
+ is a small threshold.
  This approach emphasizes parts of the image in which surfaces are closer
  than usual.
  We used 
@@ -1231,7 +1184,7 @@ status open
 \begin_layout Plain Layout
 \align center
 \begin_inset Graphics
-	filename figures/importance.png
+	filename figures/importance-tight.png
 	scale 50
 
 \end_inset
@@ -1311,23 +1264,55 @@ The fovea was positioned so that it covered the region with the highest
  
 \end_layout
 
+\begin_layout Standard
+Contrary to the example of Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:weighting-example"
+
+\end_inset
+
+, the high-weight pixels are not always in one small region.
+ Therefore we also experimented with dividing the fovea into multiple sub-foveas
+ with the same total number of pixels.
+ Whereas optimal placement of a single fovea with given dimensions simply
+ corresponds to finding the maximum in a two-dimensional image, it is not
+ practical to find the global optimal placement of multiple foveas.
+ Instead, we used a greedy approach in which we placed a single sub-fovea
+ optimally, set the weight within it to zero, placed another single subfovea
+ optimally, etc.
+ We calculated the total remaining weight with different numbers of sub-foveas,
+ and used the number with the lowest weight.
+ These computations were all performed with images that were downsampled
+ several times, so they were not computationally intensive.
+ 
+\end_layout
+
 \begin_layout Subsection
 Dataset
 \end_layout
 
 \begin_layout Standard
-[TODO: clean this up.] The methods were tested on data from the KITTI Vision
- Benchmark Suite [TODO: ref].
+The methods were tested on data from the 2012 KITTI Vision Benchmark Suite
+ 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Geiger2012"
+
+\end_inset
+
+.
  This dataset includes high-resolution rectified stereo images (1242x375
- pixels) taken from the roof of a car during city driving.
- In addition to isolated stereo images, the dataset includes a number of
- video sequences, supporting methods (such as ours) which propagate information
- over time.
- Furthermore, ground-truth depth is available from a LIDAR sensor for parts
- of the image.
- [TODO: how do we deal with time offsets] The scenes include static obstacles
- such as buildings and parked cars, and moving obstacles such as cars, pedestria
-ns, and people on bicycles.
+ pixels) taken from the roof of a car during city driving, at ten frames/s.
+ Rectified images and odometry are available for a number of long sequences.
+ Ground truth depth (but not odometry) is available for single frames within
+ a number of short 20-frame sequences.
+ Ground truth is from a LIDAR sensor.
+ The ground-truth points are fairly dense, because the authors combined
+ points from several sweeps of the sensor using a semi-manual registration
+ process.
+ The scenes include static obstacles such as buildings and parked cars,
+ and moving obstacles such as cars, pedestrians, and people on bicycles.
  
 \end_layout
 
@@ -1336,8 +1321,8 @@ Parameters
 \end_layout
 
 \begin_layout Standard
-[TODO: clean this up.] The system parameters and their values for different
- tests are listed in Table
+The system parameters and their values for different tests are listed in
+ Table
 \begin_inset space \thinspace{}
 \end_inset
 
@@ -1360,13 +1345,7 @@ key "Bergstra2013"
  Hyperopt attempts to remove the irreproducible ``art'' of hand-tuning hyperpara
 meters, instead using an automated method for searching hyperparameter space
  to find optimal (or near-optimal) values.
- [TODO: hyperopt procedure on full BP for ground truth and on our method]
-\end_layout
-
-\begin_layout Standard
-Table XX lists the parameters that we used for our performance tests (see
- section XX).
- 
+ [TODO: clean this up.] 
 \end_layout
 
 \begin_layout Standard
@@ -1390,7 +1369,7 @@ System parameters and values used in performance tests.
 \begin_layout Plain Layout
 \align center
 \begin_inset Tabular
-<lyxtabular version="3" rows="9" columns="2">
+<lyxtabular version="3" rows="5" columns="2">
 <features rotate="0" tabularvalignment="middle">
 <column alignment="center" valignment="top">
 <column alignment="center" valignment="top">
@@ -1399,7 +1378,7 @@ System parameters and values used in performance tests.
 \begin_inset Text
 
 \begin_layout Plain Layout
-Number of disparities
+Laplacian filter width
 \end_layout
 
 \end_inset
@@ -1408,7 +1387,7 @@ Number of disparities
 \begin_inset Text
 
 \begin_layout Plain Layout
-128
+XX
 \end_layout
 
 \end_inset
@@ -1419,7 +1398,7 @@ Number of disparities
 \begin_inset Text
 
 \begin_layout Plain Layout
-Area of fovea
+Data-cost weight
 \end_layout
 
 \end_inset
@@ -1428,7 +1407,7 @@ Area of fovea
 \begin_inset Text
 
 \begin_layout Plain Layout
-X x X pixels
+XX
 \end_layout
 
 \end_inset
@@ -1439,47 +1418,7 @@ X x X pixels
 \begin_inset Text
 
 \begin_layout Plain Layout
-Frame history length
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-3
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-BP iterations per scale
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-3
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-Data cost saturation value (
+Data-cost saturation value (
 \begin_inset Formula $C_{max}$
 \end_inset
 
@@ -1503,47 +1442,7 @@ XX
 \begin_inset Text
 
 \begin_layout Plain Layout
-Discontintuity cost saturation value
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-XX
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-Peripheral # scales
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-XX
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-Foveal # scales
+Discontinuity cost saturation value
 \end_layout
 
 \end_inset
@@ -1563,7 +1462,7 @@ XX
 \begin_inset Text
 
 \begin_layout Plain Layout
-History downsampling factor
+BP iterations per scale
 \end_layout
 
 \end_inset
@@ -1619,9 +1518,9 @@ reference "fig:fovea-examples"
  shows two disparity estimates from a single frame, with the fovea in different
  places (the centres are marked with white + signs).
  These examples were processed with multiple levels of resolution, with
- a small high-resolution region in the centre and multiple levels of decreasing
- resolution with greater distance from the centre, analogous to the human
- eye and visual cortex.
+ a very small high-resolution region in the centre and multiple levels of
+ decreasing resolution with greater distance from the centre, analogous
+ to the human eye and visual cortex.
  The total runtime of BP in these examples is only a few times as great
  as BP at the lowest resolution.
  In the top frame, the fovea clearly resolves the cyclist, while in the
@@ -1634,12 +1533,12 @@ reference "fig:fovea-examples"
 \begin_inset Float figure
 wide false
 sideways false
-status collapsed
+status open
 
 \begin_layout Plain Layout
 \align center
 \begin_inset Graphics
-	filename figures/fovea-examples.png
+	filename figures/fovea-examples-tight.png
 	scale 50
 
 \end_inset
@@ -1684,34 +1583,14 @@ name "fig:fovea-examples"
 \end_layout
 
 \begin_layout Standard
-Figure 
-\begin_inset CommandInset ref
-LatexCommand ref
-reference "fig:seed-example"
-
-\end_inset
-
- shows an example of the disparity estimation that is improved through the
- use of information from a previous frame.
- The top panel is the same as that of Figure 
-\begin_inset CommandInset ref
-LatexCommand ref
-reference "fig:fovea-examples"
-
-\end_inset
-
-.
- It contains an artefact in the sky, which is featureless in this scene
- and therfore has ambiguous disparity.
- The centre panel is a remapped disparity estimate from a foveal and parafoveal
- region in the previous frame, overlapping with the artefact in the top
- centre.
- The bottom panel shows a new estimate (with the fovea on the cyclist, similar
- to that of the top panel) but with an additional cost term that penalizes
- deviations from the remapped estimate in the centre panel.
- This example illustrates that information from previous frames has the
- potential to improve disparity estimates, as one would expect due to correlatio
-ns over time.
+Figure XX shows a sequence of foveations, from a video of driving between
+ parked cars.
+ The sequence is from top to bottom.
+ In this example a single fovea is used (i.e.
+ without multiple sub-foveas).
+ The cars on the right are foveated in turn.
+ The cars on the left have slightly lower weights than those on the right,
+ and are never foveated.
  
 \end_layout
 
@@ -1724,8 +1603,8 @@ status open
 \begin_layout Plain Layout
 \align center
 \begin_inset Graphics
-	filename figures/seed-vs-no-seed.png
-	scale 50
+	filename figures/foveation-sequence-tight.png
+	scale 60
 
 \end_inset
 
@@ -1736,22 +1615,67 @@ status open
 \begin_inset Caption Standard
 
 \begin_layout Plain Layout
-An example of the use of information from a previous frame to improve disparity
- estimation.
- Top: Estimate with fovea on cyclist, as the top panel of figure 
-\begin_inset CommandInset ref
-LatexCommand ref
-reference "fig:fovea-examples"
+Example foveation sequence.
+ [TODO: missing frames?]
+\end_layout
 
 \end_inset
 
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Figure XX shows examples of sub-fovea placement, overlaid with weighting
+ functions.
+ In the top image the fovea has been broken into 30 sub-foveas that are
+ placed individually.
+ A greater number of smaller foveas can cover irregular shapes more closely.
+ However, because our greedy method of sub-fovea placement is not globally
+ optimal, more sub-foveas are not guaranteed to cover a larger cost.
+ In this example, numbers of sub-foveas from 1-30 were compared (with the
+ same total foveal pixels in each case), and two sub-foveas (bottom image)
+ actually provided the best coverage.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figures/multiple-foveas-30-vs-best.png
+	scale 60
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+An example of optimal placement of 30 sub-foveas (top) and 2 sub-foveas
+ (bottom), with the same total numbers of pixels, overlaid with the correspondin
+g weight image 
+\begin_inset Formula $w=w^{s}w^{d}$
+\end_inset
+
 .
- Centre: A remapped estimate from the fovea of the previous frame, in which
- the fovea was in the top centre of the image.
- Bottom: New disparity estimate with fovea on the cyclist, but also using
- the prior estimate from the centre panel.
- The prior estimate resolves the ambiguity in the current frame, and corrects
- the artefact.
+ In the weight image, darker blue corresponds to low weight.
  
 \end_layout
 
@@ -1761,12 +1685,6 @@ reference "fig:fovea-examples"
 \end_layout
 
 \begin_layout Plain Layout
-\begin_inset CommandInset label
-LatexCommand label
-name "fig:seed-example"
-
-\end_inset
-
 
 \end_layout
 
@@ -1775,33 +1693,132 @@ name "fig:seed-example"
 
 \end_layout
 
-\begin_layout Standard
-- [TODO: flops per frame]
+\begin_layout Subsection
+Sub-Fovea Selection
 \end_layout
 
 \begin_layout Standard
-- [TODO: examples and averages of least-squared error on KITTI data]
+The time taken by our greedy method of sub-fovea placement is roughly linear
+ in the number of sub-foveas, and comparing all of 
+\begin_inset Formula $\{1,2,..n\}$
+\end_inset
+
+ sub-foveas is supralinear.
+ Although checking more possibilities will generally lead to better performance,
+ it only makes sense to check possibilities that are relatively likely.
+ Figure XX shows a histogram of the numbers of sub-foveas with the best
+ weight coverage over a set of example frames, up to a maximum of 30.
+ Very often, two foveas were best.
+ In further experiments we used the best of 1-5 sub-foveas.
+ 
 \end_layout
 
 \begin_layout Standard
-- [TODO: examples of asymmetric error on KITTI data]
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figures/best-num-foveas.png
+	scale 30
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+xx
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Accuracy vs.
+ Run Time
 \end_layout
 
 \begin_layout Standard
-- [TODO: examples of asymmetric weighted error on KITTI data]
+[TODO: see whether good peripheral performance disappears with non-pyramidal
+ upsampling and downsampling]
 \end_layout
 
 \begin_layout Standard
-- [TODO: example for grasping with another dataset]
+We tested the dependence of both runtime and accuracy on total fovea area.
+ In general, our expectations were that runtime would increase almost linearly
+ with the foveal area, and that accuracy would improve with foveal area.
+ With zero foveal area, speed and accuracy should be nearly equal to that
+ of full BP with down-sampled images.
+ On the other hand, setting the fovea area equal to the image area should
+ result in speed and accuracy equal to that of full multi-scale BP.
+ We further anticipated that weighted error would drop sharply with increasing
+ foveal area, since we tried to align the fovea with the highest-weight
+ regions.
+ 
 \end_layout
 
 \begin_layout Standard
-- [TODO: frame rate]
+Figure XX shows an example of results that are in keeping with these expectation
+s.
+ The horizontal axis corresponds to the total foveal area as a fraction
+ of image area.
+ Then the fovea is kept at centre of the image, weighted error drops nearly
+ linearly as a function of foveal area.
+ As expected, the initial drop is steeper when a single fovea is aligned
+ with high-weight regions, and steeper still when several sub-foveas are
+ allowed.
+ 
 \end_layout
 
 \begin_layout Standard
-- [TODO: error vs.
- somewhat less coarse at same frame rate]
+We found however that these results were sensitive to details such as the
+ way in which we calculated data cost and upsampled coarse BP results in
+ the periphery.
+ In some cases, errors were actually greater in the fovea than the periphery.
+ This counterintuitive relied partly on accurate computation of data cost
+ in the periphery.
+ In Figure XX, the data cost in the periphery was calculated once per pixel
+ at the peripheral scale (half the resolution of the fovea) by subsampling.
+ Surprisingly superior results were obtained by calculating the data cost
+ at each pixel, and summing the results across groups of 2x2 pixels.
+ 
+\end_layout
+
+\begin_layout Standard
+This result also relied on pyramidal upsampling [TODO: ref] of the peripheral
+ disparity estimate.
+ [TODO: does it disappear without?] Because pyramidal upsampling appeared
+ to reduce errors (this outcome was robust across a number of variations
+ we tested) we approximated it in the fovea by applying a gaussian filter
+ to the foveal disparity estimate.
+ 
+\end_layout
+
+\begin_layout Standard
+Figure XX shows another example of runtime and performance vs.
+ foveal area.
+ In this case data cost was calculated at each pixel in the periphery, greatly
+ reducing the performance difference between periphery and fovea, and thus
+ allowing us to omit two scales in the periphery rather than one.
+ 
 \end_layout
 
 \begin_layout Section
@@ -1809,46 +1826,59 @@ Discussion
 \end_layout
 
 \begin_layout Standard
-[TODO: summarize main results]
-\end_layout
-
-\begin_layout Standard
-[TODO: discuss additional computation and memory needed vs.
- BP computation]
-\end_layout
-
-\begin_layout Standard
-[TODO: emphasize that this would probably work with other stereo methods
- too, maybe even local ones at low/high resolution on low-end hardware (although
- would the rest of the system dominate runtime?)]
-\end_layout
-
-\begin_layout Standard
-Our system focuses resources on different parts of the scene by moving an
- analysis window.
- An alternative approach is to move the cameras (refs).
- This approach might be particularly useful with yoked foveal and peripheral
- cameras that have different fields of view (the foveal one having a narrower
- field of view and finer detail).
- However, this approach would involve further cost and complexity, inlcuding
- four actuators to move each camera assembly in two degrees of freedom.
- Actuation at the speeds required to move the fovea frequently is not straightfo
-rward.
- In human saccades, rotational acceleration can exceed 
-\begin_inset Formula $20,000{}^{\circ}/s^{2}$
-\end_inset
-
+This system has has two main components.
+ First, we used simple visual features to focus resources on task-relevant
+ parts of a frame.
+ Specifically, we weighted each pixel in a disparity map according to how
+ much it exceeded it's time-averaged disparity, emphasizing atypically close
+ surfaces that often corresponded to navigation obstacles.
+ This approach requires less computation than a more complete saliency map
+ [TODO: ref], while ignoring task-irrelevant features that contribute to
+ saliency.
+ Importantly, it would be straightforward to switch between many such weighting
+ schemes, or to mix them, as task requirements change.
+ For example, in a grasping task, pixels might be weighted according to
+ a fast filter that finds handle-like shapes [TODO: ref Platt], which are
+ likely to correspond to grasp affordances.
+ Compared to saliency, these kinds of weightings are more in keeping with
+ typical human eye movements, and are less intensive to calculate.
+ Second, we adapted a multiscale loopy belief propagation algorithm to calculate
+ the finest scales only in the most task-relevant foveal regions.
  
-\begin_inset CommandInset citation
-LatexCommand cite
-key "Abrams1989"
+\end_layout
 
-\end_inset
-
-.
- A recent system that achieved appropriate speeds (ref Villgrattner) used
- actuators that cost thousands of dollars each.
+\begin_layout Standard
+Together, these methods allowed us to esimtate the most task-relevant surfaces
+ relatively accurately, while avoiding the computational cost of accurate
+ estimation across the whole frame.
  
+\end_layout
+
+\begin_layout Subsection
+Numbers of Sub-Foveas
+\end_layout
+
+\begin_layout Standard
+[TODO: note that it is a limitation of primate gaze that only one fovea
+ of a fixed size is available but that in thi study large numbers of sub-foveas
+ were often not needed.
+ Typically two sub-foveas were optimal.
+ It would be interesting to estimate the cost associated with a single-fovea
+ constraint, and also with the human limit of a few foveations per second.
+ However this is not closely related to the current project and this project
+ is not general enough to say anything about the optimality of the primate
+ system (e.g.
+ omitting search, social interactions, grasping, etc.]
+\end_layout
+
+\begin_layout Subsection
+Benefits of Pyramidal Upsampling
+\end_layout
+
+\begin_layout Standard
+[TODO: come back to this in the discussion: upsampling of messages in multiscale
+ BP isn't pyramidal, and maybe can't be due to expense (4*128 times as many
+ convolutions)] 
 \end_layout
 
 \begin_layout Subsection
@@ -1916,14 +1946,6 @@ pixels.
  pixels could process a frame in a few steps, potentially yielding very
  high framerates with modest hardware.
  
-\end_layout
-
-\begin_layout Subsection
-Conclusion
-\end_layout
-
-\begin_layout Standard
-TODO
 \end_layout
 
 \begin_layout Section*
