@@ -24,8 +24,8 @@ def get_position_weights(shape):
 
     return np.outer(vweight, hweight)
 
-def get_importance(position_weights, average_disp, disp):
-    above_average = np.maximum(0, disp.astype(float) - average_disp.astype(float))
+def get_importance(position_weights, average_disp, disp, intercept=1):
+    above_average = np.maximum(0, disp.astype(float) - average_disp.astype(float) - intercept)
     return above_average * position_weights
 
 
