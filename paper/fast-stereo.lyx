@@ -250,11 +250,11 @@ key "Kowler2011,Hayhoe2005,Schutz2011"
  and robotics, are reviewed by 
 \begin_inset CommandInset citation
 LatexCommand cite
-key "Borji2013,Frintrop2010,Kimura2013"
+key "Borji2013,Frintrop2010,Kimura2013,Tsotsos2011"
 
 \end_inset
 
-[TODO: also Tsotsos (2011)].
+.
  As discussed in these reviews, human eye movements are occasionally directed
  to salient visual features (such as the onset of motion) but in most situations
  are overwhelmingly determined by task demands.
@@ -1610,7 +1610,7 @@ status open
 \align center
 \begin_inset Graphics
 	filename figures/foveation-sequence-tight.png
-	scale 60
+	scale 50
 
 \end_inset
 
@@ -1622,7 +1622,8 @@ status open
 
 \begin_layout Plain Layout
 Example foveation sequence.
- [TODO: are there missing frames? seems like a large gap between last two]
+ The fovea boundary is shown as a white square, and the frames are ordered
+ from top to bottom.
 \end_layout
 
 \end_inset
@@ -1879,8 +1880,14 @@ ant regions of the scene.
  between it's disparity and it's time-averaged disparity, emphasizing pixels
  that are highly relevant for obstacle avoidance.
  This approach requires less computation than a more sophisticated saliency
- map [TODO: ref], and disregards task-irrelevant features that contribute
- to saliency.
+ map 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Itti2000"
+
+\end_inset
+
+, and disregards task-irrelevant features that contribute to saliency.
  Importantly, it would be straightforward to switch between many such weighting
  schemes, or to mix them continuously, according to task and goal changes.
  For example, in a grasping task, large weights might be assigned to areas
@@ -1991,18 +1998,6 @@ Future Work
 \end_layout
 
 \begin_layout Standard
-Our general approach is suitable for navigation in mobile robots with limited
- processing power.
- We are intersted in applying it more specifically to autonomous navigation
- among pedestrians.
- This may lead to refinement of the pixel weighting.
- For example the weights might be more directly tied to decisions that the
- robot must make, e.g.
- whether a narrow gap is too narrow to navigate.
- 
-\end_layout
-
-\begin_layout Standard
 Another potential direction for future work would be to adapt the method
  to parallel hardware such as a GPU or FPGA.
  The multiple-resolution version of our approach (figure 
@@ -2049,6 +2044,18 @@ pixels.
 
  pixels could process such a frame in a few steps, potentially yielding
  high framerates with modest hardware.
+ 
+\end_layout
+
+\begin_layout Standard
+Our general approach is suitable for navigation in mobile robots with limited
+ processing power.
+ We are intersted in applying it more specifically to autonomous robot navigatio
+n among pedestrians.
+ This may allow us to refine the pixel weighting.
+ For example, the weights might be more directly tied to decisions the robot
+ must make, e.g.
+ whether a narrow gap is too narrow to navigate.
  
 \end_layout
 
