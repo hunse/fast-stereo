@@ -1345,7 +1345,7 @@ key "Bergstra2013"
  Hyperopt attempts to remove the irreproducible ``art'' of hand-tuning hyperpara
 meters, instead using an automated method for searching hyperparameter space
  to find optimal (or near-optimal) values.
- [TODO: clean this up.] 
+ [TODO: fill in parameters.] 
 \end_layout
 
 \begin_layout Standard
@@ -1518,9 +1518,9 @@ reference "fig:fovea-examples"
  shows two disparity estimates from a single frame, with the fovea in different
  places (the centres are marked with white + signs).
  These examples were processed with multiple levels of resolution, with
- a very small high-resolution region in the centre and multiple levels of
- decreasing resolution with greater distance from the centre, analogous
- to the human eye and visual cortex.
+ a small high-resolution region in the centre and multiple levels of decreasing
+ resolution with greater distance from the centre, analogous to the human
+ eye and visual cortex.
  The total runtime of BP in these examples is only a few times as great
  as BP at the lowest resolution.
  In the top frame, the fovea clearly resolves the cyclist, while in the
@@ -1583,8 +1583,14 @@ name "fig:fovea-examples"
 \end_layout
 
 \begin_layout Standard
-Figure XX shows a sequence of foveations, from a video of driving between
- parked cars.
+Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:foveation-sequence"
+
+\end_inset
+
+ shows a sequence of foveations while driving between parked cars.
  The sequence is from top to bottom.
  In this example a single fovea is used (i.e.
  without multiple sub-foveas).
@@ -1616,15 +1622,18 @@ status open
 
 \begin_layout Plain Layout
 Example foveation sequence.
- [TODO: missing frames?]
+ [TODO: are there missing frames? seems like a large gap between last two]
 \end_layout
 
 \end_inset
 
 
-\end_layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:foveation-sequence"
 
-\begin_layout Plain Layout
+\end_inset
+
 
 \end_layout
 
@@ -1634,16 +1643,22 @@ Example foveation sequence.
 \end_layout
 
 \begin_layout Standard
-Figure XX shows examples of sub-fovea placement, overlaid with weighting
- functions.
+Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:numbers-of-subfoveas"
+
+\end_inset
+
+ shows examples of sub-fovea placement, overlaid with weighting functions.
  In the top image the fovea has been broken into 30 sub-foveas that are
  placed individually.
  A greater number of smaller foveas can cover irregular shapes more closely.
  However, because our greedy method of sub-fovea placement is not globally
  optimal, more sub-foveas are not guaranteed to cover a larger cost.
  In this example, numbers of sub-foveas from 1-30 were compared (with the
- same total foveal pixels in each case), and two sub-foveas (bottom image)
- actually provided the best coverage.
+ same total foveal pixels in each case), and two sub-foveas provided the
+ best coverage (bottom image).
  
 \end_layout
 
@@ -1676,6 +1691,8 @@ g weight image
 
 .
  In the weight image, darker blue corresponds to low weight.
+ In this example two sub-foveas provided the best coverage of weighted pixels
+ of any number between 1 and 30.
  
 \end_layout
 
@@ -1685,6 +1702,12 @@ g weight image
 \end_layout
 
 \begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:numbers-of-subfoveas"
+
+\end_inset
+
 
 \end_layout
 
@@ -1703,14 +1726,21 @@ The time taken by our greedy method of sub-fovea placement is roughly linear
 \begin_inset Formula $\{1,2,..n\}$
 \end_inset
 
- sub-foveas is supralinear.
+ sub-foveas is quadratic.
  Although checking more possibilities will generally lead to better performance,
  it only makes sense to check possibilities that are relatively likely.
- Figure XX shows a histogram of the numbers of sub-foveas with the best
- weight coverage over a set of example frames, up to a maximum of 30.
+ Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:num-subfoveas-histogram"
+
+\end_inset
+
+ shows a histogram of the numbers of sub-foveas with the best weight coverage
+ over a set of example frames, up to a maximum of 30.
  Very often, two foveas were best.
  In further experiments we used the best of 1-5 sub-foveas.
- 
+ [TODO: repeat with more frames, various fovea areas]
 \end_layout
 
 \begin_layout Standard
@@ -1734,7 +1764,16 @@ status open
 \begin_inset Caption Standard
 
 \begin_layout Plain Layout
-xx
+Frequency with which different numbers of foveas covered the greatest integrated
+ weight in weight images 
+\begin_inset Formula $w=w^{s}w^{d}$
+\end_inset
+
+.
+ This histogram is based on [TODO: image set] with [TODO: total pixels].
+ Similar results were obtained with both greater and smaller total foveal
+ areas.
+ [TODO: test this] 
 \end_layout
 
 \end_inset
@@ -1743,6 +1782,12 @@ xx
 \end_layout
 
 \begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:num-subfoveas-histogram"
+
+\end_inset
+
 
 \end_layout
 
@@ -1762,11 +1807,12 @@ Accuracy vs.
 \end_layout
 
 \begin_layout Standard
-We tested the dependence of both runtime and accuracy on total fovea area.
+We tested how both runtime and accuracy depended on the total foveal area.
  In general, our expectations were that runtime would increase almost linearly
- with the foveal area, and that accuracy would improve with foveal area.
- With zero foveal area, speed and accuracy should be nearly equal to that
- of full BP with down-sampled images.
+ with the foveal area, and that accuracy would improve with increasing foveal
+ area.
+ For example, with zero foveal area, speed and accuracy should be nearly
+ equal to that of full BP with down-sampled images.
  On the other hand, setting the fovea area equal to the image area should
  result in speed and accuracy equal to that of full multi-scale BP.
  We further anticipated that weighted error would drop sharply with increasing
@@ -1776,48 +1822,48 @@ We tested the dependence of both runtime and accuracy on total fovea area.
 \end_layout
 
 \begin_layout Standard
-Figure XX shows an example of results that are in keeping with these expectation
-s.
- The horizontal axis corresponds to the total foveal area as a fraction
- of image area.
- Then the fovea is kept at centre of the image, weighted error drops nearly
- linearly as a function of foveal area.
- As expected, the initial drop is steeper when a single fovea is aligned
- with high-weight regions, and steeper still when several sub-foveas are
+Figure [TODO: make this figure] shows an example of results that are in
+ keeping with these expectations.
+ The horizontal axis is the total foveal area as a fraction of image area.
+ If we held the fovea at the centre of the image (XX line), weighted error
+ dropped roughly linearly as a function of foveal area.
+ In contrast, it dropped more steeply when a single fovea was aligned with
+ high-weight regions, and more steeply still when several sub-foveas were
  allowed.
  
 \end_layout
 
 \begin_layout Standard
-We found however that these results were sensitive to details such as the
- way in which we calculated data cost and upsampled coarse BP results in
+We found however that these results were sensitive to the way we calculated
+ the data cost, and the way we upsampled coarse BP results in the periphery.
+ In some configurations, errors were actually greater in the fovea than
  the periphery.
- In some cases, errors were actually greater in the fovea than the periphery.
- This counterintuitive relied partly on accurate computation of data cost
- in the periphery.
  In Figure XX, the data cost in the periphery was calculated once per pixel
- at the peripheral scale (half the resolution of the fovea) by subsampling.
+ downsampled pixel (i.e.
+ half the resolution of the fovea).
  Surprisingly superior results were obtained by calculating the data cost
- at each pixel, and summing the results across groups of 2x2 pixels.
+ at each pixel (i.e.
+ same resolution as the fovea), and downsampling by summing the results
+ across groups of 2x2 pixels.
  
 \end_layout
 
 \begin_layout Standard
-This result also relied on pyramidal upsampling [TODO: ref] of the peripheral
+This counterintuitive outcome also relied on pyramidal upsampling [TODO:
+ ref] of the peripheral disparity estimate.
+ [TODO: check that is disappears without] Since pyramidal upsampling appeared
+ to reduce errors (robustly across a number of variations we tested), we
+ approximated it in the fovea by applying a gaussian filter to the foveal
  disparity estimate.
- [TODO: does it disappear without?] Because pyramidal upsampling appeared
- to reduce errors (this outcome was robust across a number of variations
- we tested) we approximated it in the fovea by applying a gaussian filter
- to the foveal disparity estimate.
  
 \end_layout
 
 \begin_layout Standard
 Figure XX shows another example of runtime and performance vs.
  foveal area.
- In this case data cost was calculated at each pixel in the periphery, greatly
- reducing the performance difference between periphery and fovea, and thus
- allowing us to omit two scales in the periphery rather than one.
+ In this case, data cost was calculated at each pixel in the periphery,
+ greatly reducing the performance difference between periphery and fovea.
+ This allowed us to omit two scales in the periphery rather than one.
  
 \end_layout
 
@@ -1826,24 +1872,36 @@ Discussion
 \end_layout
 
 \begin_layout Standard
-This system has has two main components.
- First, we used simple visual features to focus resources on task-relevant
- parts of a frame.
- Specifically, we weighted each pixel in a disparity map according to how
- much it exceeded it's time-averaged disparity, emphasizing atypically close
- surfaces that often corresponded to navigation obstacles.
- This approach requires less computation than a more complete saliency map
- [TODO: ref], while ignoring task-irrelevant features that contribute to
- saliency.
+Our system has has two main components.
+ First, we used simple visual features to focus resources on the most task-relev
+ant regions of the scene.
+ Specifically, we weighted each pixel according to the rectified difference
+ between it's disparity and it's time-averaged disparity, emphasizing pixels
+ that are highly relevant for obstacle avoidance.
+ This approach requires less computation than a more sophisticated saliency
+ map [TODO: ref], and disregards task-irrelevant features that contribute
+ to saliency.
  Importantly, it would be straightforward to switch between many such weighting
- schemes, or to mix them, as task requirements change.
- For example, in a grasping task, pixels might be weighted according to
- a fast filter that finds handle-like shapes [TODO: ref Platt], which are
- likely to correspond to grasp affordances.
- Compared to saliency, these kinds of weightings are more in keeping with
- typical human eye movements, and are less intensive to calculate.
- Second, we adapted a multiscale loopy belief propagation algorithm to calculate
- the finest scales only in the most task-relevant foveal regions.
+ schemes, or to mix them continuously, according to task and goal changes.
+ For example, in a grasping task, large weights might be assigned to areas
+ that appear to have handle-like shapes based on rapid preliminary processing
+ 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "TenPas2014"
+
+\end_inset
+
+.
+ This task-oriented approach involves less computation than saliency, and
+ it has more in common with human eye movements.
+ 
+\end_layout
+
+\begin_layout Standard
+Second, we adapted a multiscale loopy belief propagation algorithm so that
+ the finest scales are calculated only in the most task-relevant foveal
+ regions.
  
 \end_layout
 
@@ -1855,20 +1913,41 @@ Together, these methods allowed us to esimtate the most task-relevant surfaces
 \end_layout
 
 \begin_layout Subsection
+Relationship with Other Work
+\end_layout
+
+\begin_layout Standard
+[TODO: Jeff]
+\end_layout
+
+\begin_layout Subsection
 Numbers of Sub-Foveas
 \end_layout
 
 \begin_layout Standard
-[TODO: note that it is a limitation of primate gaze that only one fovea
- of a fixed size is available but that in thi study large numbers of sub-foveas
- were often not needed.
- Typically two sub-foveas were optimal.
- It would be interesting to estimate the cost associated with a single-fovea
- constraint, and also with the human limit of a few foveations per second.
- However this is not closely related to the current project and this project
- is not general enough to say anything about the optimality of the primate
- system (e.g.
- omitting search, social interactions, grasping, etc.]
+We found that two sub-foveas most often covered heavily-weighted areas more
+ effectively than any other number up to 30.
+ This outcome is a consequence of our greedy algorithm for sub-fovea placement.
+ It is also related to the particular statistics of the KITTI data, and
+ to our cost function.
+ Nonetheless, it is interesting that larger numbers of sub-foveas (which
+ are better able to cover complex shapes) were not typically much better
+ than two.
+ 
+\end_layout
+
+\begin_layout Standard
+It is also interesting that a single monolithic fovea was rarely optimal.
+ The fact that the primate visual system has one fovea per eye (and that
+ the eyes point to the same place) could be seen as a limitation, in that
+ multiple pairs of smaller eyes could distribute processing more flexibly.
+ In this context it would be interesting to estimate the cost of the single-fove
+a constraint in various contexts.
+ Relatedly, humans usually perform a small number of foveations per second,
+ with movement times in the tens of milliseconds, whereas our method can
+ move the fovea at the frame rate.
+ Of course, these issues are outside the current scope.
+ 
 \end_layout
 
 \begin_layout Subsection
@@ -1876,9 +1955,35 @@ Benefits of Pyramidal Upsampling
 \end_layout
 
 \begin_layout Standard
-[TODO: come back to this in the discussion: upsampling of messages in multiscale
- BP isn't pyramidal, and maybe can't be due to expense (4*128 times as many
- convolutions)] 
+In the periphery (i.e.
+ outside the fovea), we processed images at lower resolution, and then upsampled
+ the resulting depth map to the full resolution.
+ We found that pyramidal upsampling greatly improved performance.
+ In fact, it sometimes improved performance more than running belief propagation
+ at the finest scale.
+\end_layout
+
+\begin_layout Standard
+Notably, information is passed between scales in the multiscale BP algorithm
+ 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Felzenszwalb2006"
+
+\end_inset
+
+ by non-pyramial upsampling of the messages.
+ Messages related to a pixel at one scale are simply replicated across the
+ corresponding 2x2-pixel area at the next scale.
+ Perhaps pyramidal upsampling of the messages would improve BP performance.
+ However, this would be much more computationally intensive.
+ There are four times the number of labels (128 in our case) as many messages
+ as pixels, and usually about five scales, so the convolution step of pyramidal
+ upsampling would be needed hundreds or thousands of times per frame.
+ One might expect that belief propagation from this starting point would
+ compensate for poor upsampling, but we had similar results even with ten
+ or more iterations at each scale.
+ 
 \end_layout
 
 \begin_layout Subsection
@@ -1886,13 +1991,12 @@ Future Work
 \end_layout
 
 \begin_layout Standard
-This approach is suited to navigation in mobile robots with limited processing
- power.
- We are specifically intersted in adapting this system for a panoramic catadoptr
-ic stereo sensor that is in development, and testing it in navigation among
- pedestrians.
- This may allow further fine-tuning of the importance weights.
- For example the weights could be more directly tied to decisions that the
+Our general approach is suitable for navigation in mobile robots with limited
+ processing power.
+ We are intersted in applying it more specifically to autonomous navigation
+ among pedestrians.
+ This may lead to refinement of the pixel weighting.
+ For example the weights might be more directly tied to decisions that the
  robot must make, e.g.
  whether a narrow gap is too narrow to navigate.
  
@@ -1943,7 +2047,7 @@ pixels.
 \begin_inset Formula $n$
 \end_inset
 
- pixels could process a frame in a few steps, potentially yielding very
+ pixels could process such a frame in a few steps, potentially yielding
  high framerates with modest hardware.
  
 \end_layout
