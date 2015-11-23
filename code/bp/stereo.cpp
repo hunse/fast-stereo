@@ -474,7 +474,6 @@ void comp_data_down_fovea(
     }
     // printElapsedMilliseconds(t);
 
-    
     // --- fovea data costs
     for (int k = 0; k < fovea_corners.rows; k++) {
         const int fheight = fovea_shapes.at<int>(k, 0);
@@ -490,7 +489,7 @@ void comp_data_down_fovea(
         assert(fheight % 2 == 0);
 
         datafs[k] = new volume<float>(fwidth, fheight, values);
-
+        
         volume<float> &dataf_ = *datafs[k];
         const int fx1 = fx + fwidth;
         const int fy1 = fy + fheight;
@@ -543,7 +542,7 @@ void comp_data_down_fovea(
             }
         }
     }
-
+    
 #if 1
     // use fovea costs to make fovea areas fine
     for (int k = 0; k < fovea_corners.rows; k++) {
@@ -552,7 +551,7 @@ void comp_data_down_fovea(
         const int fy = fovea_corners.at<int>(k, 0);
         const int fx = fovea_corners.at<int>(k, 1);
         volume<float> &dataf_ = *datafs[k];
-
+        
         for (int y = 0; y < fheight; y += fshift) {
             for (int x = 0; x < fwidth; x += fshift) {
                 for (int value = 0; value < values; value++) {
@@ -562,13 +561,14 @@ void comp_data_down_fovea(
                         sum += dataf_(
                             std::min(x+xx, fwidth-1), std::min(y+yy, fheight-1), value);
 
-                    datac_((fx + x + fshift/2)/fshift, (fy + y + fshift/2)/fshift, value) = sum;
+                    datac_((fx + x)/fshift, (fy + y)/fshift, value) = sum;
                 }
             }
         }
     }
 #endif
   }
+  
 }
 
 inline int ceil_divide(int x, int y) {
@@ -606,6 +606,8 @@ cv::Mat stereo_ms_fovea(
     assert(fovea_corners.rows == fovea_shapes.rows);
     assert(fovea_corners.rows <= 5);  // not too many foveas
     assert(seed.empty());  // seed needs to be tested again
+    
+//     std::cout << "a";
 
     // create coarse and fine data volumes
     volume<float> *datac;
@@ -617,14 +619,20 @@ cv::Mat stereo_ms_fovea(
         data_weight, data_max, data_exp, smooth, fine_periphery);
     // printElapsedMilliseconds(start);
 
+//     std::cout << "b";
+
     if (!seed.empty()) {
         cv::Mat seedd((seed.rows+1)/2, (seed.cols+1)/2, CV_8U, cv::Scalar(0));
         cv::pyrDown(seed, seedd);
         add_seed_cost(*datac, seedd, seed_weight*2);
     }
 
+//     std::cout << "c";
+    
     bp_ms_fovea(datac, datafs, fovea_corners, iters, levels, fovea_levels,
                 disc_max, data_exp, min_level);
+
+//     std::cout << "d";
 
     // --- scale up coarse and add in foveas
     assert(datac->depth() == values);
@@ -634,6 +642,7 @@ cv::Mat stereo_ms_fovea(
         max_value(*datac), fovea_levels - min_level, cv::Size(out_width, out_height));
     delete datac;
 
+//     std::cout << "e";
     
     // --- copy fovea results onto image
     for (int k = 0; k < fovea_corners.rows; k++) {
@@ -655,6 +664,8 @@ cv::Mat stereo_ms_fovea(
         }
     }
     delete [] datafs;
+    
+//     std::cout << "g" << std::endl;
     
     // --- upsample again by min_level
     return upsample(out, min_level, cv::Size(img1.cols, img1.rows));
