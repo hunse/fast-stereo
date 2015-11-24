@@ -12,7 +12,7 @@ plt.ion()
 
 import cv2
 
-from bp_wrapper import coarse_bp
+from bp_wrapper import coarse_bp, upsample
 from data import KittiMultiViewSource
 from filter import cost_on_points
 
@@ -103,7 +103,7 @@ for index in range(30):
         index_costs.append(cost)
 
         # rescale and compute cost on full disparity
-        disp = cv2.resize(disp, frame_shape[::-1])
+        disp = upsample(disp, down_factor, frame_shape)
 
         edge = int(round(2.5**down_factor))
         error_points = errors_on_full_points(disp, true_points, edge=edge)
