@@ -1927,6 +1927,86 @@ Relationship with Other Work
 [TODO: Jeff]
 \end_layout
 
+\begin_layout Standard
+Many stereo vision systems have been developed and implemented.
+ For example, a stereo system was used to observe objects in a driving scenario
+ 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Bertozzi1998"
+
+\end_inset
+
+.
+ The left and right road images were spatially rectified and compared; mismatche
+s between the images indicated an object.
+ However, these methods perform depth estimation on the entire image, and
+ do not use the strategy of foveation to improve accuracy for a fixed computatio
+nal budget.
+\end_layout
+
+\begin_layout Standard
+A number of camera systems have been developed for stereo-vision applications.
+ For example, 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Kuniyoshi1996"
+
+\end_inset
+
+ developed a two-camera system with foveated lenses.
+ The lenses had a standard projection in the fovea, but a spherical projection
+ in the periphery.
+ The resulting mapping of the visual scene has some mathematical advantages.
+ A detailed design for an active-vision system with two cameras was presented
+ in 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Samson2006"
+
+\end_inset
+
+.
+ These ``active vision'' systems focus on the design of the camera systems
+ themselves, and not on the depth-estimation aspect of vision.
+\end_layout
+
+\begin_layout Standard
+One foveation method was developed as an efficient alternative to using
+ dense stereo processing 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Klarquist1998"
+
+\end_inset
+
+.
+ It uses two vergent cameras, with resolution that drops off in steps as
+ you move away from the image centre (from fovea to periphery).
+ It constructs a depth map (composed of an array of planar patches) from
+ multiple fixations.
+ New peripheral patches overwrite older ones, and foveal patches overwrite
+ peripheral patches.
+ To choose the next fixation point, a probabilistic map is produced using
+ (possibly multiple) criteria, and the next fixation point is randomly chosen
+ from that distribution.
+\end_layout
+
+\begin_layout Standard
+Another depth estimation system used variable resolution cameras 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Bernardino2002"
+
+\end_inset
+
+.
+ They developed a Baysean-based stereo depth method for cameras that have
+ log-polar resolution profiles.
+ However, the location of their fovea is fixed and not chosen to minimize
+ error or computational load.
+\end_layout
+
 \begin_layout Subsection
 Numbers of Sub-Foveas
 \end_layout
