@@ -59,15 +59,18 @@ class KittiMultiViewSource:
             result = []
 
             for i in range(21):
-                frame = load_pair(self.index, self.test, frame=i, multiview=True)
+                try:
+                    frame = load_pair(self.index, self.test, frame=i, multiview=True)
+    
+                    sys.stdout.write('finding ground truth for frame ' + str(i) + ' ')
+                    sys.stdout.flush()
+                    start_time = time.time()
+                    gt_frame = calc_ground_truth(frame, n_disp, down_factor=down_factor, iters=iters)
+                    print(str(time.time()-start_time) + 's')
+                    result.append(gt_frame)
+                except Exception, e: 
+                    print(e)
 
-                sys.stdout.write('finding ground truth for frame ' + str(i) + ' ')
-                sys.stdout.flush()
-                start_time = time.time()
-                gt_frame = calc_ground_truth(frame, n_disp, down_factor=down_factor, iters=iters)
-                print(str(time.time()-start_time) + 's')
-
-                result.append(gt_frame)
 
             result = np.mean(result, axis=0)
 

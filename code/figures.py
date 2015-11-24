@@ -256,21 +256,31 @@ def foveation_sequence():
 
         edge = 5
 
-        plt.subplot(5,1,i/2)
-#         plt.subplot(5,2,i+1)
+        plt.subplot(5,1,i/2+1)
+#        plt.subplot(5,2,i+1)
         plt.imshow(trim(frame[0], values, edge), cmap = cm.Greys_r)
 #         remove_axes()
 
 #         plt.subplot(5,2,i+2)
 #         plt.imshow(trim(filter_disp, values, edge), vmin=0, vmax=full_values)
-        plt.scatter(fovea_corner[1]-values+fs/2, fovea_corner[0]-edge+fs/2, s=100, c='green', marker='+', linewidths=2)
-        plt.scatter(fovea_corner[1]-values, fovea_corner[0]-edge, s=9, c='green', marker='+', linewidths=3)
-        plt.scatter(fovea_corner[1]-values+fs, fovea_corner[0]-edge+fs, s=9, c='green', marker='+', linewidths=3)
-        plt.scatter(fovea_corner[1]-values, fovea_corner[0]-edge+fs, s=9, c='green', marker='+', linewidths=3)
-        plt.scatter(fovea_corner[1]-values+fs, fovea_corner[0]-edge, s=9, c='green', marker='+', linewidths=3)
+ 
+        fovea_corner = fovea_corner[0]
+#        plot_edges(fovea_ij, (fs, fs))        
+        fi, fj = fovea_corner
+        fm = fs
+        fn = fs
+        plt.plot([fj, fj+fn, fj+fn, fj, fj], [fi, fi, fi+fm, fi+fm, fi], 'white')
+        
+#        plt.scatter(fovea_corner[1]-values+fs/2, fovea_corner[0]-edge+fs/2, s=100, c='green', marker='+', linewidths=2)
+#        plt.scatter(fovea_corner[1]-values, fovea_corner[0]-edge, s=9, c='green', marker='+', linewidths=3)
+#        plt.scatter(fovea_corner[1]-values+fs, fovea_corner[0]-edge+fs, s=9, c='green', marker='+', linewidths=3)
+#        plt.scatter(fovea_corner[1]-values, fovea_corner[0]-edge+fs, s=9, c='green', marker='+', linewidths=3)
+#        plt.scatter(fovea_corner[1]-values+fs, fovea_corner[0]-edge, s=9, c='green', marker='+', linewidths=3)
+        
         remove_axes()
+        
+    plt.tight_layout(-1)
     plt.show()
-
 
 
 def _evaluate_frame(source, frame_num, frame_shape, down_factor, frame_down_factor, iters, average_disparity, params):
@@ -327,5 +337,5 @@ if __name__ == '__main__':
 #     seed_outside_fovea()
 #     importance()
 #     rationale()
-#    foveation_sequence()
-    disparity_minus_mean()
+    foveation_sequence()
+#    disparity_minus_mean()

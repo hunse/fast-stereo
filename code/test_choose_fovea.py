@@ -5,20 +5,20 @@ import time
 import cv2
 
 from filter import _choose_fovea, _choose_n_foveas, _choose_foveas, _fovea_part_shape
-from data import KittiSource
+from data import KittiSource, KittiMultiViewSource, calc_ground_truth
 from importance import get_average_disparity, UnusuallyClose
 from figures import remove_axes
 
 values=128
-source = KittiSource(51, 100, n_disp=values)
-average_disparity = get_average_disparity(source.ground_truth)
-uc = UnusuallyClose(average_disparity)
 
-frame_num = 2
+#source = KittiSource(51, 250, n_disp=values)
+#average_disparity = get_average_disparity(source.ground_truth)
+#print(average_disparity.shape)
+#uc = UnusuallyClose(average_disparity)
+
+#frame_num = 2
 #frame_num = 45
-cost = uc.get_importance(source.ground_truth[frame_num])
-
-fovea_shape = (200,200)
+#cost = uc.get_importance(source.ground_truth[frame_num])
 
 def plot_corners(fovea_ij, fovea_shape):
     fm, fn = fovea_shape
@@ -60,11 +60,24 @@ def plot_edges(fovea_ij, fovea_shape):
 #plt.tight_layout()
 #plt.show(block=True)
 
+area = 93*275
+fovea_area = 0.4 * area 
+height = np.floor(np.sqrt(fovea_area))
+width = np.floor(fovea_area / height)
+fovea_shape = (height, width)
+
+
+print(np.floor(np.sqrt(area)))
+
+n_frames = 194
 best_nums = []
-for frame_num in range(source.n_frames):
-#for frame_num in range(2):
-    print(frame_num)
-    cost = uc.get_importance(source.ground_truth[frame_num])
+for index in range(n_frames):
+    print(index)
+    source = KittiMultiViewSource(index)
+    average_disparity = source.get_average_disparity()
+    uc = UnusuallyClose(average_disparity)
+    gt = calc_ground_truth(source.frame_ten, 128, down_factor=2, iters=3)
+    cost = uc.get_importance(gt)
     foveas_ij, fovea_part_shape = _choose_foveas(cost, fovea_shape, values, 30)
     best_nums.append(len(foveas_ij))
 
