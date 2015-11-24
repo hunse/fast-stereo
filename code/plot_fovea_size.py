@@ -7,6 +7,7 @@ performance with a giant fovea.
 import time
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib
 
 from bp_wrapper import downsample, foveal_bp, points_image
 from filter_table import upsample_average_disp, eval_coarse, eval_fine
@@ -19,9 +20,10 @@ from filter import cost_on_points, expand_coarse
 # We'll want to run this with multiple foveas, also with central vs. optimal fovea
 
 # n_test_frames = 1
-# n_test_frames = 2
-# n_test_frames = 20
-n_test_frames = 120
+#n_test_frames = 2
+#n_test_frames = 20
+n_test_frames = 194
+
 full_values = 128
 
 
@@ -188,17 +190,18 @@ def test_foveal(frame_down_factor, fovea_fraction, fovea_n, **kwargs):
 frame_down_factor = 1
 # frame_down_factor = 2
 # fovea_levels = 1
-fovea_levels = 2
+fovea_levels = 3
 # fovea_levels = 3
 fine_periphery = 1
-# min_level = 0
-min_level = 1
+#min_level = 0
+min_level = 2
 # min_level = 2
 
 print("Running %d (frame_down_factor=%d, fovea_levels=%d, fine_periphery=%d, min_level=%d)" %
       (n_test_frames, frame_down_factor, fovea_levels, fine_periphery, min_level))
 
-fovea_fractions = np.linspace(0, 1, 6)
+fovea_fractions = np.linspace(0, 1, 3)
+#fovea_fractions = np.linspace(0, 1, 6)
 fovea_n = [1, 5]
 
 foveal_times = []
@@ -234,18 +237,35 @@ print(np.mean(foveal_weighted_cost, -1))
 # print(np.mean(fine_unweighted_cost))
 # print(np.mean(fine_weighted_cost))
 
-plt.figure()
-plt.subplot(211)
+import cPickle
+outfile = open('fovea-size.pkl', 'wb')
+cPickle.dump((fovea_fractions, foveal_times, foveal_unweighted_cost, foveal_weighted_cost), outfile)
+outfile.close()
+
+matplotlib.rcParams.update({'font.size': 14})
+
+fig = plt.figure()
+ax = plt.subplot(311)
 #plt.imshow(foveal_unweighted_cost);
 #plt.colorbar()
 plt.plot(fovea_fractions, foveal_unweighted_cost.mean(-1), '--')
-plt.legend(['centred'] + ['%d foveas' % i for i in fovea_n], loc='best')
-plt.title('unweighted')
+plt.legend(['centred'] + ['%d foveas' % i for i in fovea_n], loc='best', fontsize=14)
+plt.xticks([])
+plt.locator_params(axis='y', nbins=4)
+plt.ylabel('Unweighted error')
 
-plt.subplot(212)
+plt.subplot(312)
 plt.plot(fovea_fractions, foveal_weighted_cost.mean(-1), '-')
-plt.legend(['centred'] + ['%d foveas' % i for i in fovea_n], loc='best')
-plt.title('weighted')
+plt.legend(['centred'] + ['%d foveas' % i for i in fovea_n], loc='best', fontsize=14)
+plt.xticks([])
+plt.locator_params(axis='y', nbins=4)
+plt.ylabel('Weighted error')
+
+plt.subplot(313)
+plt.plot(fovea_fractions, foveal_times.mean(-1).mean(-1))
+plt.xlabel('Fovea size (fraction of image size)')
+plt.locator_params(axis='y', nbins=4)
+plt.ylabel('Run time per frame (s)')
+
+#plt.tight_layout(pad=1)
 plt.show(block=True)
-
-
