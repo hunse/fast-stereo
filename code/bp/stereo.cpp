@@ -253,6 +253,21 @@ cv::Mat max_value(volume<float>& data)
         }
     }
 
+    // fill edges
+    for (int y = 0; y < height-1; y++) {
+        uchar* outi = out.ptr<uchar>(y);
+        outi[0] = outi[1];
+        outi[width-1] = outi[width-2];
+    }
+    uchar* out0 = out.ptr<uchar>(0);
+    uchar* out1 = out.ptr<uchar>(1);
+    uchar* outn0 = out.ptr<uchar>(height-1);
+    uchar* outn1 = out.ptr<uchar>(height-2);
+    for (int x = 1; x < width-1; x++) {
+        out0[x] = out1[x];
+        outn0[x] = outn1[x];
+    }
+
     return out;
 }
 

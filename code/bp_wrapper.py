@@ -20,11 +20,11 @@ values_default = 128
 full_shape = (375, 1242)
 
 
-def laplacian(img, ksize=9, scale=0.5):
-    img = cv2.Laplacian(img, cv2.CV_32F, ksize=ksize)
-    img -= img.mean()
-    img *= 128 / (scale * img.std())
-    return np.round(128 + img).clip(0, 255).astype('uint8')
+# def laplacian(img, ksize=9, scale=0.5):
+#     img = cv2.Laplacian(img, cv2.CV_32F, ksize=ksize)
+#     img -= img.mean()
+#     img *= 128 / (scale * img.std())
+#     return np.round(128 + img).clip(0, 255).astype('uint8')
 
 
 def laplacians(img1, img2, ksize=9, scale=0.5):
@@ -83,6 +83,13 @@ def coarse_bp(frame, values=values_default, down_factor=0, iters=5,
         disp = cv2.GaussianBlur(disp.astype(np.float32), (9, 9), post_smooth)
         disp = np.round(disp).astype(np.uint8)
 
+    # # fill edges
+    # disp[0, :] = disp[1, :]
+    # disp[-1, :] = disp[-2, :]
+    # disp[:, 0] = disp[:, 1]
+    # disp[:, -1] = disp[:, -2]
+
+    disp = upsample(disp, down_factor, img1.shape)
     return disp
 
 
@@ -112,61 +119,25 @@ def foveal_bp(frame, fovea_corner, fovea_shape, seed=None,
     return disp
 
 
-def fine_bp(frame, values=values_default, levels=5, ksize=9, **params):
-    # params = dict(data_weight=0.07, data_max=100, disc_max=15)
+# def error_on_points(xyd, disp, values=values_default, kind='rms'):
+#     # clip left points with no possible disparity matches
+#     xyd = xyd[xyd[:, 0] >= values]
 
-    img1, img2 = frame
-    img1 = laplacian(img1, ksize=ksize)
-    img2 = laplacian(img2, ksize=ksize)
+#     x, y, d = xyd.T
 
-    disp = bp.stereo(img1, img2, values=values, levels=levels, **params)
-    return disp
+#     ratio = np.asarray(disp.shape) / np.asarray(full_shape, dtype=float)
+#     xr = (x * ratio[1]).astype(int)
+#     yr = (y * ratio[0]).astype(int)
+#     disps = disp[yr, xr]
 
-
-def fovea_bp(frame, fovea_ij, fovea_shape, seed, values=values_default, ksize=9, down_factor=0, iters=5, **params):
-    img1, img2 = frame
-
-    shape = np.asarray(fovea_shape)
-    ij0 = np.asarray(fovea_ij)
-    ij1 = ij0 + shape
-    assert ij0[1] >= values
-    assert all(ij1 <= np.array(img1.shape))
-
-    img1r = np.array(img1[ij0[0]:ij1[0], ij0[1]:ij1[1]], order='c')
-    img2r = np.array(img2[ij0[0]:ij1[0], ij0[1] - values:ij1[1]], order='c')
-
-    if down_factor > 0:
-        values = values / 2**down_factor
-        img1r = downsample(img1r, down_factor)
-        img2r = downsample(img2r, down_factor)
-
-    img1r = laplacian(img1r, ksize=ksize)
-    img2r = laplacian(img2r, ksize=ksize)
-
-    disp = bp.stereo_region(img1r, img2r, seed, iters=iters, **params)
-
-    return disp
-
-
-def error_on_points(xyd, disp, values=values_default, kind='rms'):
-    # clip left points with no possible disparity matches
-    xyd = xyd[xyd[:, 0] >= values]
-
-    x, y, d = xyd.T
-
-    ratio = np.asarray(disp.shape) / np.asarray(full_shape, dtype=float)
-    xr = (x * ratio[1]).astype(int)
-    yr = (y * ratio[0]).astype(int)
-    disps = disp[yr, xr]
-
-    if kind == 'rms':
-        return np.sqrt(((disps - d)**2).mean())
-    elif kind == 'abs':
-        return abs(disps - d).mean()
-    elif kind == 'close':
-        return np.sqrt((d * (disps - d)**2).mean())
-    else:
-        raise ValueError()
+#     if kind == 'rms':
+#         return np.sqrt(((disps - d)**2).mean())
+#     elif kind == 'abs':
+#         return abs(disps - d).mean()
+#     elif kind == 'close':
+#         return np.sqrt((d * (disps - d)**2).mean())
+#     else:
+#         raise ValueError()
 
 
 def points_image(xyd, shape, default=0, full_shape=full_shape):

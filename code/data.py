@@ -165,17 +165,23 @@ def get_ground_truth_dir(drive):
     return result
 
 def calc_ground_truth(frame, n_disp, down_factor=0, iters=50):
-    params = {'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425, 'data_max': 32.024780646200725, 'ksize': 1}
+    params = {'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
+              'data_max': 32.024780646200725, 'laplacian_ksize': 1}
     gt = coarse_bp(frame, down_factor=down_factor, iters=iters, values=n_disp, **params)
-    n_coarse_disp = n_disp / 2**down_factor
-    gt = gt[:,n_coarse_disp:]
+    # n_coarse_disp = n_disp / 2**down_factor
+    # gt = gt[:,n_coarse_disp:]
     return gt
 
+def compute_average_disps():
+    for frame in range(194):
+        source = KittiMultiViewSource(frame, n_frames=2)
+        try:
+            points = source.get_average_disparity()
+        except IOError:
+            print("Skipping frame %d" % frame)
 
-
-if __name__ == '__main__':
-    from bp_wrapper import points_image
-
+def test():
+    # from bp_wrapper import points_image
 
     source = KittiMultiViewSource(20, n_frames=2)
     points = source.get_ground_truth_points(occluded=False)
@@ -218,3 +224,7 @@ if __name__ == '__main__':
 #     ax_disp = plt.gca()
 #     plot_disp = ax_disp.imshow(disp, vmin=0, vmax=128/2**down_factor)
 #     plt.show(block=True)
+
+
+if __name__ == '__main__':
+    compute_average_disps()
