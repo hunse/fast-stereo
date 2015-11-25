@@ -163,18 +163,17 @@ def rationale():
     with increasing runtime via further iterations at a given downfactor, but
     possibly too-high cost of using lower downfactor.
     """
-    source = KittiSource(51, 25)
-#     source = KittiSource(51, 100)
 
-    # TODO: is this weighted cost?
+#    n_frames = 194
+    n_frames = 50
 
     frame_down_factor = 1
-    frame_shape = downsample(source.video[0][0], frame_down_factor).shape
+    
+    source = KittiMultiViewSource(0)
+    full_shape = source.frame_ten[0].shape
+    frame_shape = downsample(source.frame_ten[0], frame_down_factor).shape
 
-    average_disparity = downsample(
-        get_average_disparity(source.ground_truth), frame_down_factor)
-
-    params = {'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425, 'data_max': 32.024780646200725, 'ksize': 3}
+    params = {'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425, 'data_max': 32.024780646200725, 'laplacian_ksize': 3}
 
 #     iterations = [1, 2, 3]
     iterations = [1, 2, 3, 4, 5, 7, 10, 15]
@@ -184,22 +183,24 @@ def rationale():
     mean_fine_costs = []
 
     for j in range(len(iterations)):
+        print(str(iterations[j]) + ' iterations')
         coarse_times = []
         coarse_costs = []
         fine_times = []
         fine_costs = []
 
-        for i in range(source.n_frames):
-            print(i)
+        for i in range(n_frames):
+            print(' frame ' + str(i))
 
-            coarse_down_factor = 2
-            fine_down_factor = 1
+            source = KittiMultiViewSource(i)
+            true_points = source.get_ground_truth_points(occluded=False)
+
             frame_down_factor = 1
 
-            coarse_time, coarse_cost = _evaluate_frame(source, i, frame_shape,
-                    frame_down_factor+1, frame_down_factor, iterations[j], average_disparity, params)
-            fine_time, fine_cost = _evaluate_frame(source, i, frame_shape,
-                    frame_down_factor+0, frame_down_factor, iterations[j], average_disparity, params)
+            coarse_time, coarse_cost = _evaluate_frame(source.frame_ten, true_points, frame_shape,
+                    full_shape, frame_down_factor+1, frame_down_factor, iterations[j], params)
+            fine_time, fine_cost = _evaluate_frame(source.frame_ten, true_points, frame_shape,
+                    full_shape, frame_down_factor+0, frame_down_factor, iterations[j], params)
 
             coarse_times.append(coarse_time)
             coarse_costs.append(coarse_cost)
@@ -219,7 +220,7 @@ def rationale():
     plt.plot(mean_coarse_times, mean_coarse_costs, color='k', marker='s', markersize=12)
     plt.plot(mean_fine_times, mean_fine_costs, color='k', marker='o', markersize=12)
     plt.xlabel('Runtime (s)', fontsize=18)
-    plt.ylabel('Weighted RMS Disparity Error (pixels)', fontsize=18)
+    plt.ylabel('Mean absolute disparity error (pixels)', fontsize=18)
     plt.gca().tick_params(labelsize='18')
     plt.show()
 
@@ -283,19 +284,19 @@ def foveation_sequence():
     plt.show()
 
 
-def _evaluate_frame(source, frame_num, frame_shape, down_factor, frame_down_factor, iters, average_disparity, params):
+def _evaluate_frame(frame, true_points, frame_shape, full_shape, down_factor, frame_down_factor, iters, params):
     values = 128/2**frame_down_factor
     start_time = time.time()
-    coarse_disp = coarse_bp(source.video[frame_num], down_factor=down_factor,
+    coarse_disp = coarse_bp(frame, down_factor=down_factor,
                             iters=iters, values=128, **params)
     disp = expand_coarse(coarse_disp, down_factor - frame_down_factor)
     disp = disp[:frame_shape[0],:frame_shape[1]]
     elapsed_time = time.time() - start_time
 
-#     true_disp = downsample(source.ground_truth[frame_num], frame_down_factor)
-#     return elapsed_time, cost(disp[:,values:], true_disp, average_disparity)
-    true_points = source.true_points[frame_num]
-    return elapsed_time, cost_on_points(disp[:,values:], true_points)
+#    unweighted_cost.append(cost_on_points(coarse_disp[:, values:], true_points, full_shape=full_shape))
+
+#    true_points = source.true_points[frame_num]
+    return elapsed_time, cost_on_points(disp[:,values:], true_points, full_shape=full_shape)
 
 def disparity_minus_mean():
     down_factor = 2
@@ -336,6 +337,6 @@ if __name__ == '__main__':
 #     smudge_vs_interp()
 #     seed_outside_fovea()
 #     importance()
-#     rationale()
-    foveation_sequence()
+    rationale()
+#    foveation_sequence()
 #    disparity_minus_mean()
