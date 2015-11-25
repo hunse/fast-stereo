@@ -1788,11 +1788,6 @@ Accuracy vs.
 \end_layout
 
 \begin_layout Standard
-[TODO: see whether good peripheral performance disappears with non-pyramidal
- upsampling and downsampling]
-\end_layout
-
-\begin_layout Standard
 We tested how both runtime and accuracy depended on the total foveal area.
  In general, our expectations were that runtime would increase almost linearly
  with the foveal area, and that accuracy would improve with increasing foveal
@@ -1808,21 +1803,100 @@ We tested how both runtime and accuracy depended on the total foveal area.
 \end_layout
 
 \begin_layout Standard
-Figure [TODO: make this figure] shows an example of results that are in
- keeping with these expectations.
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figures/performance-fovlevels2-minlevel2-sat20-coarse-peripheral-data-cost.png
+	scale 50
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+An example of performance as a function of fovea size.
+ The fovea size (horizontal axis) is varied as a fraction of the total image
+ size, from 0 to 1.
+ The top panel shows unweighted mean-absolute-difference from LIDAR-based
+ ground-truth disparity, with error per pixel saturated at 20 pixels.
+ The blue line is with a single fovea centred on the image, i.e.
+ not moved to high-weight regions.
+ The green line shows the same error with a single mobile fovea, and the
+ red shows the same error with up to five mobile sub-foveas.
+ The centre panel is identical except that the error is weighted, with mean
+ weight normalized to one.
+ The weighted error dropped more sharply with increasing foveal area when
+ a single fovea was allowed to move, and more sharply still when up to five
+ sub-foveas were allowed.
+ The weighted error was higher overall than the weighted error, reflecting
+ the fact that our weighting scheme emphasizes more challenging regions.
+ The bottom panel shows how the run time increases with fovea size.
+ 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:performance-coarse-data-cost"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:performance-coarse-data-cost"
+
+\end_inset
+
+ shows an example of results that are in keeping with these expectations.
  The horizontal axis is the total foveal area as a fraction of image area.
- If we held the fovea at the centre of the image (XX line), weighted error
- dropped roughly linearly as a function of foveal area.
- In contrast, it dropped more steeply when a single fovea was aligned with
- high-weight regions, and more steeply still when several sub-foveas were
- allowed.
+ When we held the fovea at the centre of the image (blue line), error dropped
+ roughly linearly as a function of foveal area.
+ In contrast, weighted error (centre panel) dropped more steeply when a
+ single fovea was aligned with high-weight regions, and more steeply still
+ when several sub-foveas were allowed.
+ The run time with zero fovea consists of both calculation of the data cost,
+ and belief propagation at the coarser scale.
+ The time needed to calculate the peripheral data cost was reduced by calculatin
+g it only at the resolution of belief propagation in the periphery.
+ 
+\end_layout
+
+\begin_layout Standard
+Performance was generally poorer in high-weight regions (around nearby obstacles
+) than in the more smoothly-changing background, and performance in these
+ regions was also quite variable from frame to frame.
  
 \end_layout
 
 \begin_layout Standard
 The times given are for the total times per frame for calculation of the
- data cost, belief propagation, and inference on a [TODO: computer description].
- Additional time for fovea selection was on the order of 
+ data cost, belief propagation, and inference on a MacBook Pro with a 2.5GHz
+ Intel Core i7 processor.
+ Additional time for fovea selection was about 
 \begin_inset Formula $50\mu s$
 \end_inset
 
@@ -1831,37 +1905,61 @@ The times given are for the total times per frame for calculation of the
 \end_layout
 
 \begin_layout Standard
-We found however that these results were sensitive to the way we calculated
- the data cost, and the way we upsampled coarse BP results in the periphery.
- In some configurations, errors were actually greater in the fovea than
- the periphery.
- In Figure XX, the data cost in the periphery was calculated once per pixel
- downsampled pixel (i.e.
- half the resolution of the fovea).
+Although the above results are in keeping with expectations, we found that
+ the weighted errors were sensitive to the way we calculated the data cost.
  Surprisingly superior results were obtained by calculating the data cost
  at each pixel (i.e.
  same resolution as the fovea), and downsampling by summing the results
  across groups of 2x2 pixels.
+ In some cases, weighted error was actually lower when peripheral rather
+ than foveal processing was performed.
  
 \end_layout
 
 \begin_layout Standard
-This counterintuitive outcome also relied on pyramidal upsampling of the
- peripheral disparity estimate.
- [TODO: check that is disappears without] Since pyramidal upsampling appeared
- to reduce errors (robustly across a number of variations we tested), we
- approximated it in the fovea by applying a gaussian filter to the foveal
- disparity estimate.
- 
+This allowed us to improve both runtime and accuracy by omitting the finest
+ belief propagation scales everywhere.
+ Figure XX shows an example (with more expensive data cost computation)
+ in which the three finest scales of belief propagation were omitted in
+ the periphery, and the two finest were omitted in the fovea.
 \end_layout
 
 \begin_layout Standard
-Figure XX shows another example of runtime and performance vs.
- foveal area.
- In this case, data cost was calculated at each pixel in the periphery,
- greatly reducing the performance difference between periphery and fovea.
- This allowed us to omit two scales in the periphery rather than one.
- 
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figures/performance-fovlevels3-minlevel2-sat20.png
+	scale 50
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+TODO
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Section
