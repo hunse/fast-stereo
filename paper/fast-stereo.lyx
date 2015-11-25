@@ -875,8 +875,8 @@ status open
 \begin_layout Plain Layout
 General structure of our approach.
  The 2D boxes correspond to single-channel luminance and disparity images.
- The thicker box indicates the ~100 channel data cost over multiple disparities.
- [TODO: touch up]
+ The thicker boxes indicates multichannel images, including the data cost
+ over 128 disparities, and optional retention of one or more previous frames.
 \end_layout
 
 \end_inset
@@ -890,19 +890,51 @@ General structure of our approach.
 \end_layout
 
 \begin_layout Subsection
+Dataset
+\end_layout
+
+\begin_layout Standard
+The methods were tested on data from the 2012 KITTI Vision Benchmark Suite
+ 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Geiger2012"
+
+\end_inset
+
+.
+ This dataset includes high-resolution rectified stereo images (1242x375
+ pixels) taken from the roof of a car during city driving, at ten frames/s.
+ Rectified images and odometry are available for a number of long sequences.
+ Ground truth depth (but not odometry) is available for single frames within
+ a number of short 20-frame sequences.
+ Ground truth is from a LIDAR sensor.
+ The ground-truth points are fairly dense, because points were combined
+ from several sweeps of the sensor using a semi-manual registration process.
+ The scenes include static obstacles such as buildings and parked cars,
+ and moving obstacles such as cars, pedestrians, and people on bicycles.
+ 
+\end_layout
+
+\begin_layout Subsection
 Remapping Past Frames
 \end_layout
 
 \begin_layout Standard
 As mentioned in the Introduction, the fovea was placed in each frame so
  that it covered the part of the image that seemed to be the most important
- for the task, specifically the part in which a preliminary estimate of
- disparity most greatly exceeded the time-averaged disparity per pixel.
- If odometry is available, the preliminary estimate in frame 
+ in the context of obstacle avoidance.
+ Specifically, this was the part in which a preliminary estimate of disparity
+ most greatly exceeded the time-averaged disparity per pixel.
+ 
+\end_layout
+
+\begin_layout Standard
+If odometry is available, the preliminary estimate for frame 
 \begin_inset Formula $k$
 \end_inset
 
- can be obtained by mapping the estimate 
+ can be obtained by mapping the final estimate 
 \begin_inset Formula $d_{k-1}^{*}$
 \end_inset
 
@@ -930,15 +962,15 @@ As mentioned in the Introduction, the fovea was placed in each frame so
 
 \begin_layout Standard
 Due to changes in perspective, there is not a one-to-one map between pixels
- in the frame 
+ in frames 
 \begin_inset Formula $k-1$
 \end_inset
 
- and frame 
+ and 
 \begin_inset Formula $k$
 \end_inset
 
- disparity images, so remapped disparity images contain blank pixels.
+, so remapped disparity images contained blank pixels.
  We experimented with two ways of filling in the blank pixels.
  The first was linear interpolation, and the second was setting blank pixels
  to zero and taking the maximum over small neighbourhoods.
@@ -956,22 +988,14 @@ reference "fig:interp"
 \end_layout
 
 \begin_layout Standard
-Some pixels also corresponded to multiple previous disparities per frame
- rather than zero or one.
- For these pixels, the largest disparity was chosen, corresponding to the
- nearest surface.
- [TODO: is this true?]
-\end_layout
-
-\begin_layout Standard
 We also experimented with using remapped disparity estimates from previous
  frames to improve current-frame estimates.
  Specifically, we augmented the data cost to penalize changes over time.
  In some cases this method removed artefacts.
  However, we were unable to clearly evaluate whether this improved performance
- on average, because the KITTI dataset does not provide odometry and ground
- truth for the same image sequences.
- Therefore we simply note that this is another potential use for remapped
+ on average, because the KITTI dataset does not include odometry and ground-trut
+h disparity for the same image sequences.
+ Therefore we simply note that this is a potential additional use for remapped
  disparity.
  Relatedly, belief propagation can also be performed over time as well as
  image dimensions 
@@ -1018,9 +1042,9 @@ Comparison of interpolation methods for remapped data.
 
 , remapped into the current frame's perspective.
  Aside from the missing data (dark blue points) this is a fair approximation
- of the current disparity estimate, because in this frame nothing in the
- scene is moving except the cameras.
- The bottom right panel shows linear interpolation of the remapped data.
+ of the current disparity estimate (importantly, nothing in this scene is
+ moving except the cameras).
+ The bottom right panel shows bilinear interpolation of the remapped data.
  The bottom left panel is the maximum of the remapped image and copies of
  this image shifted one pixel vertically and one pixel both left and right.
  
@@ -1144,7 +1168,7 @@ key "Geiger2012"
 
 \end_inset
 
- in which a cyclist (a nearby obstacle) is strongly emphasized by this method.
+ in which a cyclist is strongly emphasized by this method.
  
 \end_layout
 
@@ -1267,37 +1291,9 @@ reference "fig:weighting-example"
  optimally, set the weight within it to zero, placed another single subfovea
  optimally, etc.
  We calculated the total remaining weight with different numbers of sub-foveas,
- and used the number with the lowest weight.
+ and used the number of sub-foveas with the lowest weight.
  These computations were all performed with images that were downsampled
  several times, so they were not computationally intensive.
- 
-\end_layout
-
-\begin_layout Subsection
-Dataset
-\end_layout
-
-\begin_layout Standard
-The methods were tested on data from the 2012 KITTI Vision Benchmark Suite
- 
-\begin_inset CommandInset citation
-LatexCommand cite
-key "Geiger2012"
-
-\end_inset
-
-.
- This dataset includes high-resolution rectified stereo images (1242x375
- pixels) taken from the roof of a car during city driving, at ten frames/s.
- Rectified images and odometry are available for a number of long sequences.
- Ground truth depth (but not odometry) is available for single frames within
- a number of short 20-frame sequences.
- Ground truth is from a LIDAR sensor.
- The ground-truth points are fairly dense, because the authors combined
- points from several sweeps of the sensor using a semi-manual registration
- process.
- The scenes include static obstacles such as buildings and parked cars,
- and moving obstacles such as cars, pedestrians, and people on bicycles.
  
 \end_layout
 
@@ -1708,7 +1704,7 @@ Sub-Fovea Selection
 
 \begin_layout Standard
 The time taken by our greedy method of sub-fovea placement is roughly linear
- in the number of sub-foveas, and comparing all of 
+ in the number of sub-foveas, and the time to compare all of 
 \begin_inset Formula $\{1,2,..n\}$
 \end_inset
 
@@ -1725,10 +1721,11 @@ reference "fig:num-subfoveas-histogram"
  shows a histogram of the numbers of sub-foveas with the best weight coverage
  over a set of example frames, up to a maximum of 30.
  The total foveal area was 20% of the image area.
- Two foveas were often best.
- Results were similar total foveal area 10% of the image.
- Two foveas were also most frequently best with total foveal area 40% of
- the image, but in this case a single fovea was also best nearly as often.
+ Two sub-foveas were often best.
+ Similar results were obtained with total foveal area 10% of the image.
+ Two sub-foveas were also most frequently best if the total foveal area
+ took up 40% of the image, but in this case a single sub-fovea was best
+ nearly as often as two, and larger numbers of foveas were rarely best.
  In further experiments we used the best of 1-5 sub-foveas.
  
 \end_layout
@@ -1760,7 +1757,7 @@ Frequency with which different numbers of foveas covered the greatest integrated
 \end_inset
 
 .
- This histogram is based on all 194 stereo image pairs from the KITI training
+ This histogram is based on all 194 stereo image pairs from the KITTI training
  dataset, with total foveal area 20% of the frame area.
   
 \end_layout
@@ -1887,8 +1884,9 @@ key "Itti2000"
 \end_inset
 
 , and disregards task-irrelevant features that contribute to saliency.
- Importantly, it would be straightforward to switch between many such weighting
- schemes, or to mix them continuously, according to task and goal changes.
+ Importantly, it would be straightforward to switch between multiple such
+ weighting schemes, or to mix them continuously, according to task and goal
+ changes.
  For example, in a grasping task, large weights might be assigned to areas
  that appear to have handle-like shapes based on rapid preliminary processing
  
@@ -1899,20 +1897,20 @@ key "TenPas2014"
 \end_inset
 
 .
- This task-oriented approach involves less computation than saliency, and
- it has more in common with human eye movements.
+ As discussed in the Introduction, such a task-oriented approach has much
+ in common with human eye movements.
  
 \end_layout
 
 \begin_layout Standard
-Second, we adapted a multiscale loopy belief propagation algorithm so that
- the finest scales are calculated only in the most task-relevant foveal
- regions.
+The second main component of our system is an elaboration of multiscale
+ loopy belief propagation algorithm that calculates the finest scales only
+ in the most task-relevant regions.
  
 \end_layout
 
 \begin_layout Standard
-Together, these methods allowed us to esimtate the most task-relevant surfaces
+Together, these methods allow us to esimtate the most task-relevant surfaces
  relatively accurately, while avoiding the computational cost of accurate
  estimation across the whole frame.
  
@@ -1923,7 +1921,9 @@ Relationship with Other Work
 \end_layout
 
 \begin_layout Standard
-Many stereo vision systems have been developed and implemented.
+Many related stereo vision systems have been developed and implemented,
+ including other stereo methods that have been applied to the KITTI benchmark,
+ and more varied navigation-related applications.
  For example, a stereo system was used to observe objects in a driving scenario
  
 \begin_inset CommandInset citation
@@ -2009,6 +2009,7 @@ Numbers of Sub-Foveas
 \begin_layout Standard
 We found that two sub-foveas most often covered heavily-weighted areas more
  effectively than any other number up to 30.
+ This was consistently the case across a wide range of total foveal areas.
  This outcome is a consequence of our greedy algorithm for sub-fovea placement.
  It is also related to the particular statistics of the KITTI data, and
  to our cost function.
@@ -2073,8 +2074,8 @@ Future Work
 \end_layout
 
 \begin_layout Standard
-Another potential direction for future work would be to adapt the method
- to parallel hardware such as a GPU or FPGA.
+One potential direction for future work would be to adapt the method to
+ parallel hardware such as a GPU or FPGA.
  The multiple-resolution version of our approach (figure 
 \begin_inset CommandInset ref
 LatexCommand ref
@@ -2117,16 +2118,16 @@ pixels.
 \begin_inset Formula $n$
 \end_inset
 
- pixels could process such a frame in a few steps, potentially yielding
- high framerates with modest hardware.
+ pixels could process such a frame in a few steps, yielding high framerates
+ with modest hardware.
  
 \end_layout
 
 \begin_layout Standard
 Our general approach is suitable for navigation in mobile robots with limited
  processing power.
- We are intersted in applying it more specifically to autonomous robot navigatio
-n among pedestrians.
+ We are interested in applying it more specifically to autonomous robot
+ navigation among pedestrians.
  This may allow us to refine the pixel weighting.
  For example, the weights might be more directly tied to decisions the robot
  must make, e.g.
