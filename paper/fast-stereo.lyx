@@ -106,8 +106,8 @@ fovea
  We evaluate this approach on stereo videos from the KITTI Vision Benchmark
  Suite, using a simple cost function that emphasizes pixels with higher-than-nor
 mal disparity for their image location.
- We show that this approach can improve depth estimates within a real-time
- performance constraint.
+ We show that this approach can improve practical depth estimates within
+ a given frame-rate constraint.
  We discuss analogies with task-dependent control of human eye movements.
  
 \end_layout
@@ -164,17 +164,17 @@ dense
  Dense methods are of interest in robotics, because surface locations may
  affect the robot whether or not they are filled with distinctive visual
  features.
- However, in the absence of distinctive features (e.g.
- in an image of a textureless wall), a wide range of regions may match equally
+ However, in the absence of distinctive features, e.g.
+ in an image of a textureless wall, a wide range of regions may match equally
  well.
 \end_layout
 
 \begin_layout Standard
 Neighbouring disparities are highly correlated except at object boundaries.
- If an ambiguous region (with a broad probability density function spread
- over a wide range of disparities) is close to unambiguous regions (with
- narrow probability densities), then accounting for spatial correlations
- can profoundly improve estimates in the ambiguous region.
+ If a visually ambiguous region is close to unambiguous regions (i.e.
+ with narrow probability densities over disparity), then accounting for
+ spatial correlations can profoundly improve estimates in the ambiguous
+ region.
  An effective approach is to model the disparity map as a Markov random
  field.
  Then, maximum 
@@ -699,11 +699,12 @@ reference "fig:motivation"
 \end_inset
 
  illustrates the motivation for our approach.
- The two curves show error in stereo disparity estimation with different
- image resolutions.
- The lower-resolution images (left curve) are downsampled by a factor of
- two in each dimension, relative to the higher-resolution images.
- Downsampling decreases runtime and increases error.
+ The two curves show error in stereo disparity estimation performed at two
+ different image resolutions.
+ To perform disparity estimation at a lower resolution, the images are downsampl
+ed, then belief propagation is performed, and the result is upsampled.
+ Performing belief propagation at a lower resolution decreases runtime and
+ increases error.
  For a given resolution, error decreases with increasing numbers of iterations
  of belief propagation (BP), but most of this decrease occurs in the first
  few iterations.
@@ -794,7 +795,7 @@ name "fig:motivation"
 \end_layout
 
 \begin_layout Standard
-The system performs multiscale belief propagation (BP) with different numbers
+Our system performs multiscale belief propagation (BP) with different numbers
  of scales in different parts of the image.
  The number of operations in a single scale of Felzenszwalb & Huttenlocher's
  method is order 
@@ -814,8 +815,7 @@ The system performs multiscale belief propagation (BP) with different numbers
  which has four times as many pixels as the next-finest scale.
  Our system only processes the finest one or two scales in the foveal region.
  The resulting depth estimate is similar to that of full multiscale BP in
- the fovea, with nearly the same speedup one would get by omitting the finest
- scale(s).
+ the fovea, but it runs nearly as fast as if the finest scales are omitted.
  
 \end_layout
 
@@ -823,12 +823,11 @@ The system performs multiscale belief propagation (BP) with different numbers
 Importantly, messages from coarser scales are used to initialize messages
  in fine foveal scales.
  This allows information from coarse scales to propagate from other image
- regions across the fovea, makes depth estimates in the fovea continuous
+ regions across the fovea, which makes depth estimates in the fovea continuous
  with those in the surrounding areas, and also makes them similar to those
- of full belief propagation.
- They differ somewhat around the fovea border, due to propagation across
- the border in the fine scale of full BP.
- 
+ of full-resolution BP.
+ (They differ somewhat around the fovea border, due to propagation across
+ the border in the fine scale of full BP.) 
 \end_layout
 
 \begin_layout Standard
@@ -849,18 +848,6 @@ Downsampled copies of the disparity estimate
 
  are stored for several frames to allow integration of information over
  time.
- Frames 
-\begin_inset Formula $D_{k-n},...,D_{k}$
-\end_inset
-
- are used to produce estimates of both disparity and its uncertainty for
- frame 
-\begin_inset Formula $k$
-\end_inset
-
-.
- We sometimes retained only the foveal regions of past frames rather than
- full images.
  
 \end_layout
 
@@ -888,10 +875,8 @@ status open
 \begin_layout Plain Layout
 General structure of our approach.
  The 2D boxes correspond to single-channel luminance and disparity images.
- The thicker boxes correspond to image variables with more channels, including
- the data cost over multiple disparities (~100 channel images) and disparity
- history over multiple frames (~5 channels).
- 
+ The thicker box indicates the ~100 channel data cost over multiple disparities.
+ [TODO: touch up]
 \end_layout
 
 \end_inset
@@ -1739,9 +1724,13 @@ reference "fig:num-subfoveas-histogram"
 
  shows a histogram of the numbers of sub-foveas with the best weight coverage
  over a set of example frames, up to a maximum of 30.
- Very often, two foveas were best.
+ The total foveal area was 20% of the image area.
+ Two foveas were often best.
+ Results were similar total foveal area 10% of the image.
+ Two foveas were also most frequently best with total foveal area 40% of
+ the image, but in this case a single fovea was also best nearly as often.
  In further experiments we used the best of 1-5 sub-foveas.
- [TODO: repeat with more frames, various fovea areas]
+ 
 \end_layout
 
 \begin_layout Standard
@@ -1753,7 +1742,7 @@ status open
 \begin_layout Plain Layout
 \align center
 \begin_inset Graphics
-	filename figures/best-num-foveas.png
+	filename figures/num-fovea-hist-20-percent.png
 	scale 30
 
 \end_inset
@@ -1771,10 +1760,9 @@ Frequency with which different numbers of foveas covered the greatest integrated
 \end_inset
 
 .
- This histogram is based on [TODO: image set] with [TODO: total pixels].
- Similar results were obtained with both greater and smaller total foveal
- areas.
- [TODO: test this] 
+ This histogram is based on all 194 stereo image pairs from the KITI training
+ dataset, with total foveal area 20% of the frame area.
+  
 \end_layout
 
 \end_inset
@@ -1861,8 +1849,8 @@ We found however that these results were sensitive to the way we calculated
 \end_layout
 
 \begin_layout Standard
-This counterintuitive outcome also relied on pyramidal upsampling [TODO:
- ref] of the peripheral disparity estimate.
+This counterintuitive outcome also relied on pyramidal upsampling of the
+ peripheral disparity estimate.
  [TODO: check that is disappears without] Since pyramidal upsampling appeared
  to reduce errors (robustly across a number of variations we tested), we
  approximated it in the fovea by applying a gaussian filter to the foveal
