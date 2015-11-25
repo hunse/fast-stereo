@@ -1,4 +1,4 @@
-# TODO: look into frames 17, 27, 83, others where filter does worse than coarse
+# TODO: look into frames 17, 27, 83, others where foveal does worse than coarse
 
 from collections import defaultdict
 
@@ -13,7 +13,7 @@ from bp_wrapper import downsample, upsample, coarse_bp, points_image, plot_fovea
 from data import KittiMultiViewSource
 from importance import get_position_weights, get_importance
 from transform import DisparityMemory
-from filter import Filter, cost_on_points, expand_coarse
+from foveal import Foveal, cost_on_points
 
 
 if 1:
@@ -46,13 +46,16 @@ iters = 3
 # del ref_source
 
 table = defaultdict(list)
-times = dict(coarse=[], fine=[], filter=[])
+times = dict(coarse=[], fine=[], foveal=[])
 
-def append_table(key, disp, true_disp, true_points, average_disp, full_shape):
+def append_table(key, disp, true_disp, true_points, average_disp, full_shape,
+                 clip=None):
 #     table['du_' + key].append(cost(disp, true_disp))
 #     table['dw_' + key].append(cost(disp, true_disp, average_disp))
-    table['pu_' + key].append(cost_on_points(disp, true_points, full_shape=full_shape))
-    table['pw_' + key].append(cost_on_points(disp, true_points, average_disp, full_shape=full_shape))
+    table['pu_' + key].append(cost_on_points(
+        disp, true_points, full_shape=full_shape, clip=clip))
+    table['pw_' + key].append(cost_on_points(
+        disp, true_points, average_disp, full_shape=full_shape, clip=clip))
 
 def debug_plots(table, coarse_disp, average_disp, true_points):
     # --- fovea
@@ -60,8 +63,8 @@ def debug_plots(table, coarse_disp, average_disp, true_points):
     fovea1 = slice(fovea_corner[1], fovea_corner[1]+fovea_shape[1])
     fovea1v = slice(fovea1.start - values, fovea1.stop - values)
     fine_fovea = fine_disp[fovea0, fovea1]
-    filter_fovea0 = filter_disp0[fovea0, fovea1]
-    filter_fovea = filter_disp[fovea0, fovea1]
+    foveal_fovea0 = foveal_disp0[fovea0, fovea1]
+    foveal_fovea = foveal_disp[fovea0, fovea1]
 
     true_disp = points_image(true_points, frame_shape, default=-1)
     true_fovea = true_disp[fovea0, fovea1]
@@ -84,8 +87,8 @@ def debug_plots(table, coarse_disp, average_disp, true_points):
     true_disp[~mask] = -1
     coarse_disp[~mask] = 0
     fine_disp[~mask] = 0
-    filter_disp0[~mask] = 0
-    filter_disp[~mask] = 0
+    foveal_disp0[~mask] = 0
+    foveal_disp[~mask] = 0
 
     rows, cols = 6, 2
     plot_i = np.array([0])
@@ -139,16 +142,16 @@ def debug_plots(table, coarse_disp, average_disp, true_points):
     plt.imshow(fine_disp[:,values:], **imargs)
     plt.colorbar()
 
-    subplot('filter0')
-    plt.imshow(filter_disp0[:,values:], **imargs)
+    subplot('foveal0')
+    plt.imshow(foveal_disp0[:,values:], **imargs)
     plt.colorbar()
 
-    subplot('filter')
-    plt.imshow(filter_disp[:,values:], **imargs)
+    subplot('foveal')
+    plt.imshow(foveal_disp[:,values:], **imargs)
     plt.colorbar()
 
     # subplot('fovea difference')
-    # plt.imshow(np.abs(filter_disp.astype(float) - filter_disp0))
+    # plt.imshow(np.abs(foveal_disp.astype(float) - foveal_disp0))
     # plt.colorbar()
 
     # subplot('coarse error')
@@ -160,11 +163,11 @@ def debug_plots(table, coarse_disp, average_disp, true_points):
     plt.colorbar()
 
     subplot('filt0 error')
-    plt.imshow(error(filter_disp0))
+    plt.imshow(error(foveal_disp0))
     plt.colorbar()
 
     subplot('filt error')
-    plt.imshow(error(filter_disp))
+    plt.imshow(error(foveal_disp))
     plt.colorbar()
 
     # subplot('abs(c-f)*i')
@@ -172,55 +175,55 @@ def debug_plots(table, coarse_disp, average_disp, true_points):
     # plt.colorbar()
 
     # subplot('abs(filt0-f)*i')
-    # plt.imshow(werror(filter_disp0, fine_disp), **imargs)
+    # plt.imshow(werror(foveal_disp0, fine_disp), **imargs)
     # plt.colorbar()
 
     # subplot('abs(filt-f)*i')
-    # plt.imshow(werror(filter_disp, fine_disp), **imargs)
+    # plt.imshow(werror(foveal_disp, fine_disp), **imargs)
     # plt.colorbar()
 
-    subplot('filter0 fovea | fine')
-    # plt.imshow(filter_disp0[fovea0, fovea1], **imargs)
-    plt.imshow(fine_ferror(filter_fovea0))
+    subplot('foveal0 fovea | fine')
+    # plt.imshow(foveal_disp0[fovea0, fovea1], **imargs)
+    plt.imshow(fine_ferror(foveal_fovea0))
     plt.colorbar()
 
-    subplot('filter fovea | fine')
-    # plt.imshow(filter_disp[fovea0, fovea1], **imargs)
-    plt.imshow(fine_ferror(filter_fovea))
+    subplot('foveal fovea | fine')
+    # plt.imshow(foveal_disp[fovea0, fovea1], **imargs)
+    plt.imshow(fine_ferror(foveal_fovea))
     plt.colorbar()
 
-    subplot('filter0 fovea | true')
-    # plt.imshow(filter_disp0[fovea0, fovea1], **imargs)
-    plt.imshow(ferror(filter_fovea0))
+    subplot('foveal0 fovea | true')
+    # plt.imshow(foveal_disp0[fovea0, fovea1], **imargs)
+    plt.imshow(ferror(foveal_fovea0))
     plt.colorbar()
 
-    subplot('filter fovea | true')
-    # plt.imshow(filter_disp[fovea0, fovea1], **imargs)
-    plt.imshow(ferror(filter_fovea))
+    subplot('foveal fovea | true')
+    # plt.imshow(foveal_disp[fovea0, fovea1], **imargs)
+    plt.imshow(ferror(foveal_fovea))
     plt.colorbar()
 
 
     plt.show()
 
-    # filter_error0 = error(filter_disp0)
-    # filter_error = error(filter_disp)
-    # # filter_error0 = filter_error0[filter
+    # foveal_error0 = error(foveal_disp0)
+    # foveal_error = error(foveal_disp)
+    # # foveal_error0 = foveal_error0[foveal
     # tt_disp = true_disp[t
 
-    print("filter_fovea0|fine: %s" % fine_ferror(filter_fovea0).mean())
-    print("filter_fovea|fine: %s" % fine_ferror(filter_fovea).mean())
+    print("foveal_fovea0|fine: %s" % fine_ferror(foveal_fovea0).mean())
+    print("foveal_fovea|fine: %s" % fine_ferror(foveal_fovea).mean())
 
     m = true_disp[:,values:] >= 0
-    print("filter_disp0: %s" % error(filter_disp0)[m].mean())
-    print("filter_disp: %s" % error(filter_disp)[m].mean())
+    print("foveal_disp0: %s" % error(foveal_disp0)[m].mean())
+    print("foveal_disp: %s" % error(foveal_disp)[m].mean())
 
     m = true_fovea >= 0
-    print("filter_fovea0: %s" % ferror(filter_fovea0)[m].mean())
-    print("filter_fovea: %s" % ferror(filter_fovea)[m].mean())
+    print("foveal_fovea0: %s" % ferror(foveal_fovea0)[m].mean())
+    print("foveal_fovea: %s" % ferror(foveal_fovea)[m].mean())
     print("fine_fovea: %s" % ferror(fine_fovea)[m].mean())
 
     raw_input("Waiting...")
-    # if table['pw_filter'][-1] > table['pw_filter0'][-1]:
+    # if table['pw_foveal'][-1] > table['pw_foveal0'][-1]:
     #     raw_input("Waiting...")
 
 def eval_coarse(frame_ten, frame_shape, values=values):
@@ -268,17 +271,21 @@ def upsample_average_disp(average_disp, frame_down_factor, frame_shape, values=v
 
 
 if __name__ == '__main__':
+    error_clip = 20
+
     n_frames = 0
     # for index in range(1):
     # for index in [2]:
     # for index in range(5,10):
     # for index in range(17, 18):
     # for index in range(27, 28):
-    for index in range(30):
+    # for index in range(30):
     # for index in range(30, 60):
     # for index in range(80):
-    # for index in range(194):
-    # for index in range(2, 3):
+    for index in range(194):
+        if index in [31, 82, 114]:  # missing frames
+            continue
+
         source = KittiMultiViewSource(index, test=False, n_frames=n_frames)
         full_shape = source.frame_ten[0].shape
         frame_ten = [downsample(source.frame_ten[0], frame_down_factor),
@@ -301,27 +308,35 @@ if __name__ == '__main__':
 
         # --- coarse
         coarse_disp, coarse_time = eval_coarse(frame_ten, frame_shape)
-        append_table('coarse', coarse_disp[:,values:], true_disp, true_points, average_disp, full_shape)
+        append_table('coarse', coarse_disp[:,values:],
+                     true_disp, true_points, average_disp, full_shape,
+                     clip=error_clip)
         times['coarse'].append(coarse_time)
 
         # --- fine
         fine_disp, fine_time = eval_fine(frame_ten)
-        append_table('fine', fine_disp[:,values:], true_disp, true_points, average_disp, full_shape)
+        append_table('fine', fine_disp[:,values:],
+                     true_disp, true_points, average_disp, full_shape,
+                     clip=error_clip)
         times['fine'].append(fine_time)
 
-        # --- filter (no fovea)
-        filter = Filter(average_disp, frame_down_factor, mem_down_factor,
-                        (0, 0), frame_shape, values, memory_length=0,
+        # --- foveal (no fovea)
+        foveal = Foveal(average_disp, frame_down_factor, mem_down_factor,
+                        (0, 0), frame_shape, values,
                         iters=iters, fovea_levels=fovea_levels)
-        filter_disp0, _ = filter.process_frame(None, frame_ten)
-        append_table('filter0', filter_disp0[:,values:], true_disp, true_points, average_disp, full_shape)
+        foveal_disp0, _ = foveal.process_frame(frame_ten)
+        append_table('foveal0', foveal_disp0[:,values:],
+                     true_disp, true_points, average_disp, full_shape,
+                     clip=error_clip)
 
-        # --- filter
-        filter = Filter(average_disp, frame_down_factor, mem_down_factor,
-                        fovea_shape, frame_shape, values, memory_length=0,
+        # --- foveal
+        foveal = Foveal(average_disp, frame_down_factor, mem_down_factor,
+                        fovea_shape, frame_shape, values,
                         iters=iters, fovea_levels=fovea_levels)
-        filter_disp, fovea_corner = filter.process_frame(None, frame_ten)
-        append_table('filter', filter_disp[:,values:], true_disp, true_points, average_disp, full_shape)
+        foveal_disp, fovea_corner = foveal.process_frame(frame_ten)
+        append_table('foveal', foveal_disp[:,values:],
+                     true_disp, true_points, average_disp, full_shape,
+                     clip=error_clip)
 
         # print("Computed index %d" % index)
 

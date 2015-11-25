@@ -16,6 +16,8 @@
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 */
 
+#undef NDEBUG  // enable assertions
+
 #include <cstring>
 #include <cstdio>
 #include <cmath>
@@ -291,8 +293,9 @@ void data_pyramid(volume<float> **data, const int levels, const float data_exp) 
         int new_width = (int)ceil(old_width/2.0);
         int new_height = (int)ceil(old_height/2.0);
 
-        assert(new_width >= 1);
-        assert(new_height >= 1);
+        // if old size is (0, 0), it's fine if new is (0, 0)
+        assert(old_width == 0 || new_width >= 1);
+        assert(old_height == 0 || new_height >= 1);
 
         data[i] = new volume<float>(new_width, new_height, values);
         for (int y = 0; y < old_height; y++) {
@@ -485,11 +488,9 @@ void comp_data_down_fovea(
         assert(fy >= 0);
         assert(fx + fwidth <= width);
         assert(fy + fheight <= height);
-        assert(fwidth % 2 == 0);
-        assert(fheight % 2 == 0);
 
         datafs[k] = new volume<float>(fwidth, fheight, values);
-        
+
         volume<float> &dataf_ = *datafs[k];
         const int fx1 = fx + fwidth;
         const int fy1 = fy + fheight;
@@ -501,7 +502,7 @@ void comp_data_down_fovea(
 
             for (int x = 0; x < fwidth; x++) {
                 for (int value = 0; value < values; value++) {
-                    float val = abs(sm1i[fx+x] - sm2i[fx+x-value]); //note: this line seg faults if fovea extends outside image  
+                    float val = abs(sm1i[fx+x] - sm2i[fx+x-value]); //note: this line seg faults if fovea extends outside image
                     dataf_(x, y, value) = lambda * std::min(val, threshold);
                 }
             }
@@ -542,7 +543,7 @@ void comp_data_down_fovea(
             }
         }
     }
-    
+
 #if 1
     // use fovea costs to make fovea areas fine
     for (int k = 0; k < fovea_corners.rows; k++) {
@@ -551,7 +552,7 @@ void comp_data_down_fovea(
         const int fy = fovea_corners.at<int>(k, 0);
         const int fx = fovea_corners.at<int>(k, 1);
         volume<float> &dataf_ = *datafs[k];
-        
+
         for (int y = 0; y < fheight; y += fshift) {
             for (int x = 0; x < fwidth; x += fshift) {
                 for (int value = 0; value < values; value++) {
@@ -568,7 +569,7 @@ void comp_data_down_fovea(
     }
 #endif
   }
-  
+
 }
 
 inline int ceil_divide(int x, int y) {
@@ -588,8 +589,24 @@ cv::Mat upsample(cv::Mat input, int levels, cv::Size size) {
         // const int heighti = (int)ceil((float)size.height / ratio);
         const int widthi = ceil_divide(size.width, ratio);
         const int heighti = ceil_divide(size.height, ratio);
+#if 1
         outs[i] = new cv::Mat();
         cv::pyrUp(*outs[i+1], *outs[i], cv::Size(widthi, heighti));
+#else
+        outs[i] = new cv::Mat(cv::Size(widthi, heighti), outs[i+1]->type());
+        assert(outs[i]->type() == CV_8U);
+
+        for (int y = 0; y < heighti; y++) {
+            uchar* outi = outs[i]->ptr<uchar>(y);
+            uchar* outi1 = outs[i+1]->ptr<uchar>(y/2);
+            assert(y/2 < outs[i+1]->rows);
+
+            for (int x = 0; x < widthi; x++) {
+                assert(x/2 < outs[i+1]->cols);
+                outi[x] = outi1[x/2];
+            }
+        }
+#endif
         delete outs[i+1];
     }
 
@@ -606,7 +623,7 @@ cv::Mat stereo_ms_fovea(
     assert(fovea_corners.rows == fovea_shapes.rows);
     assert(fovea_corners.rows <= 5);  // not too many foveas
     assert(seed.empty());  // seed needs to be tested again
-    
+
 //     std::cout << "a";
 
     // create coarse and fine data volumes
@@ -628,7 +645,7 @@ cv::Mat stereo_ms_fovea(
     }
 
 //     std::cout << "c";
-    
+
     bp_ms_fovea(datac, datafs, fovea_corners, iters, levels, fovea_levels,
                 disc_max, data_exp, min_level);
 
@@ -643,7 +660,7 @@ cv::Mat stereo_ms_fovea(
     delete datac;
 
 //     std::cout << "e";
-    
+
     // --- copy fovea results onto image
     for (int k = 0; k < fovea_corners.rows; k++) {
         // TODO: fovea corners are no longer exact at this scale (if ratio > 1)
@@ -664,9 +681,9 @@ cv::Mat stereo_ms_fovea(
         }
     }
     delete [] datafs;
-    
+
 //     std::cout << "g" << std::endl;
-    
+
     // --- upsample again by min_level
     return upsample(out, min_level, cv::Size(img1.cols, img1.rows));
 }

@@ -10,12 +10,10 @@ import matplotlib.pyplot as plt
 import matplotlib
 
 from bp_wrapper import downsample, foveal_bp, points_image
-from filter_table import upsample_average_disp, eval_coarse, eval_fine
-from data import KittiSource, KittiMultiViewSource
-from importance import UnusuallyClose, get_average_disparity, get_position_weights, get_importance
-from transform import DisparityMemory
-from foveal import Foveal
-from filter import cost_on_points, expand_coarse
+from filter_table import upsample_average_disp
+from data import KittiMultiViewSource
+from importance import get_position_weights, get_importance
+from foveal import Foveal, cost_on_points
 
 
 full_values = 128
@@ -25,61 +23,9 @@ def get_test_case(source):
     frame_ten = [downsample(source.frame_ten[0], frame_down_factor),
                  downsample(source.frame_ten[1], frame_down_factor)]
     frame_shape = frame_ten[0].shape
-    average_disp = source.get_average_disparity() # may throw IOError
+    average_disp = source.get_average_disparity()  # may throw IOError
     true_points = source.get_ground_truth_points(occluded=False)
     return frame_ten, frame_shape, average_disp, true_points
-
-def test_coarse(frame_down_factor):
-    values = full_values / 2**frame_down_factor
-
-    times = []
-    unweighted_cost = []
-    weighted_cost = []
-
-    for index in range(n_test_frames):
-        n_history_frames = 0
-        source = KittiMultiViewSource(index, test=False, n_frames=n_history_frames)
-        full_shape = source.frame_ten[0].shape
-
-        try:
-            frame_ten, frame_shape, average_disp, true_points = get_test_case(source)
-        except IOError:  # likely does not have a full 20 frames
-            print("Skipping index %d (lacks frames)" % index)
-            continue
-
-        # --- coarse
-        coarse_disp, coarse_time = eval_coarse(frame_ten, frame_shape, values=values)
-        unweighted_cost.append(cost_on_points(coarse_disp[:, values:], true_points, full_shape=full_shape))
-        weighted_cost.append(cost_on_points(coarse_disp[:, values:], true_points, average_disp, full_shape=full_shape))
-        times.append(coarse_time)
-
-    return times, unweighted_cost, weighted_cost
-
-def test_fine(frame_down_factor):
-    values = full_values / 2**frame_down_factor
-
-    times = []
-    unweighted_cost = []
-    weighted_cost = []
-
-    for index in range(n_test_frames):
-        n_history_frames = 0
-        source = KittiMultiViewSource(index, test=False, n_frames=n_history_frames)
-        full_shape = source.frame_ten[0].shape
-
-        try:
-            frame_ten, frame_shape, average_disp, true_points = get_test_case(source)
-        except IOError:  # likely does not have a full 20 frames
-            print("Skipping index %d (lacks frames)" % index)
-            continue
-
-        # --- coarse
-        fine_disp, fine_time = eval_fine(frame_ten, values=values)
-        unweighted_cost.append(cost_on_points(fine_disp[:, values:], true_points, full_shape=full_shape))
-        weighted_cost.append(cost_on_points(fine_disp[:, values:], true_points, average_disp, full_shape=full_shape))
-        times.append(fine_time)
-
-    return times, unweighted_cost, weighted_cost
 
 
 def test_foveal(frame_down_factor, fovea_fraction, fovea_n, post_smooth=None, **kwargs):
@@ -91,8 +37,11 @@ def test_foveal(frame_down_factor, fovea_fraction, fovea_n, post_smooth=None, **
     times = np.zeros(shape)
     unweighted_cost = np.zeros(shape)
     weighted_cost = np.zeros(shape)
-    
+
     for i_frame, index in enumerate(range(n_test_frames)):
+        if index in [31, 82, 114]:  # missing frames
+            continue
+
         n_history_frames = 0
         source = KittiMultiViewSource(index, test=False, n_frames=n_history_frames)
         full_shape = source.frame_ten[0].shape
@@ -123,6 +72,11 @@ def test_foveal(frame_down_factor, fovea_fraction, fovea_n, post_smooth=None, **
             'data_exp': 1.09821084614, 'data_max': 112.191597317,
             'data_weight': 0.0139569211273, 'disc_max': 12.1301410452,
             'laplacian_ksize': 3, 'smooth': 1.84510833504e-07}
+        # params = {
+        #     'data_exp': 14.2348581842, 'data_max': 79101007093.4,
+        #     'data_weight': 0.000102496570364, 'disc_max': 4.93508276126,
+        #     'laplacian_ksize': 5, 'laplacian_scale': 0.38937704644,
+        #     'smooth': 0.00146126755993}  # optimized for frame_down: 1, mem_down: 2, fovea_levels: 1
         params.update(kwargs)
 
         fovea_corner = ((frame_shape[0] - fovea_shape[0]) / 2,
@@ -134,16 +88,16 @@ def test_foveal(frame_down_factor, fovea_fraction, fovea_n, post_smooth=None, **
         foveal_disp *= 2**frame_down_factor
         times[0, i_frame] = time.time() - t
         unweighted_cost[0, i_frame] = cost_on_points(
-            foveal_disp[:, values:], true_points, full_shape=full_shape)
+            foveal_disp[:, values:], true_points, full_shape=full_shape, clip=error_clip)
         weighted_cost[0, i_frame] = cost_on_points(
-            foveal_disp[:, values:], true_points, average_disp, full_shape=full_shape)
+            foveal_disp[:, values:], true_points, average_disp, full_shape=full_shape, clip=error_clip)
 
 
         # --- moving foveas
         for i_fovea, fovea_n_i in enumerate(fovea_n):
             foveal = Foveal(average_disp, frame_down_factor, mem_down_factor,
                             fovea_shape, frame_shape, values,
-                            max_n_foveas=fovea_n_i, **kwargs)
+                            max_n_foveas=fovea_n_i, **params)
             foveal.post_smooth = post_smooth
 
             if 0:
@@ -166,17 +120,17 @@ def test_foveal(frame_down_factor, fovea_fraction, fovea_n, post_smooth=None, **
                 # plt.colorbar()
                 # plt.show()
 
-                foveal_disp, fovea_corner = foveal.process_frame(None, frame_ten, cost=importance)
+                foveal_disp, fovea_corner = foveal.process_frame(frame_ten, cost=importance)
             else:
                 # use estimated importance
-                foveal_disp, fovea_corner = foveal.process_frame(None, frame_ten)
+                foveal_disp, fovea_corner = foveal.process_frame(frame_ten)
 
             foveal_time = foveal.bp_time
 
             unweighted_cost[i_fovea+1, i_frame] = cost_on_points(
-                foveal_disp[:, values:], true_points, full_shape=full_shape)
+                foveal_disp[:, values:], true_points, full_shape=full_shape, clip=error_clip)
             weighted_cost[i_fovea+1, i_frame] = cost_on_points(
-                foveal_disp[:, values:], true_points, average_disp, full_shape=full_shape)
+                foveal_disp[:, values:], true_points, average_disp, full_shape=full_shape, clip=error_clip)
             times[i_fovea+1, i_frame] = foveal_time
 
     return times, unweighted_cost, weighted_cost
@@ -187,12 +141,21 @@ def test_foveal(frame_down_factor, fovea_fraction, fovea_n, post_smooth=None, **
 #n_test_frames = 10
 n_test_frames = 194
 
+# error_clip = None
+# error_clip = 10
+error_clip = 20
+# error_clip = 25
+
 frame_down_factor = 1
 # frame_down_factor = 2
+
 # fovea_levels = 1
 fovea_levels = 2
 # fovea_levels = 3
+
 fine_periphery = 0
+# fine_periphery = 1
+
 #min_level = 0
 min_level = 1
 # min_level = 2
@@ -202,7 +165,7 @@ post_smooth = None
 print("Running %d (frame_down_factor=%d, fovea_levels=%d, fine_periphery=%d, min_level=%d)" %
       (n_test_frames, frame_down_factor, fovea_levels, fine_periphery, min_level))
 
-#fovea_fractions = np.linspace(0, 1, 3)
+# fovea_fractions = np.linspace(0, 1, 3)
 fovea_fractions = np.linspace(0, 1, 6)
 fovea_n = [1, 5]
 
@@ -212,7 +175,7 @@ foveal_weighted_cost = []
 for i in range(len(fovea_fractions)):
     print(i)
     ft, fu, fw = test_foveal(frame_down_factor, fovea_fractions[i], fovea_n,
-                             fovea_levels=fovea_levels, fine_periphery=fine_periphery, 
+                             fovea_levels=fovea_levels, fine_periphery=fine_periphery,
                              min_level=min_level, post_smooth=post_smooth)
     foveal_times.append(ft)
     foveal_unweighted_cost.append(fu)
@@ -227,18 +190,6 @@ print('foveal')
 print(np.mean(foveal_times, -1))
 print(np.mean(foveal_unweighted_cost, -1))
 print(np.mean(foveal_weighted_cost, -1))
-
-# coarse_times, coarse_unweighted_cost, coarse_weighted_cost = test_coarse(frame_down_factor)
-# print('coarse')
-# print(np.mean(coarse_times))
-# print(np.mean(coarse_unweighted_cost))
-# print(np.mean(coarse_weighted_cost))
-
-# fine_times, fine_unweighted_cost, fine_weighted_cost = test_fine(frame_down_factor)
-# print('fine')
-# print(np.mean(fine_times))
-# print(np.mean(fine_unweighted_cost))
-# print(np.mean(fine_weighted_cost))
 
 import cPickle
 outfile = open('fovea-size.pkl', 'wb')

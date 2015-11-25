@@ -40,12 +40,16 @@ class Foveal(object):
             'data_exp': 1.09821084614, 'data_max': 112.191597317,
             'data_weight': 0.0139569211273, 'disc_max': 12.1301410452,
             'laplacian_ksize': 3, 'smooth': 1.84510833504e-07}
-
+        # self.params = {
+        #     'data_exp': 14.2348581842, 'data_max': 79101007093.4,
+        #     'data_weight': 0.000102496570364, 'disc_max': 4.93508276126,
+        #     'laplacian_ksize': 5, 'laplacian_scale': 0.38937704644,
+        #     'smooth': 0.00146126755993}  # optimized for frame_down: 1, mem_down: 2, fovea_levels: 2
         self.params.update(bp_args)
 
         self._uc = UnusuallyClose(self.average_disparity)
 
-    def process_frame(self, pos, frame, cost=None):
+    def process_frame(self, frame, cost=None):
         start_time = time.time()
 
         if cost is None:
@@ -53,13 +57,13 @@ class Foveal(object):
             # params = {
             #     'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
             #     'data_max': 32.024780646200725, 'laplacian_ksize': 3}
-            params = {
+            prior_params = {
                 'data_exp': 1.09821084614, 'data_max': 112.191597317,
                 'data_weight': 0.0139569211273, 'disc_max': 12.1301410452,
                 'laplacian_ksize': 3, 'smooth': 1.84510833504e-07}
             prior_disparity = coarse_bp(
                 frame, down_factor=self.mem_down_factor, iters=5,
-                values=self.values, **params)
+                values=self.values, **prior_params)
             prior_disparity *= self.frame_step
             prior_disparity = prior_disparity[:,self.values/self.mem_step:]
 
@@ -107,3 +111,40 @@ class Foveal(object):
         self.bp_time = time.time() - bp_time
 
         return disp, fovea_corners
+
+
+def cost_on_points(disp, ground_truth_points, average_disp=None, full_shape=(375,1242), clip=None):
+    #from bp_wrapper import full_shape
+
+    xyd = ground_truth_points
+    xyd = xyd[xyd[:, 0] >= 128]  # clip left points
+    x, y, d = xyd.T
+    x = x - 128  # shift x points
+    full_shape = (full_shape[0], full_shape[1] - 128)
+
+    # rescale points
+    ratio = np.asarray(disp.shape) / np.asarray(full_shape, dtype=float)
+    assert np.allclose(ratio[0], ratio[1], rtol=1e-2), (ratio[0], ratio[1])
+    xr = (x * ratio[1]).astype(int)
+    yr = (y * ratio[0]).astype(int)
+    del x, y
+
+    # remove points too close to the edge (importance data is screwy)
+    edge = 10
+    height, width = disp.shape
+    mask = (xr >= edge) & (yr >= edge) & (xr <= width - edge - 1) & (yr <= height - edge - 1)
+    xr, yr, d = xr[mask], yr[mask], d[mask]
+
+    disps = disp[yr, xr]
+    error = np.abs(disps - d)
+    if clip is not None:
+        error = np.minimum(error, clip)
+
+    if average_disp is not None:
+        assert average_disp.shape == disp.shape, (average_disp.shape, disp.shape)
+        pos_weights = get_position_weights(disp.shape)
+        importance = get_importance(pos_weights[yr, xr], average_disp[yr, xr], d)
+        importance /= importance.mean()
+        return np.mean(importance * error)
+    else:
+        return np.mean(error)

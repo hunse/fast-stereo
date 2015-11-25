@@ -69,6 +69,11 @@ class Filter:
             'data_exp': 1.09821084614, 'data_max': 112.191597317,
             'data_weight': 0.0139569211273, 'disc_max': 12.1301410452,
             'laplacian_ksize': 3, 'smooth': 1.84510833504e-07}
+        # self.params = {
+        #     'data_exp': 14.2348581842, 'data_max': 79101007093.4,
+        #     'data_weight': 0.000102496570364, 'disc_max': 4.93508276126,
+        #     'laplacian_ksize': 5, 'laplacian_scale': 0.38937704644,
+        #     'smooth': 0.00146126755993}  # optimized for frame_down: 1, mem_down: 2, fovea_levels: 1
 
         self.params.update(bp_args)
 
