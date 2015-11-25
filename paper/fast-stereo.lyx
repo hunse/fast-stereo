@@ -738,7 +738,7 @@ status open
 \begin_layout Plain Layout
 \align center
 \begin_inset Graphics
-	filename figures/fovea-rationale.png
+	filename figures/fovea-rationale-no-saturation.png
 	scale 40
 
 \end_inset
@@ -764,7 +764,7 @@ Performance of multiscale belief propagation on example data, illustrating
  However, if certain areas in the images were of greater practical interest,
  then results that are nearly as useful might be achieved by processing
  just those areas at high resolution.
- The data are 25 frames taken from the KITTI dataset 
+ The data are 50 frames from the KITTI dataset 
 \begin_inset CommandInset citation
 LatexCommand cite
 key "Geiger2012"
@@ -773,7 +773,7 @@ key "Geiger2012"
 
 , downsampled by a factor of two (high resolution) and four (low resolution)
  in each dimension.
- [TODO: rerun with ground truth and MAD cost]
+ 
 \end_layout
 
 \end_inset
@@ -1835,6 +1835,17 @@ Figure [TODO: make this figure] shows an example of results that are in
 \end_layout
 
 \begin_layout Standard
+The times given are for the total times per frame for calculation of the
+ data cost, belief propagation, and inference on a [TODO: computer description].
+ Additional time for fovea selection was on the order of 
+\begin_inset Formula $50\mu s$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Standard
 We found however that these results were sensitive to the way we calculated
  the data cost, and the way we upsampled coarse BP results in the periphery.
  In some configurations, errors were actually greater in the fovea than
@@ -1921,10 +1932,6 @@ Together, these methods allowed us to esimtate the most task-relevant surfaces
 
 \begin_layout Subsection
 Relationship with Other Work
-\end_layout
-
-\begin_layout Standard
-[TODO: Jeff]
 \end_layout
 
 \begin_layout Standard
