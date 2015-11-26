@@ -33,6 +33,8 @@ class Foveal(object):
 
         self.values = values
         self.max_n_foveas = max_n_foveas
+        
+        self.post_smooth = None
 
         self.params = {
             'data_exp': 1.09821084614, 'data_max': 112.191597317,
@@ -100,7 +102,7 @@ class Foveal(object):
         # --- fovea boundaries in frame coordinates ...
         bp_time = time.time()
         disp = foveal_bp(
-            frame, fovea_corners, fovea_shape, values=self.values, **self.params)
+            frame, fovea_corners, fovea_shape, values=self.values, post_smooth=self.post_smooth, **self.params)
         disp *= self.frame_step
         self.bp_time = time.time() - bp_time
 

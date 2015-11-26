@@ -83,7 +83,7 @@ def coarse_bp(frame, values=values_default, down_factor=0, iters=5,
 
 def foveal_bp(frame, fovea_corner, fovea_shape, seed=None,
               values=values_default, iters=5, levels=5, fovea_levels=1,
-              laplacian_ksize=1, laplacian_scale=0.5, **params):
+              laplacian_ksize=1, laplacian_scale=0.5, post_smooth=None, **params):
     """BP with two levels: coarse on the outside, fine in the fovea"""
     assert levels > fovea_levels
     if seed is None:
@@ -104,6 +104,10 @@ def foveal_bp(frame, fovea_corner, fovea_shape, seed=None,
         seed=seed, seed_weight=.01, values=values, iters=iters,
         levels=levels, fovea_levels=fovea_levels, **params)
 
+    if post_smooth is not None:
+        disp = cv2.GaussianBlur(disp.astype(np.float32), (9, 9), post_smooth)
+        disp = np.round(disp).astype(np.uint8)
+    
     return disp
 
 

@@ -17,12 +17,6 @@ from transform import DisparityMemory
 from foveal import Foveal
 from filter import cost_on_points, expand_coarse
 
-# We'll want to run this with multiple foveas, also with central vs. optimal fovea
-
-# n_test_frames = 1
-#n_test_frames = 2
-#n_test_frames = 20
-n_test_frames = 194
 
 full_values = 128
 
@@ -88,7 +82,7 @@ def test_fine(frame_down_factor):
     return times, unweighted_cost, weighted_cost
 
 
-def test_foveal(frame_down_factor, fovea_fraction, fovea_n, **kwargs):
+def test_foveal(frame_down_factor, fovea_fraction, fovea_n, post_smooth=None, **kwargs):
     values = full_values / 2**frame_down_factor
 
     mem_down_factor = 2     # relative to the frame down factor
@@ -136,7 +130,7 @@ def test_foveal(frame_down_factor, fovea_fraction, fovea_n, **kwargs):
 
         t = time.time()
         foveal_disp = foveal_bp(
-            frame_ten, np.array(fovea_corner), fovea_shape, values=values, **params)
+            frame_ten, np.array(fovea_corner), fovea_shape, values=values, post_smooth=post_smooth, **params)
         foveal_disp *= 2**frame_down_factor
         times[0, i_frame] = time.time() - t
         unweighted_cost[0, i_frame] = cost_on_points(
@@ -150,6 +144,7 @@ def test_foveal(frame_down_factor, fovea_fraction, fovea_n, **kwargs):
             foveal = Foveal(average_disp, frame_down_factor, mem_down_factor,
                             fovea_shape, frame_shape, values,
                             max_n_foveas=fovea_n_i, **kwargs)
+            foveal.post_smooth = post_smooth
 
             if 0:
                 # use ground truth importance
@@ -187,21 +182,28 @@ def test_foveal(frame_down_factor, fovea_fraction, fovea_n, **kwargs):
     return times, unweighted_cost, weighted_cost
 
 
+# n_test_frames = 1
+#n_test_frames = 2
+#n_test_frames = 10
+n_test_frames = 194
+
 frame_down_factor = 1
 # frame_down_factor = 2
 # fovea_levels = 1
-fovea_levels = 3
+fovea_levels = 2
 # fovea_levels = 3
-fine_periphery = 1
+fine_periphery = 0
 #min_level = 0
-min_level = 2
+min_level = 1
 # min_level = 2
+
+post_smooth = None
 
 print("Running %d (frame_down_factor=%d, fovea_levels=%d, fine_periphery=%d, min_level=%d)" %
       (n_test_frames, frame_down_factor, fovea_levels, fine_periphery, min_level))
 
-fovea_fractions = np.linspace(0, 1, 3)
-#fovea_fractions = np.linspace(0, 1, 6)
+#fovea_fractions = np.linspace(0, 1, 3)
+fovea_fractions = np.linspace(0, 1, 6)
 fovea_n = [1, 5]
 
 foveal_times = []
@@ -210,7 +212,8 @@ foveal_weighted_cost = []
 for i in range(len(fovea_fractions)):
     print(i)
     ft, fu, fw = test_foveal(frame_down_factor, fovea_fractions[i], fovea_n,
-                             fovea_levels=fovea_levels, fine_periphery=fine_periphery, min_level=min_level)
+                             fovea_levels=fovea_levels, fine_periphery=fine_periphery, 
+                             min_level=min_level, post_smooth=post_smooth)
     foveal_times.append(ft)
     foveal_unweighted_cost.append(fu)
     foveal_weighted_cost.append(fw)
@@ -267,5 +270,4 @@ plt.xlabel('Fovea size (fraction of image size)')
 plt.locator_params(axis='y', nbins=4)
 plt.ylabel('Run time per frame (s)')
 
-#plt.tight_layout(pad=1)
 plt.show(block=True)
