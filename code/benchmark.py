@@ -6,20 +6,21 @@
 # 14.5 with zero padding omitting nothing
 
 # For test results:
-# Fast mean 0.064135251586s
-# Slow mean 0.186271298792
+# Fast mean 0.0618710102179s
+# Slow mean 0.187508883843s
  
 import time
 import os
 import numpy as np
 import scipy
+import matplotlib.pyplot as plt
 import cv2
 from bp_wrapper import downsample, upsample, laplacians, foveal_bp
 import bp
 from kitti.stereo import load_pair, load_disp
 
-n_train = 193
-n_test = 194
+n_train = 194
+n_test = 195
 
 values = 96
 #values = 112
@@ -113,8 +114,7 @@ def test_against_ground_truth(disp, index, training=True):
     disps = disp[y, x]
     error = np.abs(disps - d)
     
-    if 0:
-        import matplotlib.pyplot as plt
+    if False:        
         plt.figure()
         plt.subplot(311)
         plt.hist(disp.flatten(), range(128))
@@ -137,8 +137,9 @@ def save_disp(disp, index, training=True):
         train_result_dir if training else test_result_dir,
         "%06d_10.png" % index) 
 
-    disp = np.round(disp).astype(np.uint8) #to avoid default normalization
-    scipy.misc.imsave(path, disp)
+    disp = np.round(disp).astype(np.uint16) * 256 #to avoid default normalization
+#    scipy.misc.imsave(path, disp)
+    cv2.imwrite(path, disp)
 
 def read_disp(index, training=True):
     # we want to save and reload to make sure saved disp images are OK
@@ -146,7 +147,10 @@ def read_disp(index, training=True):
     path = os.path.join(
         train_result_dir if training else test_result_dir,
         "%06d_10.png" % index)
-    return scipy.ndimage.imread(path)     
+    result = scipy.ndimage.imread(path) / 256
+    
+    return result
+    
 
 def load_frame(index, training=True):
     return load_pair(index, not training, multiview=False)
