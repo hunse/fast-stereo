@@ -486,6 +486,40 @@ volume = {17},
 year = {2006}
 }
 
+
+
+@article{Ranft2014,
+abstract = {Abstract—Stereo cameras enable a 3D reconstruction of viewed scenes and are therefore well-suited sensors for many advanced driver assistance systems and autonomous driving. Modern algorithms for estimating distances for every image pixel achieve high-quality results, but their real-time capability is very limited. In contrast, window-based local methods can be implemented very efficiently but are more prone to errors. This is particularly true for spatial changes of distance within the matching window, most prominently on surfaces such as the road which are not parallel to but rather slanted towards the image plane. In this paper we present a method to compensate the impact of this effect for arbitrarily oriented sets of planes. It does not depend on any modifications to the actual distance estimation. Instead, it only applies specific transformations to input images and intermediate results. By combining this approach with existing implementations which efficiently use either multi-core or graphics processors, we were able to significantly increase quality whilemaintaining real-time throughputs on a compact target system.},
+annote = {- models surfaces as oriented planes, rather than orthogonal planes
+(most block-matching systems assume that a block is viewed frontally... orthogonally)
+
+- Uses {\&}quot;Census Transform{\&}quot;, in which pixel nbhds are represented as bit strings, where a pixel becomes a 1 if it's brighter than some average intensity.
+- They use 2 bits to classify a pixel as: {\&}quot;brighter{\&}quot;, {\&}quot;darker{\&}quot; or {\&}quot;equivalent{\&}quot;
+
+- Hamming distance to measure similarity
+
+- They are careful to use vector-based operations (eg. SIMD)
+
+- Apply shears etc. to images -{\&}gt; correspond to slanted planes
+- block-matching with shears allows disparity with surface angle
+
+- multi-resolution
+
+- Benchmarks on 0.5 Mpx pairs, 3.5GHz CPU + 1GHz GPU},
+author = {Ranft, Benjamin and Strau{\ss}, Tobias},
+doi = {10.1109/ITSC.2014.6957990},
+file = {:Users/jorchard/Dropbox/Mendeley/Ranft, Strau{\ss} - IEEE 17th International Conference on Intelligent Transportation Systems (ITSC) - 2014.pdf:pdf},
+isbn = {9781479960774},
+journal = {IEEE 17th International Conference on Intelligent Transportation Systems (ITSC)},
+mendeley-groups = {Fast Stereo},
+pages = {1941--1947},
+title = {{Modeling Arbitrarily Oriented Slanted Planes for Efficient Stereo Vision based on Block Matching}},
+year = {2014}
+}
+
+
+
+
 @article{Bertozzi1998,
 author = {Bertozzi, Massimo and Broggi, Alberto},
 doi = {10.1109/83.650851},

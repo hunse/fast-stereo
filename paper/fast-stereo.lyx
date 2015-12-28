@@ -80,7 +80,59 @@ Task-Driven Resource Allocation for Real-Time Stereo with Belief Propagation
 \end_layout
 
 \begin_layout Author
-Eric Hunsberger, Jeff Orchard & Bryan Tripp
+Eric Hunsberger
+\begin_inset script superscript
+
+\begin_layout Plain Layout
+1
+\end_layout
+
+\end_inset
+
+, Jeff Orchard
+\begin_inset script superscript
+
+\begin_layout Plain Layout
+2
+\end_layout
+
+\end_inset
+
+ & Bryan Tripp
+\begin_inset script superscript
+
+\begin_layout Plain Layout
+1
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Address
+\begin_inset script superscript
+
+\begin_layout Plain Layout
+1
+\end_layout
+
+\end_inset
+
+Systems Design Engineering, University of Waterloo, Canada
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset script superscript
+
+\begin_layout Plain Layout
+2
+\end_layout
+
+\end_inset
+
+Cheriton School of Computer Science, University of Waterloo, Canada
 \end_layout
 
 \begin_layout Abstract
@@ -107,9 +159,12 @@ fovea
  Suite, using a simple cost function that emphasizes pixels with higher-than-nor
 mal disparity for their image location.
  We show that this approach can improve practical depth estimates within
- a given frame-rate constraint.
- We discuss analogies with task-dependent control of human eye movements.
- 
+ a given frame-rate constraint, and discuss analogies with task-dependent
+ control of human eye movements.
+\end_layout
+
+\begin_layout Standard
+Key words: stereo vision, disparity, belief propagation, fovea
 \end_layout
 
 \begin_layout Section
@@ -2131,6 +2186,19 @@ s between the images indicated an object.
  However, these methods perform depth estimation on the entire image, and
  do not use the strategy of foveation to improve accuracy for a fixed computatio
 nal budget.
+ Another recent example uses block matching and the Census Transform, along
+ with shears, to infer the depth of slanted planar surfaces in the scene
+ 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Ranft2014"
+
+\end_inset
+
+.
+ These methods might be modified to include foveation.
+ However, it is not clear how the smaller aperture of a fovea migth impact
+ these methods.
 \end_layout
 
 \begin_layout Standard
