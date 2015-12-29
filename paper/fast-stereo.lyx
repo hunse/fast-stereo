@@ -137,8 +137,8 @@ Cheriton School of Computer Science, University of Waterloo, Canada
 
 \begin_layout Abstract
 Stereo matching is a versatile approach to depth estimation.
- However, accurate algorithms for dense stereo do not run at frame rates
- that are practical for robotics.
+ However, accurate algorithms for dense, high-resolution stereo are computationa
+lly intensive, and hard to run at frame rates that are practical for robotics.
  In this paper we explore an approach that focuses computational resources
  for depth estimation on important parts of the scene.
  Specifically, we use multi-scale loopy belief propagation, but only run
@@ -1998,14 +1998,258 @@ We found that the weighted errors were sensitive to the way we calculated
 \begin_inset Formula $2\times2$
 \end_inset
 
- pixels.
- In this context, counter-intuitively, belief propagation at the finest
- scale sometimes increased the error.
+ pixels, with a slight increase in runtime.
  
 \end_layout
 
 \begin_layout Standard
-However, this quirk allowed us to improve runtime by omitting an additional
+To put these results in context, we evaluated 
+\emph on
+unweighted
+\emph default
+ errors against the KITTI 2012 stereo benchmark test data.
+ Average absolute errors, and percentages of pixels with >3 pixels error,
+ are shown in Table 2 for both 0% fovea and 100% fovea.
+ At the time of submission, the 0% and 100% fovea results correspond to
+ 83rd-place and 70th-place rankings on the KITTI benchmark in terms of the
+ percentage of unoccluded pixels with greater than 3-pixels error.
+ However, the methods ranked 60-69 have an average runtime of 80s per frame,
+ with a range of 0.3s to 242s.
+ These results are not directly related to task-weighted error (our main
+ interest), but they provide context in terms of a standard benchmark.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float table
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Results on the 2012 KITTI Stereo Benchmark.
+ This benchmark does not consider differences in task-relevance across the
+ scene, but these results help to contextualize the underlying methods within
+ the current state of the art.
+ The Out-Noc column shows the percentage of unoccluded pixels with >3-pixel
+ error.
+ The Out-All column is the same except that it includes occluded pixels.
+ Avg-Noc and Avg-All are the mean absolute errors (in pixels) over the unocclude
+d pixels and over all pixels, respectively.
+ The runtime is per frame on a single core of a MacBook Pro (2.5 GHz Intel
+ Core i7).
+ Slight improvements on the accuracy of these results were obtained by gaussian
+ filtering of the disparity estimates.
+ 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Tabular
+<lyxtabular version="3" rows="3" columns="6">
+<features rotate="0" tabularvalignment="middle">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Fovea
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Out-Noc
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Out-All
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Avg-Noc
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Avg-All
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Runtime
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+None
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+14.16%
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+15.90%
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+2.9px
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+3.4px
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0.062s
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Whole Frame
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+9.35%
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+11.21%
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+2.1px
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+2.7px
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0.188s
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Counter-intuitively, given the improved calculation of data cost, belief
+ propagation at the finest scale sometimes increased the 
+\emph on
+weighted
+\emph default
+ error.
+ However, this quirk allowed us to improve runtime by omitting an additional
  scale of belief propagation.
  Figure 
 \begin_inset CommandInset ref
@@ -2014,12 +2258,12 @@ reference "fig:performance-fine-peripheral-cost"
 
 \end_inset
 
- shows an example (with data cost calculated at each pixel) in which the
- three finest scales of belief propagation were omitted in the periphery,
- and the two finest were omitted in the fovea.
+ shows an example (with improved data cost) in which the three finest scales
+ of belief propagation were omitted in the periphery, and the two finest
+ were omitted in the fovea.
  Although the data cost calculation took longer in this case, processing
- could nonetheless be completed at the KITTI frame rate with a larger fovea
- (roughly 60% vs.
+ could nonetheless be completed at 10 frames/s with a larger fovea (roughly
+ 60% vs.
  20%), and about 7% lower error.
  
 \end_layout
@@ -2271,6 +2515,32 @@ key "Bernardino2002"
  error or computational load.
 \end_layout
 
+\begin_layout Standard
+Two methods on the KITTI 2012 leaderboard outperformed our benchmark results
+ (for unweighted error) in terms of both accuracy and runtime.
+ One of these (DNC1D) is, at the time of writing, an anonymous submission
+ pending CVPR 2016.
+ The other (Toast2) is related to 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Ranft2014"
+
+\end_inset
+
+.
+ It would be interesting to see whether our importance-weighting approach
+ could be combined with this stereo method.
+ However, because this method fits image blocks to planes, it is possible
+ that its better average performance corresponds to low error on large flat
+ surfaces such as roads and walls, with lesser advantages for typical obstacles.
+ It is therefore uncertain whether our weighted error could be improved
+ with this method.
+ It would be worthwhile to explore this in the future, as well as combinations
+ of our general approach with DNC1D, or other stereo methods that appear
+ in coming years.
+ 
+\end_layout
+
 \begin_layout Subsection
 Future Work
 \end_layout
@@ -2327,7 +2597,8 @@ Acknowledgements
 
 \begin_layout Standard
 This work was supported in part by a Mitacs and CrossWing Inc.
- The authors thank Hamid Tizhoosh and John-Paul Gignac for helpful discussions.
+ The authors thank Hamid Tizhoosh, John Zelek, and John-Paul Gignac for
+ helpful discussions.
  
 \end_layout
 
