@@ -2442,22 +2442,6 @@ nal budget.
 \end_layout
 
 \begin_layout Standard
-Another recent example uses block matching and the Census Transform, along
- with image shears, to infer the depth of slanted planar surfaces in the
- scene 
-\begin_inset CommandInset citation
-LatexCommand cite
-key "Ranft2014"
-
-\end_inset
-
-.
- This methods might be modified to include foveation.
- However, it is not clear how the smaller aperture of a fovea might impact
- its accuracy.
-\end_layout
-
-\begin_layout Standard
 A number of camera systems have been developed for stereo-vision applications.
  For example, 
 \begin_inset CommandInset citation
@@ -2522,9 +2506,16 @@ key "Bernardino2002"
 \begin_layout Standard
 Two methods on the KITTI 2012 leaderboard outperformed our benchmark results
  (for unweighted error) in terms of both accuracy and runtime.
- One of these (DNC1D) is, at the time of writing, an anonymous submission
- pending CVPR 2016.
- The other (Toast2) is related to 
+ The first (Toast2) is related to 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Ranft2014"
+
+\end_inset
+
+.
+ This method uses block matching and the Census Transform, along with image
+ shears, to infer the depth of slanted planar surfaces in the scene 
 \begin_inset CommandInset citation
 LatexCommand cite
 key "Ranft2014"
@@ -2539,9 +2530,15 @@ key "Ranft2014"
  surfaces such as roads and walls, with lesser advantages for typical obstacles.
  It is therefore uncertain whether our weighted error could be improved
  with this method.
- It would be worthwhile to explore this in the future, as well as combinations
- of our general approach with DNC1D, or other stereo methods that appear
- in coming years.
+ It is also unclear how the smaller aperture of a fovea might impact its
+ accuracy.
+\end_layout
+
+\begin_layout Standard
+The other methd (DNC1D) is, at the time of writing, an anonymous submission
+ pending CVPR 2016.
+ It may be worthwhile to explore combinations of our general approach with
+ DNC1D, or other stereo methods that appear in coming years.
  
 \end_layout
 
