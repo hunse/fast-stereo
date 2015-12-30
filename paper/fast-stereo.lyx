@@ -405,7 +405,7 @@ Methods
 
 \begin_layout Standard
 Our general strategy is to perform fast disparity estimation over most of
- the image, and more accurate estimation in a small window, and to move
+ the image, with more accurate estimation in a small window, and to move
  this window each frame to minimize a task-specific cost function.
  This general strategy could be used with a variety of stereo algorithms,
  but we focus here on a specific implementation of the strategy that uses
@@ -618,7 +618,7 @@ BP involves iterative computation and exchange of messages between pixels.
 \end_inset
 
 , the message 
-\begin_inset Formula $m_{p\to q}^{t}$
+\begin_inset Formula $m_{p\to q}^{t}(f_{q})$
 \end_inset
 
  from pixel 
@@ -627,6 +627,10 @@ BP involves iterative computation and exchange of messages between pixels.
 
  to pixel 
 \begin_inset Formula $q$
+\end_inset
+
+ for disparity 
+\begin_inset Formula $f_{q}$
 \end_inset
 
  is 
@@ -639,7 +643,7 @@ key "Felzenszwalb2006"
 
 \begin_inset Formula 
 \[
-m_{p\to q}^{t}=\min_{f_{p}}\left(V(f_{p}-f_{q})+D_{p}(f_{p})+\sum_{s\in\mathcal{N}(p)\backslash q}m_{s\to p}^{t-1}\right)
+m_{p\to q}^{t}(f_{q})=\min_{f_{p}}\left(V(f_{p}-f_{q})+D_{p}(f_{p})+\sum_{s\in\mathcal{N}(p)\backslash q}m_{s\to p}^{t-1}(f_{p})\right)
 \]
 
 \end_inset
