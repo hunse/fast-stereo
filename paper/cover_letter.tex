@@ -1,0 +1,61 @@
+\documentclass[letterpaper,12pt]{letter}
+
+\newcommand{\comment}[1]{{\it #1}}
+\newcommand{\response}[1]{{\bf Response: #1}}
+
+
+\usepackage{graphicx}
+
+% Some of the article customisations are relevant for this class
+
+\setlength{\topmargin}{-3cm}
+\setlength{\textheight}{9in}
+\setlength{\textwidth}{6.5in}
+\addtolength{\oddsidemargin}{-0.5in}
+\addtolength{\evensidemargin}{-0.5in}
+
+%\name{Jeff Orchard} % To be used for the return address on the envelope
+%\signature{Jeff Orchard} % Goes after the closing (ie at the end of the letter, with space for a signature)
+\address{Jeff Orchard\\ David R. Cheriton School \\ \quad \quad of Computer Science \\
+University of Waterloo \\
+200 University Ave. West \\
+Waterloo, Ontario \\
+N2L~3G1}
+% Alternatively, these may be set on an individual basis within each letter environment.
+
+%\makelabels % this command prints envelope labels on the final page of the document
+
+\begin{document}
+\begin{letter}{M. Gini\\
+Dept. of Computer Science and Engineering\\
+University of Minnesota\\
+200 Union Street SE\\
+Minneapolis, MN\\
+55455, USA}
+
+\opening{Dear Dr. Gini,} % eg Hello.
+
+
+Please consider the attached manuscript entitled ``Task-Driven Resource Allocation for Real-Time Stereo with Belief Propagation'' for publication as a research paper in the journal Robotics and Autonomous Systems.
+
+Highlights:
+
+\begin{itemize}
+\item Stereo depth can be achieved at frame rates without specialized hardware
+\item More computational resources are spent on the most important parts of the scene
+\item Fovea placement is determined by task and by scene content (eg. objects)
+\item multi-resolution belief propagation
+\item evaluated on KITTI Vision Benchmark
+\end{itemize}
+
+
+
+\noindent
+Sincerely,
+
+
+\noindent
+Jeff Orchard
+
+\end{letter}
+\end{document}
