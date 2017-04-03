@@ -80,7 +80,7 @@ def test_foveal(frame_down_factor, fovea_fraction, fovea_n, post_smooth=None, **
         params.update(kwargs)
 
         fovea_corner = ((frame_shape[0] - fovea_shape[0]) / 2,
-                        (frame_shape[1] - fovea_shape[1]))
+                        (frame_shape[1] - fovea_shape[1]) / 2)
 
         t = time.time()
         foveal_disp = foveal_bp(
@@ -97,7 +97,9 @@ def test_foveal(frame_down_factor, fovea_fraction, fovea_n, post_smooth=None, **
         for i_fovea, fovea_n_i in enumerate(fovea_n):
             foveal = Foveal(average_disp, frame_down_factor, mem_down_factor,
                             fovea_shape, frame_shape, values,
-                            max_n_foveas=fovea_n_i, **params)
+                            max_n_foveas=fovea_n_i)
+            foveal.coarse_params = params
+            foveal.foveal_params = params
             foveal.post_smooth = post_smooth
 
             if 0:

@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import cv2
 
 from bp_wrapper import (
-    downsample, upsample, foveal_bp, coarse_bp, laplacian, plot_fovea)
+    downsample, upsample, smooth, foveal_bp, coarse_bp, laplacian, plot_fovea)
 from data import KittiSource
 from importance import (
     UnusuallyClose, get_average_disparity, get_position_weights, get_importance)
@@ -17,9 +17,37 @@ from transform import DisparityMemory
 from filter import _choose_foveas
 
 
+def coarse_disparity(frame, values, down_factor, **kwargs):
+    # params = {
+    #     'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
+    #     'data_max': 32.024780646200725, 'laplacian_ksize': 3}
+    params = {
+        'data_exp': 1.09821084614, 'data_max': 112.191597317,
+        'data_weight': 0.0139569211273, 'disc_max': 12.1301410452,
+        'laplacian_ksize': 3, 'smooth': 1.84510833504e-07}
+    params.update(kwargs)
+    return coarse_bp(
+        frame, values=values, down_factor=down_factor, **params)
+
+
+def foveal_disparity(frame, fovea_corners, fovea_shape, values, **kwargs):
+    params = {
+        'data_exp': 1.09821084614, 'data_max': 112.191597317,
+        'data_weight': 0.0139569211273, 'disc_max': 12.1301410452,
+        'laplacian_ksize': 3, 'smooth': 1.84510833504e-07}
+    # params = {
+    #     'data_exp': 14.2348581842, 'data_max': 79101007093.4,
+    #     'data_weight': 0.000102496570364, 'disc_max': 4.93508276126,
+    #     'laplacian_ksize': 5, 'laplacian_scale': 0.38937704644,
+    #     'smooth': 0.00146126755993}  # optimized for frame_down: 1, mem_down: 2, fovea_levels: 2
+    params.update(kwargs)
+    return foveal_bp(
+        frame, fovea_corners, fovea_shape, values=values, **params)
+
+
 class Foveal(object):
     def __init__(self, average_disparity, frame_down_factor, mem_down_factor,
-                 fovea_shape, frame_shape, values, max_n_foveas=1, **bp_args):
+                 fovea_shape, frame_shape, values, max_n_foveas=1):
 
 #         self.frame_down_factor = frame_down_factor
         self.mem_down_factor = mem_down_factor
@@ -33,19 +61,13 @@ class Foveal(object):
 
         self.values = values
         self.max_n_foveas = max_n_foveas
-        
+
         self.post_smooth = None
 
-        self.params = {
-            'data_exp': 1.09821084614, 'data_max': 112.191597317,
-            'data_weight': 0.0139569211273, 'disc_max': 12.1301410452,
-            'laplacian_ksize': 3, 'smooth': 1.84510833504e-07}
-        # self.params = {
-        #     'data_exp': 14.2348581842, 'data_max': 79101007093.4,
-        #     'data_weight': 0.000102496570364, 'disc_max': 4.93508276126,
-        #     'laplacian_ksize': 5, 'laplacian_scale': 0.38937704644,
-        #     'smooth': 0.00146126755993}  # optimized for frame_down: 1, mem_down: 2, fovea_levels: 2
-        self.params.update(bp_args)
+        self.coarse_disparity = coarse_disparity
+        self.foveal_disparity = foveal_disparity
+        self.coarse_params = {}
+        self.foveal_params = {}
 
         self._uc = UnusuallyClose(self.average_disparity)
 
@@ -54,16 +76,9 @@ class Foveal(object):
 
         if cost is None:
             # Use coarse BP run to get importance for current frame
-            # params = {
-            #     'data_weight': 0.16145115747533928, 'disc_max': 294.1504935618425,
-            #     'data_max': 32.024780646200725, 'laplacian_ksize': 3}
-            prior_params = {
-                'data_exp': 1.09821084614, 'data_max': 112.191597317,
-                'data_weight': 0.0139569211273, 'disc_max': 12.1301410452,
-                'laplacian_ksize': 3, 'smooth': 1.84510833504e-07}
-            prior_disparity = coarse_bp(
-                frame, down_factor=self.mem_down_factor, iters=5,
-                values=self.values, **prior_params)
+            prior_disparity = self.coarse_disparity(
+                frame, values=self.values, down_factor=self.mem_down_factor,
+                **self.coarse_params)
             prior_disparity *= self.frame_step
             prior_disparity = prior_disparity[:,self.values/self.mem_step:]
 
@@ -104,11 +119,15 @@ class Foveal(object):
             assert all(fovea_corners[i] + fovea_shape <= self.frame_shape)
 
         # --- fovea boundaries in frame coordinates ...
-        bp_time = time.time()
-        disp = foveal_bp(
-            frame, fovea_corners, fovea_shape, values=self.values, post_smooth=self.post_smooth, **self.params)
+        foveal_time = time.time()
+        # disp = foveal_bp(
+        #     frame, fovea_corners, fovea_shape, values=self.values, post_smooth=self.post_smooth, **self.params)
+        disp = self.foveal_disparity(
+            frame, fovea_corners, fovea_shape, values=self.values,
+            **self.foveal_params)
+        disp = smooth(disp, std=self.post_smooth)  # TODO: after multiplying by frame_step?
         disp *= self.frame_step
-        self.bp_time = time.time() - bp_time
+        self.foveal_time = time.time() - foveal_time
 
         return disp, fovea_corners
 
