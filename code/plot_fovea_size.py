@@ -29,6 +29,19 @@ def get_test_case(source):
 
 
 def test_foveal(frame_down_factor, fovea_fraction, fovea_n, post_smooth=None, **kwargs):
+    bp_params = {
+        'data_exp': 1.09821084614, 'data_max': 112.191597317,
+        'data_weight': 0.0139569211273, 'disc_max': 12.1301410452,
+        'laplacian_ksize': 3, 'smooth': 1.84510833504e-07}
+    # bp_params = {
+    #     'data_exp': 14.2348581842, 'data_max': 79101007093.4,
+    #     'data_weight': 0.000102496570364, 'disc_max': 4.93508276126,
+    #     'laplacian_ksize': 5, 'laplacian_scale': 0.38937704644,
+    #     'smooth': 0.00146126755993}  # optimized for frame_down: 1, mem_down: 2, fovea_levels: 1
+
+    foveal_params = dict(bp_params)
+    foveal_params.update(kwargs)
+
     values = full_values / 2**frame_down_factor
 
     mem_down_factor = 2     # relative to the frame down factor
@@ -59,32 +72,22 @@ def test_foveal(frame_down_factor, fovea_fraction, fovea_n, post_smooth=None, **
         true_disp_d = downsample(true_disp, mem_down_factor)[:, values/2**mem_down_factor:]
         average_disp_d = downsample(average_disp, mem_down_factor)
 
-        fovea_pixels = np.ceil(fovea_fraction * frame_shape[0] * (frame_shape[1] - values))
+        frame_offset = np.array((0, values))
+        frame_shape0 = np.array(frame_shape) - frame_offset
+        fovea_pixels = np.ceil(fovea_fraction * np.prod(frame_shape0))
         if fovea_pixels > 0:
-            fovea_height = np.minimum(frame_shape[0], np.ceil(fovea_pixels ** .5))
-            fovea_width = np.minimum(frame_shape[1], np.ceil(fovea_pixels / fovea_height))
-            fovea_shape = fovea_height, fovea_width
+            fovea_height = np.ceil(fovea_pixels ** .5).clip(1, frame_shape0[0])
+            fovea_width = np.ceil(fovea_pixels / fovea_height).clip(1, frame_shape0[1])
+            fovea_shape = np.array((fovea_height, fovea_width))
         else:
             fovea_shape = (0, 0)
 
         # --- static fovea
-        params = {
-            'data_exp': 1.09821084614, 'data_max': 112.191597317,
-            'data_weight': 0.0139569211273, 'disc_max': 12.1301410452,
-            'laplacian_ksize': 3, 'smooth': 1.84510833504e-07}
-        # params = {
-        #     'data_exp': 14.2348581842, 'data_max': 79101007093.4,
-        #     'data_weight': 0.000102496570364, 'disc_max': 4.93508276126,
-        #     'laplacian_ksize': 5, 'laplacian_scale': 0.38937704644,
-        #     'smooth': 0.00146126755993}  # optimized for frame_down: 1, mem_down: 2, fovea_levels: 1
-        params.update(kwargs)
-
-        fovea_corner = ((frame_shape[0] - fovea_shape[0]) / 2,
-                        (frame_shape[1] - fovea_shape[1]) / 2)
-
         t = time.time()
+        fovea_corner = (frame_shape0 - fovea_shape) // 2 + frame_offset
         foveal_disp = foveal_bp(
-            frame_ten, np.array(fovea_corner), fovea_shape, values=values, post_smooth=post_smooth, **params)
+            frame_ten, fovea_corner, fovea_shape, values=values,
+            post_smooth=post_smooth, **foveal_params)
         foveal_disp *= 2**frame_down_factor
         times[0, i_frame] = time.time() - t
         unweighted_cost[0, i_frame] = cost_on_points(
@@ -98,8 +101,8 @@ def test_foveal(frame_down_factor, fovea_fraction, fovea_n, post_smooth=None, **
             foveal = Foveal(average_disp, frame_down_factor, mem_down_factor,
                             fovea_shape, frame_shape, values,
                             max_n_foveas=fovea_n_i)
-            foveal.coarse_params = params
-            foveal.foveal_params = params
+            foveal.coarse_params = bp_params
+            foveal.foveal_params = foveal_params
             foveal.post_smooth = post_smooth
 
             if 0:
@@ -127,7 +130,7 @@ def test_foveal(frame_down_factor, fovea_fraction, fovea_n, post_smooth=None, **
                 # use estimated importance
                 foveal_disp, fovea_corner = foveal.process_frame(frame_ten)
 
-            foveal_time = foveal.bp_time
+            foveal_time = foveal.foveal_time
 
             unweighted_cost[i_fovea+1, i_frame] = cost_on_points(
                 foveal_disp[:, values:], true_points, full_shape=full_shape, clip=error_clip)

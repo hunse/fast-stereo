@@ -132,14 +132,14 @@ class Foveal(object):
         return disp, fovea_corners
 
 
-def cost_on_points(disp, ground_truth_points, average_disp=None, full_shape=(375,1242), clip=None):
-    #from bp_wrapper import full_shape
-
+def cost_on_points(disp, ground_truth_points, average_disp=None,
+                   full_shape=(375,1242), left_bound=128, clip=None):
+    # do not use points with x < left_bound (don't have full disparity range)
     xyd = ground_truth_points
-    xyd = xyd[xyd[:, 0] >= 128]  # clip left points
+    xyd = xyd[xyd[:, 0] >= left_bound]  # clip left points
     x, y, d = xyd.T
-    x = x - 128  # shift x points
-    full_shape = (full_shape[0], full_shape[1] - 128)
+    x = x - left_bound  # shift x points
+    full_shape = (full_shape[0], full_shape[1] - left_bound)
 
     # rescale points
     ratio = np.asarray(disp.shape) / np.asarray(full_shape, dtype=float)
